@@ -1,0 +1,46 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Cliente {
+  id                 Int      @id @default(autoincrement())
+  nombre             String
+  documentoIdentidad String?  @unique
+  casos              Caso[]
+  creadoEn           DateTime @default(now())
+}
+
+model Caso {
+  id           Int           @id @default(autoincrement())
+  codigo       String        @unique
+  clienteId    Int
+  cliente      Cliente       @relation(fields: [clienteId], references: [id])
+  titulo       String
+  estado       String        @default("En Laboratorio")
+  creadoEn     DateTime      @default(now())
+  seguimientos Seguimiento[]
+}
+
+model Seguimiento {
+  id          Int          @id @default(autoincrement())
+  casoId      Int
+  caso        Caso         @relation(fields: [casoId], references: [id], onDelete: Cascade)
+  tipo        String       @default("Ingreso Inicial")
+  descripcion String
+  creadoEn    DateTime     @default(now())
+  imagenes    CasoImagen[]
+}
+
+model CasoImagen {
+  id            Int         @id @default(autoincrement())
+  seguimientoId Int
+  seguimiento   Seguimiento @relation(fields: [seguimientoId], references: [id], onDelete: Cascade)
+  urlImagen     String
+  subidoEn      DateTime    @default(now())
+}

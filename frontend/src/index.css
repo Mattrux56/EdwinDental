@@ -1,0 +1,79 @@
+:root {
+  /* Superficies */
+  --paper: #f3f5f6;
+  --surface: #ffffff;
+  --line: #dde3e7;
+  --line-strong: #c5ced4;
+
+  /* Tinta */
+  --ink: #14212c;
+  --ink-soft: #4d5e6b;
+  --ink-faint: #7b8b97;
+
+  /* Barra lateral: azul tinta de laboratorio */
+  --side: #112437;
+  --side-hover: #1a3550;
+  --side-text: #aebfce;
+
+  /* Acento: verde reactivo */
+  --reagent: #0b8a7a;
+  --reagent-dark: #076b5f;
+  --reagent-soft: #dff3ef;
+
+  /* Estados */
+  --lab: #9a5b0b;
+  --lab-soft: #fdefd3;
+  --proc: #1f56b8;
+  --proc-soft: #dce8fb;
+  --done: #17713a;
+  --done-soft: #dcf2e4;
+  --danger: #b3261e;
+  --danger-soft: #fbe3e1;
+
+  --font: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--paper);
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--reagent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
