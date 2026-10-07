@@ -18,6 +18,39 @@
   color: var(--ink-faint);
 }
 
+/* Buscador de productos: búsqueda y categoría en una sola barra */
+.pickerBar {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+}
+
+.pickerBar .pickerSearch {
+  flex: 1;
+  min-width: 0;
+  border-bottom: 0;
+}
+
+.pickerBar .pickerCategory {
+  flex: 0 0 auto;
+  width: 190px;
+  min-height: 34px;
+  margin: 0 8px;
+  padding-top: 0;
+  padding-bottom: 0;
+  font-size: 13px;
+}
+
+@media (max-width: 560px) {
+  .pickerBar {
+    flex-wrap: wrap;
+  }
+  .pickerBar .pickerCategory {
+    width: calc(100% - 16px);
+    margin: 0 8px 8px;
+  }
+}
+
 .pickerSearch input {
   width: 100%;
   min-width: 0;

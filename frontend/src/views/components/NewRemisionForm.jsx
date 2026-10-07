@@ -206,9 +206,15 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
 
   const grupos = useMemo(() => {
     const term = normalize(query.trim());
+    // Si lo escrito son solo números se busca por código (que empiece así) o en la descripción
+    const soloNumeros = /^\d+$/.test(term);
+    const coincide = (p) =>
+      soloNumeros
+        ? String(p.codigo).startsWith(term) || normalize(p.descripcion).includes(term)
+        : [p.codigo, p.descripcion, p.categoria].some((v) => normalize(v).includes(term));
     const filtrados = productos.filter((p) =>
       (!categoria || p.categoria === categoria) &&
-      (!term || [p.codigo, p.descripcion, p.categoria].some((v) => normalize(v).includes(term))),
+      (!term || coincide(p)),
     );
     const porCategoria = new Map();
     filtrados.forEach((p) => {
@@ -328,19 +334,23 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
             </span>
           </span>
           <div className={r.pickerBox}>
-            <label className={r.pickerSearch}>
-              <Icon name="search" size={17} />
-              <input
-                type="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Buscar producto por código o descripción"
-                aria-label="Buscar producto"
-              />
-            </label>
-            <div className={r.productFilters}>
-              <label htmlFor="rem-categoria">Categoría</label>
-              <select id="rem-categoria" className={styles.input} value={categoria} onChange={(e) => setCategoria(e.target.value)}>
+            <div className={r.pickerBar}>
+              <label className={r.pickerSearch}>
+                <Icon name="search" size={17} />
+                <input
+                  type="search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Buscar por código o descripción"
+                  aria-label="Buscar producto por código o descripción"
+                />
+              </label>
+              <select
+                className={`${styles.select} ${r.pickerCategory}`}
+                value={categoria}
+                onChange={(e) => setCategoria(e.target.value)}
+                aria-label="Filtrar por categoría"
+              >
                 <option value="">Todas las categorías</option>
                 {categorias.map((opcion) => <option key={opcion} value={opcion}>{opcion}</option>)}
               </select>
