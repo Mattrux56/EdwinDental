@@ -5,7 +5,9 @@ export default function MetricCards({ stats }) {
   const items = [
     { label: 'Total de casos', value: stats.total, icon: 'layers', tone: styles.metricTotal },
     { label: 'En laboratorio', value: stats.enLaboratorio, icon: 'flask', tone: styles.metricLab },
+    { label: 'En prueba', value: stats.enPrueba, icon: 'flask', tone: styles.metricLab },
     { label: 'Finalizados', value: stats.finalizados, icon: 'check', tone: styles.metricDone },
+    { label: 'En arreglo', value: stats.arreglos, icon: 'refresh', tone: styles.metricTotal },
   ];
 
   return (

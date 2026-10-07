@@ -8,10 +8,11 @@ function dotFor(tipo = '') {
   if (t.includes('ingreso inicial')) return { cls: styles.dotIngreso, icon: 'arrowIn' };
   if (t.includes('reingreso')) return { cls: styles.dotReingreso, icon: 'refresh' };
   if (t.includes('entrega')) return { cls: styles.dotEntrega, icon: 'check' };
+  if (t.includes('arreglo')) return { cls: styles.dotReingreso, icon: 'refresh' };
   return { cls: styles.dotResultado, icon: 'flask' };
 }
 
-export default function Timeline({ seguimientos, onOpenImage }) {
+export default function Timeline({ seguimientos, onOpenImage, onDeleteImage, busy = false }) {
   const [newestFirst, setNewestFirst] = useState(false);
   const items = newestFirst ? [...seguimientos].reverse() : seguimientos;
 
@@ -46,15 +47,28 @@ export default function Timeline({ seguimientos, onOpenImage }) {
                 {seg.imagenes?.length > 0 && (
                   <div className={styles.timelineImages}>
                     {seg.imagenes.map((img) => (
-                      <button
-                        key={img.id}
-                        type="button"
-                        className={styles.timelineImgBtn}
-                        onClick={() => onOpenImage(img.urlImagen)}
-                        aria-label="Ampliar fotografía"
-                      >
-                        <img src={img.urlImagen} alt="Fotografía del seguimiento" loading="lazy" />
-                      </button>
+                      <div key={img.id} className={styles.timelineImgWrap}>
+                        <button
+                          type="button"
+                          className={styles.timelineImgBtn}
+                          onClick={() => onOpenImage(img.urlImagen)}
+                          aria-label="Ampliar fotografía"
+                        >
+                          <img src={img.urlImagen} alt="Fotografía del seguimiento" loading="lazy" />
+                        </button>
+                        {onDeleteImage && (
+                          <button
+                            type="button"
+                            className={styles.timelineImgDelete}
+                            onClick={() => onDeleteImage(img.id)}
+                            disabled={busy}
+                            aria-label="Eliminar fotografía"
+                            title="Eliminar fotografía"
+                          >
+                            <Icon name="trash" size={13} />
+                          </button>
+                        )}
+                      </div>
                     ))}
                   </div>
                 )}

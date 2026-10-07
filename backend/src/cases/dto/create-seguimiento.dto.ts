@@ -1,23 +1,23 @@
+import { Transform } from 'class-transformer';
 import { IsIn, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
-
-export const ESTADOS_CASO = ['En Laboratorio', 'En Proceso', 'Finalizado'] as const;
+import { ESTADOS_CASO, TIPOS_SEGUIMIENTO } from '../cases.constants';
 
 export class CreateSeguimientoDto {
-  @IsString()
-  @IsNotEmpty({ message: 'La descripción del seguimiento es obligatoria' })
-  @MaxLength(5000)
-  descripcion: string;
-
-  /** Tipo del seguimiento (por defecto "Reingreso") */
   @IsOptional()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
-  @MaxLength(60)
+  @IsIn(TIPOS_SEGUIMIENTO, { message: 'El tipo de movimiento no es válido' })
   tipo?: string;
 
-  /** Si se envía, actualiza el estado del caso */
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(5000)
+  descripcion!: string;
+
   @IsOptional()
-  @IsIn(ESTADOS_CASO as unknown as string[], {
-    message: `El estado debe ser uno de: ${ESTADOS_CASO.join(', ')}`,
-  })
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsString()
+  @IsIn(ESTADOS_CASO, { message: 'El estado del caso no es válido' })
   estado?: string;
 }

@@ -1,8 +1,17 @@
-export const ESTADOS = ['En Laboratorio', 'En Proceso', 'Finalizado'];
+export const ESTADOS = ['En laboratorio', 'En prueba', 'Finalizado', 'arreglo'];
 
 export const TIPOS_SEGUIMIENTO = [
-  'Reingreso',
-  'Actualización',
-  'Resultado de laboratorio',
-  'Entrega',
+  'prueba',
+  'reingreso',
+  'entrega',
+  'arreglo',
 ];
+
+export function normalizeEstado(estado = '') {
+  const value = estado.toLocaleLowerCase('es');
+  if (value === 'en proceso') return 'En prueba';
+  if (value === 'en laboratorio') return 'En laboratorio';
+  if (value === 'finalizado') return 'Finalizado';
+  if (value === 'arreglo') return 'arreglo';
+  return estado;
+}

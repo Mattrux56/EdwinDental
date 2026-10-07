@@ -1,23 +1,36 @@
-import { Logger, ValidationPipe } from '@nestjs/common';
+import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { existsSync } from 'fs';
 import { join } from 'path';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-
-  app.setGlobalPrefix('api');
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
-
-  // Si el frontend está compilado, se sirve desde el mismo puerto (sin CORS ni segundo servidor)
   const frontendDist = join(__dirname, '..', '..', 'frontend', 'dist');
-  if (existsSync(frontendDist)) app.useStaticAssets(frontendDist);
+  app.useStaticAssets(frontendDist);
+  app.use((request, response, next) => {
+    if (
+      request.method === 'GET' &&
+      !request.path.startsWith('/api') &&
+      !/\.[A-Za-z0-9]{1,8}$/.test(request.path) && // un .js o .png inexistente debe dar 404, no HTML
 
-  const port = Number(process.env.PORT) || 3000;
-  await app.listen(port);
-  Logger.log(`LabTrace lista en http://localhost:${port}`, 'Bootstrap');
+      request.accepts('html')
+    ) {
+      response.sendFile(join(frontendDist, 'index.html'));
+      return;
+    }
+    next();
+  });
+  app.setGlobalPrefix('api');
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
+  app.enableCors();
+  await app.listen(process.env.PORT || 3000);
 }
 
 bootstrap();

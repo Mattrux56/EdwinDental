@@ -1,69 +1,70 @@
-import {
-  Injectable,
-  InternalServerErrorException,
-  Logger,
-  ServiceUnavailableException,
-} from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { BadGatewayException, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { randomUUID } from 'crypto';
-import { extname } from 'path';
+import { randomBytes } from 'crypto';
 
-export const CASOS_BUCKET = 'casos-fotos';
+/** Nombre apto para Supabase Storage: sin tildes, espacios ni símbolos (una "ñ" o un "#" hacen fallar la subida) */
+function safeFileName(original: string): string {
+  const dot = original.lastIndexOf('.');
+  const ext = dot > 0 ? original.slice(dot + 1).toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5) : '';
+  const base = (dot > 0 ? original.slice(0, dot) : original)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Za-z0-9_-]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60);
+  return `${Date.now()}-${randomBytes(3).toString('hex')}-${base || 'foto'}${ext ? `.${ext}` : ''}`;
+}
 
 @Injectable()
 export class SupabaseService {
-  private readonly logger = new Logger(SupabaseService.name);
-  private client: SupabaseClient | null = null;
+  private readonly client: SupabaseClient | null;
 
-  constructor(config: ConfigService) {
-    const url = config.get<string>('SUPABASE_URL');
-    const key = config.get<string>('SUPABASE_ANON_KEY');
-
-    const isPlaceholder = (v?: string) => !v || v.includes('[');
-    if (isPlaceholder(url) || isPlaceholder(key)) {
-      this.logger.warn(
-        'SUPABASE_URL / SUPABASE_ANON_KEY no configurados: la subida de fotos estará deshabilitada.',
-      );
-      return;
-    }
-
-    this.client = createClient(url, key, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
+  constructor() {
+    const url = process.env.SUPABASE_URL;
+    const key = process.env.SUPABASE_ANON_KEY;
+    this.client = url && key ? createClient(url, key) : null;
   }
 
-  /**
-   * Sube una imagen al bucket `casos-fotos` y devuelve su URL pública.
-   * @param folder carpeta lógica dentro del bucket (p. ej. "casos/2026")
-   */
-  async uploadImage(file: Express.Multer.File, folder: string): Promise<string> {
+  /** Sube la imagen y devuelve su URL pública. Si no se puede, falla con un mensaje claro (antes guardaba un enlace falso). */
+  async uploadImage(file: Express.Multer.File, folder: string) {
+    if (!file?.buffer) {
+      return '';
+    }
+
     if (!this.client) {
       throw new ServiceUnavailableException(
-        'Supabase Storage no está configurado. Revisa SUPABASE_URL y SUPABASE_ANON_KEY en backend/.env',
+        'No se pueden guardar fotografías: faltan SUPABASE_URL y SUPABASE_ANON_KEY en backend/.env',
       );
     }
 
-    let ext = extname(file.originalname || '').toLowerCase();
-    if (!/^\.[a-z0-9]{2,5}$/.test(ext)) ext = '.jpg';
-
-    const path = `${folder}/${Date.now()}-${randomUUID()}${ext}`;
-
-    const { error } = await this.client.storage
-      .from(CASOS_BUCKET)
-      .upload(path, file.buffer, {
-        contentType: file.mimetype,
-        upsert: false,
-      });
+    const path = `${folder}/${safeFileName(file.originalname)}`;
+    const { error } = await this.client.storage.from('casos-fotos').upload(path, file.buffer, {
+      contentType: file.mimetype || 'application/octet-stream',
+      upsert: false,
+    });
 
     if (error) {
-      this.logger.error(`Error subiendo ${path}: ${error.message}`);
-      throw new InternalServerErrorException(
-        `No se pudo subir la imagen a Supabase Storage: ${error.message}`,
+      throw new BadGatewayException(
+        `No se pudo subir la fotografía a Supabase (${error.message}). Verifica que exista el bucket "casos-fotos" y su permiso de subida.`,
       );
     }
 
-    const { data } = this.client.storage.from(CASOS_BUCKET).getPublicUrl(path);
+    const { data } = this.client.storage.from('casos-fotos').getPublicUrl(path);
     return data.publicUrl;
+  }
+
+  /** Borra del bucket los archivos de estas URLs públicas. Es "mejor esfuerzo": un fallo no debe impedir la operación principal. */
+  async removeByUrls(urls: string[]) {
+    if (!this.client || urls.length === 0) return;
+    const marca = '/casos-fotos/';
+    const rutas = urls
+      .map((url) => {
+        const i = url.indexOf(marca);
+        return i >= 0 ? decodeURIComponent(url.slice(i + marca.length).split('?')[0]) : null;
+      })
+      .filter((r): r is string => Boolean(r));
+    if (rutas.length === 0) return;
+    const { error } = await this.client.storage.from('casos-fotos').remove(rutas);
+    if (error) console.warn(`No se pudieron borrar ${rutas.length} archivo(s) de Storage: ${error.message}`);
   }
 }

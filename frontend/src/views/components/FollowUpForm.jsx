@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import styles from '../dashboard.module.css';
-import { ESTADOS, TIPOS_SEGUIMIENTO } from '../../constants.js';
+import { ESTADOS, normalizeEstado, TIPOS_SEGUIMIENTO } from '../../constants.js';
 import PhotoPicker from './PhotoPicker.jsx';
 
 const KEEP = ''; // valor del selector que significa "no cambiar el estado"
@@ -10,6 +10,7 @@ export default function FollowUpForm({ caso, saving, onSubmit }) {
   const [estado, setEstado] = useState(KEEP);
   const [descripcion, setDescripcion] = useState('');
   const [fotos, setFotos] = useState([]);
+  const estadoActual = normalizeEstado(caso.estado);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -24,7 +25,7 @@ export default function FollowUpForm({ caso, saving, onSubmit }) {
   return (
     <form className={styles.followUp} onSubmit={handleSubmit}>
       <h3 className={styles.sectionTitle} style={{ marginBottom: 14 }}>
-        Registrar reingreso o nuevo seguimiento
+        Registrar movimiento
       </h3>
 
       <div className={styles.formGrid}>
@@ -46,8 +47,8 @@ export default function FollowUpForm({ caso, saving, onSubmit }) {
             Estado del caso
           </label>
           <select id="fu-estado" className={styles.select} value={estado} onChange={(e) => setEstado(e.target.value)}>
-            <option value={KEEP}>Mantener ({caso.estado})</option>
-            {ESTADOS.filter((s) => s !== caso.estado).map((s) => (
+            <option value={KEEP}>Mantener ({estadoActual})</option>
+            {ESTADOS.filter((s) => s !== estadoActual).map((s) => (
               <option key={s} value={s}>
                 Cambiar a {s}
               </option>
@@ -66,7 +67,7 @@ export default function FollowUpForm({ caso, saving, onSubmit }) {
             onChange={(e) => setDescripcion(e.target.value)}
             required
             maxLength={5000}
-            placeholder="Qué se encontró, qué se hizo o por qué vuelve al laboratorio"
+            placeholder="Describe la prueba, el reingreso, la entrega o el arreglo"
           />
         </div>
 

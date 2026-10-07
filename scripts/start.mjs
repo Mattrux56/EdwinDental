@@ -10,6 +10,10 @@ const BACKEND = join(ROOT, 'backend');
 const FRONTEND = join(ROOT, 'frontend');
 const PORT = Number(process.env.PORT) || 3000;
 const URL = `http://localhost:${PORT}`;
+const PRESENCE_URL = `http://127.0.0.1:${PORT}/api/runtime/active-clients`;
+const HEARTBEAT_INTERVAL_MS = 3000;
+const EMPTY_WINDOW_MS = 15_000;
+const STARTUP_WINDOW_MS = 120_000;
 
 const fail = (msg) => {
   console.error(`\n✖ ${msg}\n`);
@@ -41,6 +45,16 @@ async function isUp() {
   }
 }
 
+async function getActiveClients() {
+  const response = await fetch(PRESENCE_URL, { signal: AbortSignal.timeout(1500) });
+  if (!response.ok) throw new Error(`Presence endpoint returned ${response.status}`);
+  const result = await response.json();
+  if (!Number.isInteger(result.count) || result.count < 0) {
+    throw new Error('Presence endpoint returned an invalid client count');
+  }
+  return result.count;
+}
+
 function openBrowser(url) {
   const [cmd, args] =
     process.platform === 'win32'
@@ -68,6 +82,13 @@ async function main() {
     run('npm', ['install']);
   }
 
+  // Si schema.prisma es más nuevo que el cliente generado (p. ej. se agregó una columna), hay que regenerarlo;
+  // de lo contrario el backend no compila o falla con "Unknown field".
+  if (isStale([join(BACKEND, 'prisma', 'schema.prisma')], join(ROOT, 'node_modules', '.prisma', 'client', 'index.js'))) {
+    console.log('▶ Actualizando el cliente de base de datos…');
+    run('npm', ['run', 'postinstall', '-w', 'backend']);
+  }
+
   const backendOut = join(BACKEND, 'dist', 'main.js');
   const frontendOut = join(FRONTEND, 'dist', 'index.html');
 
@@ -86,19 +107,67 @@ async function main() {
     stdio: 'inherit',
     env: { ...process.env, PORT: String(PORT), NODE_ENV: 'production' },
   });
-  server.on('exit', (code) => process.exit(code ?? 0));
-  for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => server.kill());
+  let stopping = false;
+  const stopServer = () => {
+    if (!stopping && server.exitCode === null && !server.killed) {
+      stopping = true;
+      server.kill();
+    }
+  };
+  server.on('exit', (code) => {
+    process.removeListener('exit', stopServer);
+    process.exit(code ?? 0);
+  });
+  process.on('exit', stopServer);
+  for (const signal of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.on(signal, stopServer);
+  if (process.platform === 'win32') process.on('SIGBREAK', stopServer);
 
   const deadline = Date.now() + 60_000;
+  let serverReady = false;
   while (Date.now() < deadline) {
     if (await isUp()) {
-      console.log(`\n✔ LabTrace lista en ${URL}  (cierra esta ventana para detenerla)\n`);
-      return openBrowser(URL);
+      console.log(`\n✔ LabTrace lista en ${URL}. Se cerrará cuando cierres la última pestaña.\n`);
+      if (process.env.LABTRACE_NO_BROWSER === '1') {
+        console.log(`Abre manualmente: ${URL}`);
+      } else {
+        openBrowser(URL);
+      }
+      serverReady = true;
+      break;
     }
     await new Promise((r) => setTimeout(r, 500));
   }
-  server.kill();
-  fail('El servidor no respondió en 60 s. Revisa los mensajes de arriba (¿credenciales de la base de datos?).');
+  if (!serverReady) {
+    server.kill();
+    fail('El servidor no respondió en 60 s. Revisa los mensajes de arriba (¿credenciales de la base de datos?).');
+  }
+
+  let sawActiveClient = false;
+  let emptySince = null;
+  const startupDeadline = Date.now() + STARTUP_WINDOW_MS;
+  while (server.exitCode === null) {
+    try {
+      const activeClients = await getActiveClients();
+      if (activeClients > 0) {
+        sawActiveClient = true;
+        emptySince = null;
+      } else if (sawActiveClient) {
+        emptySince ??= Date.now();
+        if (Date.now() - emptySince >= EMPTY_WINDOW_MS) {
+          console.log('No hay pestañas de LabTrace abiertas. Cerrando el servidor local…');
+          stopServer();
+          break;
+        }
+      } else if (Date.now() >= startupDeadline) {
+        console.log('No se detectó ninguna pestaña de LabTrace. Cerrando el servidor local…');
+        stopServer();
+        break;
+      }
+    } catch {
+      // Un error transitorio no debe cerrar un servidor que todavía podría tener usuarios conectados.
+    }
+    await new Promise((resolve) => setTimeout(resolve, HEARTBEAT_INTERVAL_MS));
+  }
 }
 
 main();

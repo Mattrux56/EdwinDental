@@ -11,7 +11,6 @@ generator client {
 model Cliente {
   id                 Int      @id @default(autoincrement())
   nombre             String
-  documentoIdentidad String?  @unique
   casos              Caso[]
   creadoEn           DateTime @default(now())
 }
@@ -22,9 +21,21 @@ model Caso {
   clienteId    Int
   cliente      Cliente       @relation(fields: [clienteId], references: [id])
   titulo       String
-  estado       String        @default("En Laboratorio")
+  pacienteNombre String?
+  estado       String        @default("En laboratorio")
   creadoEn     DateTime      @default(now())
+  fechaIngreso DateTime?     @db.Date
+  fechaEntregaEstimada DateTime?
+  precio       Float?
+  /// Los casos archivados salen de los listados normales pero conservan todo su historial
+  archivado    Boolean       @default(false)
+  archivadoEn  DateTime?
+  /// Código aleatorio para el enlace público /consulta/:codigoPublico (el código CASO-2026-001 es fácil de adivinar)
+  codigoPublico String?      @unique
   seguimientos Seguimiento[]
+  remisiones   Remision[]
+
+  @@index([clienteId])
 }
 
 model Seguimiento {
@@ -35,6 +46,8 @@ model Seguimiento {
   descripcion String
   creadoEn    DateTime     @default(now())
   imagenes    CasoImagen[]
+
+  @@index([casoId])
 }
 
 model CasoImagen {
@@ -43,4 +56,59 @@ model CasoImagen {
   seguimiento   Seguimiento @relation(fields: [seguimientoId], references: [id], onDelete: Cascade)
   urlImagen     String
   subidoEn      DateTime    @default(now())
+
+  @@index([seguimientoId])
+}
+
+/// Lista de precios (se administra desde la opción Productos). Los valores son pesos enteros (COP).
+model Producto {
+  id          Int            @id @default(autoincrement())
+  codigo      Int
+  categoria   String
+  descripcion String
+  valor       Int
+  activo      Boolean        @default(true)
+  creadoEn    DateTime       @default(now())
+  items       RemisionItem[]
+
+  // El código 8004 aparece dos veces en la lista de precios 2026, por eso no es único por sí solo
+  @@unique([codigo, descripcion])
+}
+
+model Remision {
+  id       Int            @id @default(autoincrement())
+  numero   Int            @unique
+  casoId   Int
+  caso     Caso           @relation(fields: [casoId], references: [id])
+  fecha    DateTime       @db.Date
+  noOrden  String?
+  creadoEn DateTime       @default(now())
+  anulada   Boolean       @default(false)
+  anuladaEn DateTime?
+  /// Pago: la cuenta de cobro del mes de un cliente suma sus remisiones y cada una se marca como pagada
+  pagada    Boolean       @default(false)
+  pagadaEn  DateTime?
+  /// Copia de los nombres al emitir la remisión: si luego se edita o fusiona el cliente, la remisión emitida no cambia
+  doctorNombre   String?
+  pacienteNombre String?
+  editadaEn      DateTime?
+  items    RemisionItem[]
+
+  @@index([casoId])
+  @@index([fecha])
+}
+
+/// Cada línea guarda una copia de la descripción y del precio vigente al crear la remisión,
+/// así un cambio posterior en la lista de precios no altera remisiones ya emitidas.
+model RemisionItem {
+  id            Int       @id @default(autoincrement())
+  remisionId    Int
+  remision      Remision  @relation(fields: [remisionId], references: [id], onDelete: Cascade)
+  productoId    Int?
+  producto      Producto? @relation(fields: [productoId], references: [id], onDelete: SetNull)
+  descripcion   String
+  cantidad      Int
+  valorUnitario Int
+
+  @@index([remisionId])
 }

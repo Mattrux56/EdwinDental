@@ -2,11 +2,16 @@ import styles from '../dashboard.module.css';
 import { Icon } from './Icon.jsx';
 
 const MENU = [
-  { id: 'dashboard', label: 'Panel de casos', icon: 'grid' },
-  { id: 'nuevo', label: 'Registrar caso', icon: 'plus' },
+  { id: 'resumen', label: 'Resumen de casos', icon: 'grid' },
+  { id: 'casos', label: 'Panel de casos', icon: 'layers' },
+  { id: 'alertas', label: 'Alertas de entrega', icon: 'bell' },
+  { id: 'remisiones', label: 'Remisiones', icon: 'receipt' },
+  { id: 'cuentas', label: 'Cuentas de cobro', icon: 'wallet' },
+  { id: 'clientes', label: 'Clientes', icon: 'users' },
+  { id: 'productos', label: 'Productos', icon: 'box' },
 ];
 
-export default function Sidebar({ active, onNavigate }) {
+export default function Sidebar({ active, onNavigate, alertCount = 0 }) {
   return (
     <aside className={styles.sidebar}>
       <div className={styles.brand}>
@@ -31,17 +36,12 @@ export default function Sidebar({ active, onNavigate }) {
           >
             <Icon name={item.icon} />
             <span className={styles.navLabel}>{item.label}</span>
+            {item.id === 'alertas' && alertCount > 0 && (
+              <span className={styles.navBadge} aria-label={`${alertCount} alertas`}>{alertCount}</span>
+            )}
           </button>
         ))}
       </nav>
-
-      <div className={styles.sidebarFooter}>
-        <div className={styles.avatar}>EL</div>
-        <div className={styles.userInfo}>
-          <span className={styles.userName}>Empleado</span>
-          <span className={styles.userRole}>Laboratorio</span>
-        </div>
-      </div>
     </aside>
   );
 }

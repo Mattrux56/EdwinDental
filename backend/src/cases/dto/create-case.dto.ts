@@ -1,29 +1,63 @@
-import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import {
+  IsInt,
+  IsISO8601,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+  Min,
+  ValidateIf,
+} from 'class-validator';
+
+const trim = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value);
+const SOLO_FECHA = /^\d{4}-\d{2}-\d{2}$/;
 
 export class CreateCaseDto {
-  @IsString()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  clienteId?: number;
+
+  /** Obligatorio solo cuando no se elige un cliente existente (clienteId) */
+  @ValidateIf((caso: CreateCaseDto) => caso.clienteId === undefined)
+  @Transform(trim)
+  @IsString({ message: 'El nombre del cliente es obligatorio' })
   @IsNotEmpty({ message: 'El nombre del cliente es obligatorio' })
   @MaxLength(150)
-  clienteNombre: string;
+  clienteNombre?: string;
 
-  @IsOptional()
-  @IsString()
-  @MaxLength(50)
-  documentoIdentidad?: string;
+  @Transform(trim)
+  @IsString({ message: 'El nombre del paciente es obligatorio' })
+  @IsNotEmpty({ message: 'El nombre del paciente es obligatorio' })
+  @MaxLength(150)
+  pacienteNombre!: string;
 
+  @Transform(trim)
   @IsString()
-  @IsNotEmpty({ message: 'El título del caso es obligatorio' })
+  @IsNotEmpty()
   @MaxLength(200)
-  titulo: string;
+  titulo!: string;
 
+  @Transform(trim)
   @IsString()
-  @IsNotEmpty({ message: 'La descripción del ingreso es obligatoria' })
+  @IsNotEmpty()
   @MaxLength(5000)
-  descripcion: string;
+  descripcion!: string;
 
-  /** Tipo del primer seguimiento (por defecto "Ingreso Inicial") */
+  /** YYYY-MM-DD; por defecto, hoy */
   @IsOptional()
-  @IsString()
-  @MaxLength(60)
-  tipo?: string;
+  @Transform(trim)
+  @Matches(SOLO_FECHA, { message: 'La fecha de ingreso debe tener el formato AAAA-MM-DD' })
+  @IsISO8601({ strict: true }, { message: 'La fecha de ingreso no es válida' })
+  fechaIngreso?: string;
+
+  /** YYYY-MM-DD */
+  @IsOptional()
+  @Transform(trim)
+  @Matches(SOLO_FECHA, { message: 'La fecha de entrega debe tener el formato AAAA-MM-DD' })
+  @IsISO8601({ strict: true }, { message: 'La fecha de entrega no es válida' })
+  fechaEntregaEstimada?: string;
 }

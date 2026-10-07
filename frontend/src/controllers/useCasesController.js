@@ -1,22 +1,36 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { casesService } from '../services/cases.service.js';
 
-const EMPTY_STATS = { total: 0, enLaboratorio: 0, enProceso: 0, finalizados: 0 };
+const EMPTY_STATS = {
+  total: 0,
+  enLaboratorio: 0,
+  enPrueba: 0,
+  finalizados: 0,
+  arreglos: 0,
+  archivados: 0,
+  alertas: 0,
+};
 
 export function useCasesController() {
   const [casos, setCasos] = useState([]);
   const [stats, setStats] = useState(EMPTY_STATS);
-  const [search, setSearchState] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const [activeView, setActiveView] = useState('dashboard'); // 'dashboard' | 'nuevo'
+  const [activeView, setActiveViewRaw] = useState('resumen');
+  const [verArchivados, setVerArchivados] = useState(false);
   const [selectedCase, setSelectedCase] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
   const [toast, setToast] = useState(null);
 
+  // Al salir del Panel de casos se vuelve a la lista normal (los archivados no deben colarse en Remisiones ni en el Resumen)
+  const setActiveView = useCallback((view) => {
+    setActiveViewRaw(view);
+    if (view !== 'casos') setVerArchivados(false);
+  }, []);
+
   const listRequest = useRef(0); // evita que una respuesta lenta pise a una más reciente
-  const searchRef = useRef('');
 
   // ------------------------------------------------------------- Notificaciones
   const showToast = useCallback((type, message) => {
@@ -31,19 +45,19 @@ export function useCasesController() {
   }, [toast]);
 
   // -------------------------------------------------------------------- Carga
-  const loadCases = useCallback(async (term) => {
+  const loadCases = useCallback(async () => {
     const requestId = ++listRequest.current;
     setLoading(true);
     setError(null);
     try {
-      const data = await casesService.list(term);
+      const data = await casesService.list('', verArchivados);
       if (requestId === listRequest.current) setCasos(data);
     } catch (e) {
       if (requestId === listRequest.current) setError(e.message);
     } finally {
       if (requestId === listRequest.current) setLoading(false);
     }
-  }, []);
+  }, [verArchivados]);
 
   const loadStats = useCallback(async () => {
     try {
@@ -53,27 +67,18 @@ export function useCasesController() {
     }
   }, []);
 
-  // Búsqueda en tiempo real con debounce (300 ms)
   useEffect(() => {
-    searchRef.current = search;
-    const timer = setTimeout(() => loadCases(search), search ? 300 : 0);
-    return () => clearTimeout(timer);
-  }, [search, loadCases]);
+    loadCases();
+  }, [loadCases]);
 
   useEffect(() => {
     loadStats();
   }, [loadStats]);
 
   const refresh = useCallback(
-    () => Promise.all([loadCases(searchRef.current), loadStats()]),
+    () => Promise.all([loadCases(), loadStats()]),
     [loadCases, loadStats],
   );
-
-  // ---------------------------------------------------------------- Búsqueda
-  const setSearch = useCallback((value) => {
-    setSearchState(value);
-    setActiveView('dashboard'); // al buscar siempre se muestran los resultados
-  }, []);
 
   // ----------------------------------------------------------------- Detalle
   const openCase = useCallback(async (caso) => {
@@ -87,7 +92,6 @@ export function useCasesController() {
   }, [showToast]);
 
   const closeCase = useCallback(() => setSelectedCase(null), []);
-
   // ------------------------------------------------------------ Mutaciones
   const createCase = useCallback(
     async (payload) => {
@@ -95,9 +99,8 @@ export function useCasesController() {
       try {
         const created = await casesService.create(payload);
         showToast('success', `Caso ${created.codigo} registrado correctamente`);
-        setActiveView('dashboard');
-        setSearchState('');
-        await Promise.all([loadCases(''), loadStats()]);
+        setActiveView('casos');
+        await Promise.all([loadCases(), loadStats()]);
         return created;
       } catch (e) {
         showToast('error', e.message);
@@ -108,6 +111,80 @@ export function useCasesController() {
     },
     [loadCases, loadStats, showToast],
   );
+
+  /** Edita los datos del caso (título, paciente, cliente, fechas) */
+  const updateCase = useCallback(
+    async (id, payload) => {
+      setSaving(true);
+      try {
+        const updated = await casesService.update(id, payload);
+        setSelectedCase((current) => (current && current.id === id ? updated : current));
+        showToast('success', 'Caso actualizado');
+        await refresh();
+        return updated;
+      } catch (e) {
+        showToast('error', e.message);
+        return null;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [refresh, showToast],
+  );
+
+  const archiveCase = useCallback(
+    async (caso, archivar = true) => {
+      setSaving(true);
+      try {
+        await (archivar ? casesService.archivar(caso.id) : casesService.restaurar(caso.id));
+        if (selectedCase?.id === caso.id) setSelectedCase(null);
+        showToast('success', archivar ? `Caso ${caso.codigo} archivado` : `Caso ${caso.codigo} restaurado`);
+        await refresh();
+        return true;
+      } catch (e) {
+        showToast('error', e.message);
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [refresh, selectedCase, showToast],
+  );
+
+  const removePhoto = useCallback(
+    async (imagenId) => {
+      setSaving(true);
+      try {
+        const updated = await casesService.removeImagen(imagenId);
+        setSelectedCase(updated);
+        showToast('success', 'Foto eliminada');
+        await loadCases();
+        return true;
+      } catch (e) {
+        showToast('error', e.message);
+        return false;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [loadCases, showToast],
+  );
+
+  const deleteCase = useCallback(async (caso) => {
+    setDeletingId(caso.id);
+    try {
+      await casesService.remove(caso.id);
+      if (selectedCase?.id === caso.id) setSelectedCase(null);
+      showToast('success', `Caso ${caso.codigo} eliminado`);
+      await Promise.all([loadCases(), loadStats()]);
+      return true;
+    } catch (e) {
+      showToast('error', e.message);
+      return false;
+    } finally {
+      setDeletingId(null);
+    }
+  }, [loadCases, loadStats, selectedCase, showToast]);
 
   const addFollowUp = useCallback(
     async (casoId, payload) => {
@@ -132,21 +209,27 @@ export function useCasesController() {
     // estado
     casos,
     stats,
-    search,
     loading,
     error,
     activeView,
+    verArchivados,
     selectedCase,
     saving,
+    deletingId,
     toast,
     // acciones
-    setSearch,
     setActiveView,
+    setVerArchivados,
+    updateCase,
+    archiveCase,
+    removePhoto,
     refresh,
     openCase,
     closeCase,
     createCase,
+    deleteCase,
     addFollowUp,
     dismissToast,
+    showToast,
   };
 }

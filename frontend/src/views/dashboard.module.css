@@ -1,21 +1,46 @@
 /* ===================================================== Layout general */
 .shell {
   display: flex;
-  min-height: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
+/* El scroll de la página vive aquí; la barra lateral queda fija */
 .main {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
 }
 
 .content {
+  flex: 1 0 auto;
   padding: 28px 32px 48px;
   max-width: 1280px;
   width: 100%;
   margin: 0 auto;
+}
+
+/* Vistas con tablas: el contenido ocupa exactamente la pantalla y la tabla se desplaza por dentro
+   (así el encabezado y los botones siempre se ven y no hay que bajar la página). */
+.contentFill {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 24px;
+  overflow-y: auto;
+}
+
+.contentFill > .appHeader {
+  flex-shrink: 0;
+}
+
+.contentFill > .panelFill {
+  flex: 1 1 0;
+  min-height: 320px; /* en pantallas muy bajas es la página la que se desplaza */
 }
 
 /* ===================================================== Sidebar */
@@ -73,6 +98,8 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .navItem {
@@ -94,6 +121,19 @@
   color: #fff;
 }
 
+.navLabel {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.navItem {
+  flex-shrink: 0;
+  position: relative;
+}
+
 .navItemActive,
 .navItemActive:hover {
   background: var(--side-hover);
@@ -102,6 +142,7 @@
 }
 
 .sidebarFooter {
+  flex-shrink: 0;
   margin-top: auto;
   display: flex;
   align-items: center;
@@ -212,6 +253,17 @@
   flex-wrap: wrap;
 }
 
+.appHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 22px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
 .pageTitle {
   margin: 0;
   font-size: 24px;
@@ -256,6 +308,27 @@
   background: var(--paper);
 }
 
+.dangerBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: var(--danger);
+  color: #fff;
+  font-weight: 500;
+}
+
+.dangerBtn:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+
+.dangerBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .primaryBtn:disabled,
 .secondaryBtn:disabled {
   opacity: 0.6;
@@ -265,7 +338,7 @@
 /* ===================================================== Métricas (franja única) */
 .metrics {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -308,6 +381,287 @@
   color: var(--done);
 }
 
+.tableFilters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.filterBtn {
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  padding: 6px 12px;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.filterBtn:hover,
+.filterBtnActive {
+  border-color: var(--reagent);
+  background: var(--reagent-soft);
+  color: var(--reagent-dark);
+}
+
+.deliveryCell {
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.slaBadge {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.slaonTime {
+  background: var(--done-soft);
+  color: var(--done);
+}
+
+.sladueSoon {
+  background: var(--lab-soft);
+  color: var(--lab);
+}
+
+.slaoverdue {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.caseToolbar {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  padding: 16px 20px 10px;
+}
+
+.caseSearch {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: 1 1 260px;
+  min-width: 200px;
+  padding: 9px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  color: var(--ink-faint);
+  background: var(--surface);
+}
+
+.caseSearch:focus-within {
+  border-color: var(--reagent);
+  box-shadow: 0 0 0 3px var(--reagent-soft);
+}
+
+.caseSearch input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  color: var(--ink);
+  background: transparent;
+}
+
+.caseSearch input:focus-visible {
+  outline: 0;
+}
+
+.dateFilter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.dateFilter input {
+  min-height: 40px;
+  padding: 7px 9px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.caseGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  padding: 20px;
+}
+
+.caseCard {
+  overflow: hidden;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--surface);
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+
+.caseCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(17, 36, 55, 0.1);
+}
+
+.caseCardMain {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.caseImage {
+  position: relative;
+  height: 180px;
+  background: #edf2f4;
+}
+
+.caseImage img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.caseImagePlaceholder {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--ink-faint);
+  font-size: 13px;
+}
+
+.caseImageBadge {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  padding: 4px 9px;
+  border-radius: 6px;
+  background: rgba(17, 36, 55, 0.82);
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.caseCardBody {
+  padding: 14px;
+}
+
+.caseCardMeta,
+.caseDelivery,
+.caseCardActions,
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.caseDate {
+  color: var(--ink-faint);
+  font-size: 11px;
+  text-align: right;
+}
+
+.caseCardTitle {
+  display: -webkit-box;
+  overflow: hidden;
+  margin: 12px 0 4px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.caseCardClient {
+  overflow: hidden;
+  margin: 0;
+  color: var(--ink-soft);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.caseDelivery {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.caseCardActions {
+  min-height: 44px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--line);
+  color: var(--ink-faint);
+  font-size: 12px;
+}
+
+.deleteBtn {
+  padding: 5px 9px;
+  border: 1px solid var(--danger-soft);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--danger);
+  font-size: 12px;
+}
+
+.deleteBtn:hover:not(:disabled) {
+  background: var(--danger-soft);
+}
+
+.deleteBtn:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.pagination {
+  flex-wrap: wrap;
+  padding: 14px 20px;
+  border-top: 1px solid var(--line);
+}
+
+.pageSizeControl,
+.paginationButtons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.pageSizeControl .select {
+  width: auto;
+  min-width: 76px;
+  padding: 6px 8px;
+}
+
+.paginationButtons .secondaryBtn {
+  padding: 7px 11px;
+  font-size: 13px;
+}
+
+.fieldError {
+  color: var(--danger);
+  font-size: 13px;
+}
+
 .metricValue {
   font-size: 28px;
   font-weight: 600;
@@ -326,6 +680,41 @@
   border: 1px solid var(--line);
   border-radius: 12px;
   overflow: hidden;
+}
+
+.panelFill {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Todo lo que no es la tabla se queda quieto; solo la tabla (o la cuadrícula de casos) se desplaza */
+.panelFill > *,
+.caseBody > * {
+  flex-shrink: 0;
+}
+
+/* En escritorio el contenedor de casos "desaparece" (la búsqueda y los filtros quedan fijos y solo se desplazan las tarjetas);
+   en móvil todo el cuerpo se desplaza, porque los filtros ocuparían casi toda la pantalla. */
+.caseBody {
+  display: contents;
+}
+
+.panelFill > .tableWrap,
+.panelFill .caseGrid {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: auto;
+}
+
+.panelFill .caseGrid {
+  align-content: start;
+  /* sin esto las tarjetas se encogen para caber en la altura disponible en vez de desplazarse */
+  grid-auto-rows: max-content;
+}
+
+.panelFill > .emptyState,
+.panelFill > .loadingState {
+  flex-shrink: 1;
 }
 
 .panelHeader {
@@ -350,6 +739,7 @@
 
 .tableWrap {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .table {
@@ -367,6 +757,11 @@
   padding: 10px 20px;
   border-bottom: 1px solid var(--line);
   white-space: nowrap;
+  /* El encabezado se queda fijo mientras se desplazan las filas */
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  box-shadow: 0 1px 0 var(--line);
 }
 
 .table td {
@@ -434,6 +829,13 @@
   color: #fff;
 }
 
+.productActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 /* Badges de estado */
 .badge {
   display: inline-flex;
@@ -467,6 +869,11 @@
 .badgeDone {
   background: var(--done-soft);
   color: var(--done);
+}
+
+.badgeRepair {
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 .badgeDefault {
@@ -659,6 +1066,83 @@
   animation: fade 0.18s ease-out;
 }
 
+.detailOverlay,
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(17, 36, 55, 0.55);
+  animation: fade 0.18s ease-out;
+}
+
+.modalOverlay {
+  z-index: 60;
+}
+
+.detailModal,
+.modalPanel,
+.confirmModal {
+  width: min(900px, 100%);
+  max-height: min(92vh, 980px);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+  box-shadow: 0 16px 48px rgba(17, 36, 55, 0.25);
+  animation: fade 0.18s ease-out;
+}
+
+.detailModal {
+  display: flex;
+  flex-direction: column;
+}
+
+.modalPanel {
+  display: flex;
+  flex-direction: column;
+}
+
+.confirmModal {
+  width: min(460px, 100%);
+  padding: 24px;
+}
+
+.confirmModal p {
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+.modalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.modalTitle {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.modalBody {
+  overflow-y: auto;
+  padding: 20px 24px 24px;
+}
+
+.modalBody .formCard {
+  max-width: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
 .drawer {
   width: min(640px, 100%);
   height: 100%;
@@ -728,6 +1212,20 @@
   flex: 1;
   overflow-y: auto;
   padding: 22px 24px 40px;
+}
+
+.detailActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 18px;
+}
+
+.ticketError {
+  color: var(--danger);
+  margin: -10px 0 16px;
+  font-size: 13px;
 }
 
 .infoGrid {
@@ -1003,6 +1501,24 @@
   }
   .sidebarFooter {
     justify-content: center;
+    flex-direction: column;
+    gap: 6px;
+    padding-inline: 0;
+  }
+  .userBtn {
+    flex: none;
+    justify-content: center;
+    padding: 2px;
+  }
+  .navBadge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    margin: 0;
+    min-width: 16px;
+    padding: 0 4px;
+    font-size: 10px;
+    line-height: 16px;
   }
   .content {
     padding: 22px 18px 40px;
@@ -1012,7 +1528,110 @@
   }
 }
 
+.ticketOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(17, 36, 55, 0.55);
+}
+
+.ticketCard {
+  width: min(460px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 20px;
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 16px 48px rgba(17, 36, 55, 0.25);
+}
+
+.ticketActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.printableTicket {
+  border: 1px dashed var(--line-strong);
+  padding: 20px;
+  color: #14212c;
+  background: #fff;
+}
+
+.printableTicket h2 {
+  margin: 4px 0 12px;
+  font-family: var(--mono);
+}
+
+.printableTicket p {
+  margin: 8px 0;
+  overflow-wrap: anywhere;
+}
+
+.ticketBrand,
+.ticketFoot {
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.ticketRule {
+  border-top: 1px dashed var(--line-strong);
+  margin: 14px 0;
+}
+
+.publicShell {
+  min-height: 100%;
+  padding: 36px 20px;
+  background: var(--paper);
+}
+
+.publicContent {
+  max-width: 820px;
+  margin: 0 auto;
+}
+
+.publicHeader {
+  margin-bottom: 20px;
+}
+
+.publicCard {
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.publicNotice {
+  padding: 24px;
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  text-align: center;
+}
+
+.publicNotice h1 {
+  margin-top: 0;
+  color: var(--ink);
+}
+
 @media (max-width: 720px) {
+  .panelFill > .caseBody {
+    display: block;
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: auto;
+  }
+  .panelFill > .caseBody .caseGrid {
+    overflow: visible;
+  }
+  .productActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
   .metrics {
     grid-template-columns: 1fr;
   }
@@ -1024,10 +1643,395 @@
   .infoGrid {
     grid-template-columns: 1fr;
   }
+  .caseGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    padding: 12px;
+  }
+  .caseImage {
+    height: 140px;
+  }
+  .caseCardMeta,
+  .caseDelivery,
+  .pagination {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 480px) {
+  .caseGrid {
+    grid-template-columns: 1fr;
+  }
+  .caseImage {
+    height: 200px;
+  }
+  .publicShell {
+    padding: 20px 12px;
+  }
+  .publicCard {
+    padding: 18px;
+  }
   .toast {
     left: 16px;
     right: 16px;
     bottom: 16px;
     max-width: none;
   }
+}
+
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  .printableTicket,
+  .printableTicket * {
+    visibility: visible !important;
+  }
+
+  .printableTicket {
+    position: fixed;
+    inset: 0 auto auto 0;
+    width: 90mm;
+    max-width: 100%;
+    border: 0;
+    padding: 0;
+    font-size: 12pt;
+  }
+}
+
+
+/* ===================================================== Mejoras: alertas, usuarios, ticket, edición */
+.navBadge {
+  flex-shrink: 0;
+  margin-left: auto;
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.userBtn {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  color: inherit;
+}
+
+.userBtn:hover {
+  background: var(--side-hover);
+}
+
+.logoutBtn {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--side-text);
+}
+
+.logoutBtn:hover {
+  background: var(--side-hover);
+  color: #fff;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.cardButtons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cardButtons .secondaryBtn {
+  padding: 5px 9px;
+  font-size: 12px;
+}
+
+.drawerActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.archivedTag {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--lab-soft);
+  color: var(--lab);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.caseRemisiones {
+  margin-bottom: 20px;
+}
+
+.caseRemisiones ul {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.caseRemisiones li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.timelineAuthor {
+  color: var(--ink-faint);
+  font-size: 12px;
+}
+
+.timelineImgWrap {
+  position: relative;
+}
+
+.timelineImgDelete {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(17, 36, 55, 0.7);
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.timelineImgWrap:hover .timelineImgDelete,
+.timelineImgDelete:focus-visible {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .timelineImgDelete {
+    opacity: 1;
+  }
+}
+
+.similarNotice {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--lab-soft);
+  color: var(--lab);
+  font-size: 13px;
+}
+
+.similarList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 4px;
+}
+
+.ticketQr {
+  width: 200px;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.ticketQr svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Pantallas bajas (laptops pequeñas, móvil horizontal): la tabla conserva una altura útil y la página se desplaza */
+@media (max-height: 680px) {
+  .contentFill > .panelFill {
+    min-height: 480px;
+  }
+}
+
+
+/* =====================================================================
+   Sistema unificado de botones, desplegables y campos
+   (va al final para que mande sobre los estilos sueltos de arriba)
+   ===================================================================== */
+.primaryBtn,
+.secondaryBtn,
+.dangerBtn,
+.deleteBtn,
+.traceBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.primaryBtn { background: var(--reagent); border-color: var(--reagent); color: #fff; }
+.primaryBtn:hover:not(:disabled) { background: var(--reagent-dark); border-color: var(--reagent-dark); }
+
+.secondaryBtn { background: var(--surface); border-color: var(--line-strong); color: var(--ink); }
+.secondaryBtn:hover:not(:disabled) { background: var(--paper); border-color: var(--ink-faint); }
+
+.dangerBtn { background: var(--danger); border-color: var(--danger); color: #fff; }
+.dangerBtn:hover:not(:disabled) { filter: brightness(0.92); }
+
+.deleteBtn { background: var(--surface); border-color: #efc3bf; color: var(--danger); }
+.deleteBtn:hover:not(:disabled) { background: var(--danger-soft); border-color: var(--danger); }
+
+.traceBtn { background: transparent; border-color: var(--reagent); color: var(--reagent-dark); }
+.traceBtn:hover:not(:disabled) { background: var(--reagent); color: #fff; }
+
+.primaryBtn:focus-visible,
+.secondaryBtn:focus-visible,
+.dangerBtn:focus-visible,
+.deleteBtn:focus-visible,
+.traceBtn:focus-visible,
+.filterBtn:focus-visible,
+.linkBtn:focus-visible,
+.iconBtn:focus-visible {
+  outline: 2px solid var(--reagent);
+  outline-offset: 2px;
+}
+
+.primaryBtn:disabled,
+.secondaryBtn:disabled,
+.dangerBtn:disabled,
+.deleteBtn:disabled,
+.traceBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Botones dentro de tablas y tarjetas: un solo tamaño compacto en todo el programa */
+.productActions button,
+.cardButtons button,
+.paginationButtons button {
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+
+.productActions {
+  flex-wrap: wrap;
+}
+
+/* Desplegables: misma flecha y mismas medidas que los demás campos */
+.select,
+select.input {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 40px;
+  padding-right: 38px;
+  background-color: var(--surface);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%234d5e6b' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.input,
+.textarea {
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.input {
+  min-height: 40px;
+}
+
+.pageSizeControl .select {
+  min-width: 76px;
+  min-height: 32px;
+  padding: 0 32px 0 10px;
+  background-position: right 9px center;
+  font-size: 13px;
+}
+
+.select:disabled,
+.input:disabled {
+  background-color: var(--paper);
+  cursor: not-allowed;
+}
+
+/* Fechas y casillas con el mismo aspecto */
+.dateFilter input,
+.input[type='date'] {
+  min-height: 40px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  color-scheme: light;
+}
+
+input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--reagent);
+  cursor: pointer;
+}
+
+.badgeProgress {
+  background: var(--proc-soft);
+  color: var(--proc);
+}
+
+.caseCardLabel {
+  display: inline-block;
+  min-width: 62px;
+  color: var(--ink-faint);
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.caseCardClient {
+  color: var(--ink);
 }
