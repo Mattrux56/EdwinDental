@@ -1,17 +1,32 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import styles from '../dashboard.module.css';
 import { Icon } from './Icon.jsx';
 
-/** Ventana modal estándar: cierra con Escape o al hacer clic fuera (salvo mientras `busy`) */
-export default function Modal({ title, subtitle, onClose, busy = false, className = '', children }) {
+const pilaEscape = [];
+
+/** Escape actúa solo en la ventana de más arriba (modal, visor de imagen…), no en las que quedan debajo */
+export function useEscape(onEscape) {
+  const ultimo = useRef(onEscape);
+  ultimo.current = onEscape;
   useEffect(() => {
-    if (busy) return undefined;
+    const token = {};
+    pilaEscape.push(token);
     const onKey = (event) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape' && pilaEscape[pilaEscape.length - 1] === token) ultimo.current(event);
     };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [busy, onClose]);
+    return () => {
+      pilaEscape.splice(pilaEscape.indexOf(token), 1);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, []);
+}
+
+/** Ventana modal estándar: cierra con Escape o al hacer clic fuera (salvo mientras `busy`) */
+export default function Modal({ title, subtitle, onClose, busy = false, className = '', children }) {
+  useEscape(() => {
+    if (!busy) onClose();
+  });
 
   return (
     <div
@@ -38,14 +53,9 @@ export default function Modal({ title, subtitle, onClose, busy = false, classNam
 
 /** Confirmación con botón de acción (rojo por defecto) */
 export function ConfirmModal({ title, children, confirmLabel, busyLabel, busy, danger = true, onConfirm, onCancel }) {
-  useEffect(() => {
-    if (busy) return undefined;
-    const onKey = (event) => {
-      if (event.key === 'Escape') onCancel();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [busy, onCancel]);
+  useEscape(() => {
+    if (!busy) onCancel();
+  });
 
   return (
     <div

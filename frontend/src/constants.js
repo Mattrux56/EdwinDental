@@ -7,6 +7,13 @@ export const TIPOS_SEGUIMIENTO = [
   'arreglo',
 ];
 
+export const MOVIMIENTOS = [
+  { tipo: 'reingreso', estado: 'En laboratorio', label: 'Reingreso · En laboratorio' },
+  { tipo: 'prueba', estado: 'En prueba', label: 'Prueba · En prueba' },
+  { tipo: 'entrega', estado: 'Finalizado', label: 'Entrega · Finalizado' },
+  { tipo: 'arreglo', estado: 'arreglo', label: 'Arreglo · Arreglo' },
+];
+
 export function normalizeEstado(estado = '') {
   const value = estado.toLocaleLowerCase('es');
   if (value === 'en proceso') return 'En prueba';

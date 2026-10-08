@@ -1,7 +1,10 @@
 -- =====================================================================
--- LabTrace · mejoras (archivar casos, enlace público seguro,
--- copia de nombres en remisiones, pago por remisión e índices)
--- Pégalo completo en Supabase → SQL Editor → Run. Se puede ejecutar varias veces.
+-- LabTrace · actualización de base existente (fechas por seguimiento, datos de orden/factura,
+-- archivar casos, enlace público seguro, copia de nombres en remisiones,
+-- pago por remisión e índices)
+-- Pegar completo en Supabase → SQL Editor → Run.
+-- Para una base existente de LabTrace; no es un instalador para una base vacía.
+-- Se puede ejecutar varias veces.
 -- =====================================================================
 BEGIN;
 
@@ -12,6 +15,28 @@ ALTER TABLE "Seguimiento" DROP COLUMN IF EXISTS "creadoPor";
 ALTER TABLE "Remision" DROP COLUMN IF EXISTS "creadoPor";
 
 -- ---- Casos: archivado y código público aleatorio
+-- Columnas que el programa ya no usa
+ALTER TABLE "Caso" DROP COLUMN IF EXISTS "titulo";
+ALTER TABLE "Caso" DROP COLUMN IF EXISTS "precio";
+ALTER TABLE "Caso" ADD COLUMN IF NOT EXISTS "doctorNombre" TEXT;
+ALTER TABLE "Caso" ADD COLUMN IF NOT EXISTS "numeroFactura" TEXT;
+ALTER TABLE "Seguimiento" ADD COLUMN IF NOT EXISTS "fechaEntregaEstimada" DATE;
+
+-- Mantiene la fecha vigente de cada caso en su seguimiento más reciente
+UPDATE "Seguimiento" s
+SET "fechaEntregaEstimada" = c."fechaEntregaEstimada"::date
+FROM "Caso" c
+WHERE s."casoId" = c."id"
+  AND c."fechaEntregaEstimada" IS NOT NULL
+  AND s."fechaEntregaEstimada" IS NULL
+  AND s."id" = (
+    SELECT s2."id"
+    FROM "Seguimiento" s2
+    WHERE s2."casoId" = c."id"
+    ORDER BY s2."creadoEn" DESC, s2."id" DESC
+    LIMIT 1
+  );
+
 ALTER TABLE "Caso" ADD COLUMN IF NOT EXISTS "archivado" BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE "Caso" ADD COLUMN IF NOT EXISTS "archivadoEn" TIMESTAMP(3);
 ALTER TABLE "Caso" ADD COLUMN IF NOT EXISTS "codigoPublico" TEXT;

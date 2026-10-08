@@ -1,9 +1,13 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Patch, Query } from '@nestjs/common';
-import { IsBoolean } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsInt } from 'class-validator';
 import { CuentasCobroService } from './cuentas-cobro.service';
 
-class PagoDto {
-  @IsBoolean() pagada!: boolean;
+class PagosDto {
+  /** Ids de las remisiones que quedan pagadas; el resto de la cuenta queda pendiente */
+  @IsArray()
+  @ArrayMaxSize(500)
+  @IsInt({ each: true })
+  pagadas!: number[];
 }
 
 @Controller('cuentas-cobro')
@@ -20,14 +24,14 @@ export class CuentasCobroController {
     );
   }
 
-  /** PATCH /cuentas-cobro/:clienteId/:anio/:mes/pago — marca todas las remisiones del mes de ese cliente */
-  @Patch(':clienteId/:anio/:mes/pago')
-  pago(
+  /** PATCH /cuentas-cobro/:clienteId/:anio/:mes/pagos — guarda cuáles remisiones del mes están pagadas */
+  @Patch(':clienteId/:anio/:mes/pagos')
+  pagos(
     @Param('clienteId', ParseIntPipe) clienteId: number,
     @Param('anio', ParseIntPipe) anio: number,
     @Param('mes', ParseIntPipe) mes: number,
-    @Body() dto: PagoDto,
+    @Body() dto: PagosDto,
   ) {
-    return this.cuentas.marcarCuenta(clienteId, anio, mes, dto.pagada);
+    return this.cuentas.guardarPagos(clienteId, anio, mes, dto.pagadas);
   }
 }

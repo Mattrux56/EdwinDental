@@ -11,10 +11,11 @@ export default function EditCaseForm({ caso, saving, onSubmit, onCancel }) {
   const [clienteId, setClienteId] = useState(String(caso.cliente?.id ?? ''));
   const [clienteNuevo, setClienteNuevo] = useState('');
   const [form, setForm] = useState({
-    titulo: caso.titulo ?? '',
+    codigo: caso.codigo ?? '',
+    doctorNombre: caso.doctorNombre ?? '',
+    numeroFactura: caso.numeroFactura ?? '',
     pacienteNombre: caso.pacienteNombre ?? '',
     fechaIngreso: dateOnly(caso.fechaIngreso ?? caso.creadoEn),
-    fechaEntregaEstimada: dateOnly(caso.fechaEntregaEstimada),
   });
 
   useEffect(() => {
@@ -32,10 +33,11 @@ export default function EditCaseForm({ caso, saving, onSubmit, onCancel }) {
   const submit = (e) => {
     e.preventDefault();
     const payload = {
-      titulo: form.titulo,
+      codigo: form.codigo,
+      doctorNombre: form.doctorNombre,
+      numeroFactura: form.numeroFactura || null,
       pacienteNombre: form.pacienteNombre,
       fechaIngreso: form.fechaIngreso,
-      fechaEntregaEstimada: form.fechaEntregaEstimada || null, // vacío = quitar la fecha de entrega
     };
     if (nuevo) payload.clienteNombre = clienteNuevo;
     else if (Number(clienteId) !== caso.cliente?.id) payload.clienteId = Number(clienteId);
@@ -45,9 +47,9 @@ export default function EditCaseForm({ caso, saving, onSubmit, onCancel }) {
   return (
     <form className={styles.formCard} onSubmit={submit}>
       <div className={styles.formGrid}>
-        <div className={`${styles.field} ${styles.fieldFull}`}>
-          <label className={styles.label} htmlFor="ec-titulo">Título del caso <span className={styles.required}>*</span></label>
-          <input id="ec-titulo" className={styles.input} value={form.titulo} onChange={set('titulo')} required maxLength={200} />
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="ec-codigo">Orden de trabajo <span className={styles.required}>*</span></label>
+          <input id="ec-codigo" className={styles.input} value={form.codigo} onChange={(event) => setForm((prev) => ({ ...prev, codigo: event.target.value.replace(/\D/g, '').slice(0, 20) }))} required maxLength={20} pattern="[0-9]+" inputMode="numeric" />
         </div>
         <div className={styles.field}>
           <label className={styles.label} htmlFor="ec-cliente">Cliente</label>
@@ -60,6 +62,14 @@ export default function EditCaseForm({ caso, saving, onSubmit, onCancel }) {
         <div className={styles.field}>
           <label className={styles.label} htmlFor="ec-paciente">Paciente <span className={styles.required}>*</span></label>
           <input id="ec-paciente" className={styles.input} value={form.pacienteNombre} onChange={set('pacienteNombre')} required maxLength={150} />
+        </div>
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="ec-doctor">Nombre del doctor <span className={styles.required}>*</span></label>
+          <input id="ec-doctor" className={styles.input} value={form.doctorNombre} onChange={set('doctorNombre')} required maxLength={150} />
+        </div>
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="ec-factura">Número de factura</label>
+          <input id="ec-factura" className={styles.input} value={form.numeroFactura} onChange={(event) => setForm((prev) => ({ ...prev, numeroFactura: event.target.value.replace(/\D/g, '').slice(0, 30) }))} maxLength={30} pattern="[0-9]*" inputMode="numeric" />
         </div>
         {nuevo && (
           <div className={`${styles.field} ${styles.fieldFull}`}>
@@ -80,11 +90,6 @@ export default function EditCaseForm({ caso, saving, onSubmit, onCancel }) {
         <div className={styles.field}>
           <label className={styles.label} htmlFor="ec-ingreso">Fecha de ingreso <span className={styles.required}>*</span></label>
           <input id="ec-ingreso" className={styles.input} type="date" value={form.fechaIngreso} onChange={set('fechaIngreso')} required />
-        </div>
-        <div className={styles.field}>
-          <label className={styles.label} htmlFor="ec-entrega">Fecha estimada de entrega</label>
-          <input id="ec-entrega" className={styles.input} type="date" value={form.fechaEntregaEstimada} onChange={set('fechaEntregaEstimada')} />
-          <span className={styles.hint}>Déjala vacía para quitarla.</span>
         </div>
       </div>
       <div className={styles.formActions}>

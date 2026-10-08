@@ -181,68 +181,6 @@
   font-size: 12px;
 }
 
-/* ===================================================== Barra superior */
-.topbar {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  background: rgba(243, 245, 246, 0.92);
-  backdrop-filter: blur(6px);
-  border-bottom: 1px solid var(--line);
-  padding: 14px 32px;
-}
-
-.searchBox {
-  position: relative;
-  max-width: 640px;
-}
-
-.searchIcon {
-  position: absolute;
-  left: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--ink-faint);
-  display: flex;
-}
-
-.searchInput {
-  width: 100%;
-  padding: 11px 40px 11px 42px;
-  border: 1px solid var(--line-strong);
-  border-radius: 10px;
-  background: var(--surface);
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-
-.searchInput::placeholder {
-  color: var(--ink-faint);
-}
-
-.searchInput:focus {
-  outline: none;
-  border-color: var(--reagent);
-  box-shadow: 0 0 0 3px var(--reagent-soft);
-}
-
-.searchClear {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  border: 0;
-  background: transparent;
-  color: var(--ink-faint);
-  padding: 6px;
-  border-radius: 6px;
-  display: flex;
-}
-
-.searchClear:hover {
-  background: var(--paper);
-  color: var(--ink);
-}
-
 /* ===================================================== Encabezados y botones */
 .pageHeader {
   display: flex;
@@ -259,8 +197,10 @@
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 22px;
-  padding-bottom: 18px;
-  border-bottom: 1px solid var(--line);
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
   flex-wrap: wrap;
 }
 
@@ -367,6 +307,11 @@
 }
 
 .metricTotal {
+  background: var(--proc-soft);
+  color: var(--proc);
+}
+
+.metricTest {
   background: var(--proc-soft);
   color: var(--proc);
 }
@@ -546,6 +491,16 @@
   font-size: 13px;
 }
 
+.caseImagePlaceholderLab {
+  background: var(--lab-soft);
+  color: var(--lab);
+}
+
+.caseImagePlaceholderTest {
+  background: var(--proc-soft);
+  color: var(--proc);
+}
+
 .caseImageBadge {
   position: absolute;
   bottom: 10px;
@@ -556,6 +511,14 @@
   color: #fff;
   font-family: var(--mono);
   font-size: 12px;
+}
+
+.caseImageBadgeLab {
+  background: var(--lab);
+}
+
+.caseImageBadgeTest {
+  background: var(--proc);
 }
 
 .caseCardBody {
@@ -1369,6 +1332,15 @@
   color: var(--ink-faint);
 }
 
+.timelineDelivery {
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--lab-soft);
+  color: var(--lab);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .timelineText {
   margin: 0;
   white-space: pre-wrap;
@@ -1421,16 +1393,70 @@
   inset: 0;
   z-index: 80;
   background: rgba(10, 20, 30, 0.88);
-  display: grid;
-  place-items: center;
+}
+
+.lightboxStage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  overflow: auto;
   padding: 32px;
+  box-sizing: border-box;
+  touch-action: pan-x pan-y;
+}
+
+.lightboxGrab {
+  cursor: grab;
+}
+
+.lightboxGrab:active {
+  cursor: grabbing;
 }
 
 .lightboxImg {
-  max-width: 100%;
-  max-height: 100%;
+  flex: none;
+  margin: auto;
+  max-width: none;
   border-radius: 8px;
-  object-fit: contain;
+  user-select: none;
+}
+
+.lightboxBar {
+  position: absolute;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(10, 20, 30, 0.75);
+  color: #fff;
+}
+
+.lightboxBar button {
+  border: 0;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border-radius: 999px;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 10px;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+}
+
+.lightboxBar button:disabled {
+  opacity: 0.4;
+}
+
+.lightboxPct {
+  min-width: 48px;
+  text-align: center;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
 }
 
 .lightboxClose {
@@ -1522,9 +1548,6 @@
   }
   .content {
     padding: 22px 18px 40px;
-  }
-  .topbar {
-    padding: 12px 18px;
   }
 }
 
@@ -1814,36 +1837,37 @@
   font-size: 12px;
 }
 
-.timelineImgWrap {
+.photoEdit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.photoEditItem {
   position: relative;
 }
 
-.timelineImgDelete {
+.photoEditItem .timelineImgBtn {
+  display: block;
+}
+
+.photoEditDelete {
   position: absolute;
   top: 4px;
   right: 4px;
   display: grid;
   place-items: center;
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   padding: 0;
   border: 0;
   border-radius: 6px;
-  background: rgba(17, 36, 55, 0.7);
+  background: rgba(17, 36, 55, 0.78);
   color: #fff;
-  opacity: 0;
-  transition: opacity 0.15s;
 }
 
-.timelineImgWrap:hover .timelineImgDelete,
-.timelineImgDelete:focus-visible {
-  opacity: 1;
-}
-
-@media (hover: none) {
-  .timelineImgDelete {
-    opacity: 1;
-  }
+.photoEditDelete:hover {
+  background: var(--danger, #c0392b);
 }
 
 .similarNotice {
@@ -2034,4 +2058,58 @@ input[type='checkbox'] {
 
 .caseCardClient {
   color: var(--ink);
+}
+
+/* Historial: acciones del encabezado y lista para elegir qué seguimiento editar */
+.sectionActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.editList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.editListItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.editListItem:hover,
+.editListItem:focus-visible {
+  border-color: var(--reagent);
+  background: #f4f8fa;
+}
+
+.editListHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+
+.editListText {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--ink-soft);
+  font-size: 14px;
 }

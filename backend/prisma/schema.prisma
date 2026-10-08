@@ -20,17 +20,17 @@ model Caso {
   codigo       String        @unique
   clienteId    Int
   cliente      Cliente       @relation(fields: [clienteId], references: [id])
-  titulo       String
   pacienteNombre String?
+  doctorNombre String?
+  numeroFactura String?
   estado       String        @default("En laboratorio")
   creadoEn     DateTime      @default(now())
   fechaIngreso DateTime?     @db.Date
   fechaEntregaEstimada DateTime?
-  precio       Float?
   /// Los casos archivados salen de los listados normales pero conservan todo su historial
   archivado    Boolean       @default(false)
   archivadoEn  DateTime?
-  /// Código aleatorio para el enlace público /consulta/:codigoPublico (el código CASO-2026-001 es fácil de adivinar)
+  /// Código aleatorio para el enlace público /consulta/:codigoPublico
   codigoPublico String?      @unique
   seguimientos Seguimiento[]
   remisiones   Remision[]
@@ -44,6 +44,7 @@ model Seguimiento {
   caso        Caso         @relation(fields: [casoId], references: [id], onDelete: Cascade)
   tipo        String       @default("Ingreso Inicial")
   descripcion String
+  fechaEntregaEstimada DateTime? @db.Date
   creadoEn    DateTime     @default(now())
   imagenes    CasoImagen[]
 

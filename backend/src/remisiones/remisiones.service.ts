@@ -11,7 +11,8 @@ const REMISION_INCLUDE = {
     select: {
       id: true,
       codigo: true,
-      titulo: true,
+      numeroFactura: true,
+      doctorNombre: true,
       pacienteNombre: true,
       cliente: { select: { id: true, nombre: true } },
     },
@@ -46,7 +47,7 @@ export class RemisionesService {
   async create(dto: CreateRemisionDto) {
     const caso = await this.prisma.caso.findUnique({
       where: { id: dto.casoId },
-      select: { id: true, codigo: true, pacienteNombre: true, cliente: { select: { nombre: true } } },
+      select: { id: true, codigo: true, pacienteNombre: true, doctorNombre: true, cliente: { select: { nombre: true } } },
     });
     if (!caso) throw new NotFoundException(`El caso #${dto.casoId} no existe`);
 
@@ -88,7 +89,7 @@ export class RemisionesService {
           fecha: dateOnlyToUtc(dto.fecha ?? todayLocal()),
           noOrden: dto.noOrden?.trim() || caso.codigo,
           // Copia de los nombres: si luego se edita o fusiona el cliente, esta remisión no cambia
-          doctorNombre: caso.cliente.nombre,
+          doctorNombre: caso.doctorNombre ?? caso.cliente.nombre,
           pacienteNombre: caso.pacienteNombre,
           items: {
             create: dto.items.map((item) => {

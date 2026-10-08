@@ -98,7 +98,7 @@ export function useCasesController() {
       setSaving(true);
       try {
         const created = await casesService.create(payload);
-        showToast('success', `Caso ${created.codigo} registrado correctamente`);
+        showToast('success', `Orden de trabajo ${created.codigo} registrada correctamente`);
         setActiveView('casos');
         await Promise.all([loadCases(), loadStats()]);
         return created;
@@ -205,6 +205,26 @@ export function useCasesController() {
     [refresh, showToast],
   );
 
+  /** Edita un seguimiento ya registrado (tipo, descripción, fecha de entrega y fotos nuevas) */
+  const updateFollowUp = useCallback(
+    async (casoId, seguimientoId, payload) => {
+      setSaving(true);
+      try {
+        const updated = await casesService.updateFollowUp(casoId, seguimientoId, payload);
+        setSelectedCase(updated);
+        showToast('success', 'Seguimiento actualizado');
+        await refresh();
+        return updated;
+      } catch (e) {
+        showToast('error', e.message);
+        return null;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [refresh, showToast],
+  );
+
   return {
     // estado
     casos,
@@ -229,6 +249,7 @@ export function useCasesController() {
     createCase,
     deleteCase,
     addFollowUp,
+    updateFollowUp,
     dismissToast,
     showToast,
   };

@@ -4,7 +4,7 @@ import { casesService } from '../services/cases.service.js';
 import { formatDate, formatEstimatedDate } from '../utils/format.js';
 import StatusBadge from './components/StatusBadge.jsx';
 import Timeline from './components/Timeline.jsx';
-import { Icon } from './components/Icon.jsx';
+import ImageViewer from './components/ImageViewer.jsx';
 
 export default function PublicCaseView({ codigo }) {
   const [caso, setCaso] = useState(null);
@@ -29,15 +29,6 @@ export default function PublicCaseView({ codigo }) {
     };
   }, [codigo]);
 
-  useEffect(() => {
-    if (!lightbox) return undefined;
-    const closeOnEscape = (event) => {
-      if (event.key === 'Escape') setLightbox(null);
-    };
-    window.addEventListener('keydown', closeOnEscape);
-    return () => window.removeEventListener('keydown', closeOnEscape);
-  }, [lightbox]);
-
   return (
     <main className={styles.publicShell}>
       <div className={styles.publicContent}>
@@ -59,7 +50,7 @@ export default function PublicCaseView({ codigo }) {
               <span>{caso.codigo}</span>
               <StatusBadge estado={caso.estado} />
             </div>
-            <h2 className={styles.drawerTitle}>{caso.titulo}</h2>
+            <h2 className={styles.drawerTitle}>Orden de trabajo {caso.codigo}</h2>
             <div className={styles.infoGrid}>
               <div>
                 <div className={styles.infoLabel}>Ingresó el</div>
@@ -67,29 +58,13 @@ export default function PublicCaseView({ codigo }) {
                   {caso.fechaIngreso ? formatEstimatedDate(caso.fechaIngreso) : formatDate(caso.creadoEn)}
                 </div>
               </div>
-              <div>
-                <div className={styles.infoLabel}>Entrega estimada</div>
-                <div className={styles.infoValue}>{formatEstimatedDate(caso.fechaEntregaEstimada)}</div>
-              </div>
             </div>
             <Timeline seguimientos={caso.seguimientos} onOpenImage={setLightbox} />
           </section>
         )}
       </div>
 
-      {lightbox && (
-        <div className={styles.lightbox} onClick={() => setLightbox(null)}>
-          <img className={styles.lightboxImg} src={lightbox} alt="Fotografía ampliada" />
-          <button
-            type="button"
-            className={styles.lightboxClose}
-            onClick={() => setLightbox(null)}
-            aria-label="Cerrar imagen"
-          >
-            <Icon name="close" size={20} />
-          </button>
-        </div>
-      )}
+      {lightbox && <ImageViewer src={lightbox} onClose={() => setLightbox(null)} />}
     </main>
   );
 }

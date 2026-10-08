@@ -4,6 +4,7 @@ import { casesService } from '../services/cases.service.js';
 import { formatEstimatedDate } from '../utils/format.js';
 import { Icon } from './components/Icon.jsx';
 import StatusBadge from './components/StatusBadge.jsx';
+import { EmptyState, ErrorBanner, PageHeader, Panel } from './components/ui.jsx';
 
 const NIVEL = {
   vencido: { label: (d) => `Vencido hace ${Math.abs(d)} ${Math.abs(d) === 1 ? 'día' : 'días'}`, cls: 'slaoverdue' },
@@ -38,35 +39,19 @@ export default function AlertasView({ casos, onOpen }) {
 
   return (
     <>
-      <header className={styles.appHeader}>
-        <div>
-          <h1 className={styles.pageTitle}>Alertas de entrega</h1>
-          <p className={styles.pageSubtitle}>Casos sin finalizar que vencen en los próximos 3 días o ya están atrasados.</p>
-        </div>
+      <PageHeader title="Alertas de entrega" subtitle="Casos sin finalizar que vencen en los próximos 3 días o ya están atrasados.">
         <button type="button" className={styles.secondaryBtn} onClick={load} disabled={loading}>
           <Icon name="refresh" size={16} /> Actualizar
         </button>
-      </header>
+      </PageHeader>
 
-      <section className={`${styles.panel} ${styles.panelFill}`}>
-        <div className={styles.panelHeader}>
-          <h2 className={styles.panelTitle}>Pendientes de entrega</h2>
-          <span className={styles.panelMeta}>
-            {loading ? 'Cargando…' : `${conteo('vencido')} vencidos · ${conteo('hoy')} para hoy · ${conteo('proximo')} próximos`}
-          </span>
-        </div>
-
-        {error && (
-          <div className={styles.errorBanner} role="alert">
-            <span>{error}</span>
-            <button type="button" className={styles.secondaryBtn} onClick={load}><Icon name="refresh" size={16} /> Reintentar</button>
-          </div>
-        )}
+      <Panel
+        title="Pendientes de entrega"
+        meta={loading ? 'Cargando…' : `${conteo('vencido')} vencidos · ${conteo('hoy')} para hoy · ${conteo('proximo')} próximos`}
+      >
+        {error && <ErrorBanner onRetry={load}>{error}</ErrorBanner>}
         {!loading && !error && alertas.length === 0 && (
-          <div className={styles.emptyState}>
-            <p className={styles.emptyTitle}>Todo al día</p>
-            <span>No hay casos vencidos ni por vencer en los próximos días.</span>
-          </div>
+          <EmptyState title="Todo al día">No hay casos vencidos ni por vencer en los próximos días.</EmptyState>
         )}
 
         {alertas.length > 0 && (
@@ -89,7 +74,7 @@ export default function AlertasView({ casos, onOpen }) {
                       <td><span className={`${styles.slaBadge} ${styles[nivel.cls]}`}>{nivel.label(a.dias)}</span></td>
                       <td>
                         <div className={styles.codeCell}>{a.codigo}</div>
-                        <div className={styles.clientDoc}>{a.titulo}</div>
+                        <div className={styles.clientDoc}>Orden de trabajo</div>
                       </td>
                       <td>
                         <div className={styles.clientName}>{a.cliente?.nombre}</div>
@@ -104,7 +89,7 @@ export default function AlertasView({ casos, onOpen }) {
             </table>
           </div>
         )}
-      </section>
+      </Panel>
     </>
   );
 }

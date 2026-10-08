@@ -2,8 +2,10 @@ import { useMemo, useState } from 'react';
 import styles from '../dashboard.module.css';
 import { deliverySla, formatDateTime, formatEstimatedDate, lastMovement } from '../../utils/format.js';
 import { Icon } from './Icon.jsx';
+import { EmptyState, ErrorBanner, LoadingState, Panel, SearchField } from './ui.jsx';
 import StatusBadge from './StatusBadge.jsx';
 import { ESTADOS, normalizeEstado } from '../../constants.js';
+import { normalizeSearchText } from '../../utils/search.js';
 
 const FILTERS = ['Todos', ...ESTADOS];
 const PAGE_SIZES = [9, 18, 36];
@@ -42,14 +44,14 @@ export default function CasesTable({
   const [page, setPage] = useState(0);
 
   const filtered = useMemo(() => {
-    const term = query.trim().toLocaleLowerCase('es');
+    const term = normalizeSearchText(query.trim());
     return casos.filter((caso) => {
       if (filter !== 'Todos' && normalizeEstado(caso.estado) !== filter) return false;
       const fecha = ingresoDate(caso);
       if (desde && fecha < desde) return false;
       if (!term) return true;
-      return [caso.codigo, caso.titulo, caso.cliente?.nombre, caso.pacienteNombre]
-        .some((valor) => valor?.toLocaleLowerCase('es').includes(term));
+      return [caso.codigo, caso.doctorNombre, caso.numeroFactura, caso.cliente?.nombre, caso.pacienteNombre]
+        .some((valor) => normalizeSearchText(valor).includes(term));
     });
   }, [casos, desde, filter, query]);
 
@@ -64,35 +66,25 @@ export default function CasesTable({
   };
 
   return (
-    <section className={`${styles.panel} ${compact ? '' : styles.panelFill}`}>
-      <div className={styles.panelHeader}>
-        <h2 className={styles.panelTitle}>
-          {compact ? 'Últimos casos registrados' : verArchivados ? 'Casos archivados' : 'Casos registrados'}
-        </h2>
-        <span className={styles.panelMeta}>
-          {loading ? 'Cargando…' : `${compact ? shown.length : filtered.length} ${
-            (compact ? shown.length : filtered.length) === 1 ? 'caso' : 'casos'
-          }`}
-        </span>
-      </div>
+    <Panel
+      title={compact ? 'Últimos casos registrados' : verArchivados ? 'Casos archivados' : 'Casos registrados'}
+      meta={loading ? 'Cargando…' : `${compact ? shown.length : filtered.length} ${(compact ? shown.length : filtered.length) === 1 ? 'caso' : 'casos'}`}
+      fill={!compact}
+    >
 
       <div className={styles.caseBody}>
       {!compact && (
         <>
           <div className={styles.caseToolbar}>
-            <label className={styles.caseSearch}>
-              <Icon name="search" size={17} />
-              <input
-                type="search"
-                value={query}
-                onChange={(event) => {
-                  setQuery(event.target.value);
-                  setPage(0);
-                }}
-                placeholder="Buscar código, caso, cliente o paciente"
-                aria-label="Buscar casos"
-              />
-            </label>
+            <SearchField
+              value={query}
+              onChange={(value) => {
+                setQuery(value);
+                setPage(0);
+              }}
+              placeholder="Buscar código, caso, cliente o paciente"
+              label="Buscar casos"
+            />
             {onToggleArchivados && (verArchivados || archivadosCount > 0) && (
               <button type="button" className={styles.secondaryBtn} onClick={onToggleArchivados}>
                 <Icon name="archive" size={15} /> {verArchivados ? 'Volver a los casos activos' : `Ver archivados (${archivadosCount})`}
@@ -130,32 +122,18 @@ export default function CasesTable({
         </>
       )}
 
-      {error && (
-        <div className={styles.errorBanner} role="alert">
-          <span>{error}</span>
-          <button type="button" className={styles.secondaryBtn} onClick={onRetry}>
-            <Icon name="refresh" size={16} /> Reintentar
-          </button>
-        </div>
-      )}
+      {error && <ErrorBanner onRetry={onRetry}>{error}</ErrorBanner>}
 
-      {loading && casos.length === 0 && !error && (
-        <div className={styles.loadingState}>
-          <span className={styles.spinner} /> Cargando casos…
-        </div>
-      )}
+      {loading && casos.length === 0 && !error && <LoadingState>Cargando casos…</LoadingState>}
 
       {empty && (
-        <div className={styles.emptyState}>
-          <p className={styles.emptyTitle}>
-            {casos.length === 0 ? (verArchivados ? 'No hay casos archivados' : 'Aún no hay casos registrados') : 'No hay casos para estos filtros'}
-          </p>
-          <span>
-            {casos.length === 0
-              ? 'Usa “Registrar caso” para ingresar el primero.'
-              : 'Cambia la búsqueda, el estado o el rango de fechas.'}
-          </span>
-        </div>
+        <EmptyState
+          title={casos.length === 0 ? (verArchivados ? 'No hay casos archivados' : 'Aún no hay casos registrados') : 'No hay casos para estos filtros'}
+        >
+          {casos.length === 0
+            ? 'Usa “Registrar caso” para ingresar el primero.'
+            : 'Cambia la búsqueda, el estado o el rango de fechas.'}
+        </EmptyState>
       )}
 
       {shown.length > 0 && (
@@ -170,31 +148,30 @@ export default function CasesTable({
                     {image ? (
                       <img src={image} alt={`Imagen del caso ${caso.codigo}`} loading="lazy" />
                     ) : (
-                      <div className={styles.caseImagePlaceholder}>
-                        <Icon name="flask" size={28} />
-                        <span>Sin imagen</span>
+                      <div className={`${styles.caseImagePlaceholder} ${caso.estado === 'En laboratorio' ? styles.caseImagePlaceholderLab : styles.caseImagePlaceholderTest}`}>
+                        <Icon name={caso.estado === 'En laboratorio' ? 'box' : 'flask'} size={28} />
+                        <span>{caso.estado === 'En laboratorio' ? 'En laboratorio' : 'Sin imagen'}</span>
                       </div>
                     )}
-                    <span className={styles.caseImageBadge}>{caso.codigo}</span>
+                    <span className={`${styles.caseImageBadge} ${caso.estado === 'En laboratorio' ? styles.caseImageBadgeLab : styles.caseImageBadgeTest}`}>{caso.codigo}</span>
                   </div>
                   <div className={styles.caseCardBody}>
                     <div className={styles.caseCardMeta}>
                       <StatusBadge estado={caso.estado} />
                       <span className={styles.caseDate}>{formatDateTime(lastMovement(caso))}</span>
                     </div>
-                    <h3 className={styles.caseCardTitle}>{caso.titulo}</h3>
+                    <h3 className={styles.caseCardTitle}>Orden de trabajo: {caso.codigo}</h3>
                     <p className={styles.caseCardClient}><span className={styles.caseCardLabel}>Cliente</span> {caso.cliente?.nombre}</p>
+                    <p className={styles.caseCardClient}><span className={styles.caseCardLabel}>Doctor</span> {caso.doctorNombre || '—'}</p>
                     <p className={styles.caseCardClient}><span className={styles.caseCardLabel}>Paciente</span> {caso.pacienteNombre || '—'}</p>
-                    {caso.fechaEntregaEstimada && (
-                      <div className={styles.caseDelivery}>
-                        <span>Entrega: {formatEstimatedDate(caso.fechaEntregaEstimada)}</span>
-                        {sla && (
-                          <span className={`${styles.slaBadge} ${styles[`sla${sla.status}`]}`}>
-                            {sla.label}
-                          </span>
-                        )}
-                      </div>
-                    )}
+                    <div className={styles.caseDelivery}>
+                      <span><span className={styles.caseCardLabel}>Próxima entrega</span> {caso.fechaEntregaEstimada ? formatEstimatedDate(caso.fechaEntregaEstimada) : '—'}</span>
+                      {sla && (
+                        <span className={`${styles.slaBadge} ${styles[`sla${sla.status}`]}`}>
+                          {sla.label}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </button>
                 {!compact && (
@@ -274,6 +251,6 @@ export default function CasesTable({
           </div>
         </div>
       )}
-    </section>
+    </Panel>
   );
 }

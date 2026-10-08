@@ -17,6 +17,7 @@ import { CasesService } from './cases.service';
 import { CreateCaseDto } from './dto/create-case.dto';
 import { CreateSeguimientoDto } from './dto/create-seguimiento.dto';
 import { UpdateCaseDto } from './dto/update-case.dto';
+import { UpdateSeguimientoDto } from './dto/update-seguimiento.dto';
 
 const MAX_FOTOS = 6;
 const MAX_FOTO_BYTES = 8 * 1024 * 1024; // 8 MB, el mismo límite que anuncia la pantalla
@@ -111,5 +112,16 @@ export class CasesController {
     @Body() dto: CreateSeguimientoDto,
   ) {
     return this.casesService.addSeguimiento(id, dto, files);
+  }
+
+  @Patch(':id/seguimiento/:seguimientoId')
+  @UseInterceptors(FilesInterceptor('fotos', MAX_FOTOS, FOTOS_OPTIONS))
+  updateSeguimiento(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('seguimientoId', ParseIntPipe) seguimientoId: number,
+    @UploadedFiles() files: Express.Multer.File[],
+    @Body() dto: UpdateSeguimientoDto,
+  ) {
+    return this.casesService.updateSeguimiento(id, seguimientoId, dto, files);
   }
 }

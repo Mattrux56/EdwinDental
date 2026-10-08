@@ -38,9 +38,10 @@ export class RespaldoController {
 
     const wb = new ExcelJS.Workbook();
     hoja(wb, 'Casos', [
-      { header: 'Código', key: 'codigo', width: 16 },
+      { header: 'Orden de trabajo', key: 'codigo', width: 20 },
       { header: 'Estado', key: 'estado', width: 16 },
-      { header: 'Título', key: 'titulo', width: 36 },
+      { header: 'Doctor', key: 'doctor', width: 28 },
+      { header: 'Número de factura', key: 'factura', width: 20 },
       { header: 'Cliente', key: 'cliente', width: 30 },
       { header: 'Paciente', key: 'paciente', width: 30 },
       { header: 'Ingreso', key: 'ingreso', width: 12 },
@@ -48,7 +49,8 @@ export class RespaldoController {
       { header: 'Archivado', key: 'archivado', width: 10 },
       { header: 'Creado', key: 'creado', width: 18 },
     ], casos.map((c) => ({
-      codigo: c.codigo, estado: c.estado, titulo: c.titulo, cliente: c.cliente.nombre, paciente: c.pacienteNombre ?? '',
+      codigo: c.codigo, estado: c.estado, doctor: c.doctorNombre ?? '', factura: c.numeroFactura ?? '',
+      cliente: c.cliente.nombre, paciente: c.pacienteNombre ?? '',
       ingreso: fecha(c.fechaIngreso), entrega: fecha(c.fechaEntregaEstimada), archivado: c.archivado ? 'Sí' : 'No',
       creado: fechaHora(c.creadoEn),
     })));
@@ -58,10 +60,12 @@ export class RespaldoController {
       { header: 'Fecha', key: 'fecha', width: 18 },
       { header: 'Tipo', key: 'tipo', width: 14 },
       { header: 'Descripción', key: 'descripcion', width: 70 },
+      { header: 'Entrega estimada', key: 'entrega', width: 16 },
       { header: 'Fotos', key: 'fotos', width: 8 },
       { header: 'Registrado por', key: 'por', width: 18 },
     ], seguimientos.map((s) => ({
-      caso: s.caso.codigo, fecha: fechaHora(s.creadoEn), tipo: s.tipo, descripcion: s.descripcion, fotos: s._count.imagenes,
+      caso: s.caso.codigo, fecha: fechaHora(s.creadoEn), tipo: s.tipo, descripcion: s.descripcion,
+      entrega: fecha(s.fechaEntregaEstimada), fotos: s._count.imagenes,
     })));
 
     hoja(wb, 'Remisiones', [

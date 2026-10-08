@@ -11,3 +11,10 @@ export const TIPOS_SEGUIMIENTO = [
   'entrega',
   'arreglo',
 ] as const;
+
+export const ESTADO_POR_MOVIMIENTO: Record<(typeof TIPOS_SEGUIMIENTO)[number], (typeof ESTADOS_CASO)[number]> = {
+  reingreso: 'En laboratorio',
+  prueba: 'En prueba',
+  entrega: 'Finalizado',
+  arreglo: 'arreglo',
+};

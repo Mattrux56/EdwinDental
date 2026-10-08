@@ -1,67 +1,109 @@
 import { useState } from 'react';
 import styles from '../dashboard.module.css';
-import { ESTADOS, normalizeEstado, TIPOS_SEGUIMIENTO } from '../../constants.js';
+import { MOVIMIENTOS, normalizeEstado } from '../../constants.js';
 import PhotoPicker from './PhotoPicker.jsx';
+import ImageViewer from './ImageViewer.jsx';
+import { ConfirmModal } from './Modal.jsx';
+import { Icon } from './Icon.jsx';
 
-const KEEP = ''; // valor del selector que significa "no cambiar el estado"
+const esIngreso = (seg) => seg?.tipo?.toLocaleLowerCase('es') === 'ingreso inicial';
 
-export default function FollowUpForm({ caso, saving, onSubmit }) {
-  const [tipo, setTipo] = useState(TIPOS_SEGUIMIENTO[0]);
-  const [estado, setEstado] = useState(KEEP);
-  const [descripcion, setDescripcion] = useState('');
-  const [fotos, setFotos] = useState([]);
+/**
+ * Formulario de movimiento. Sin `seguimiento` registra uno nuevo; con `seguimiento` edita ese mismo
+ * (se usa dentro de una ventana modal, con `onCancel` para volver a la lista).
+ */
+export default function FollowUpForm({ caso, saving, onSubmit, seguimiento, onCancel, onDeleteImage }) {
+  const editando = Boolean(seguimiento);
   const estadoActual = normalizeEstado(caso.estado);
+  const movimientoActual = editando
+    ? MOVIMIENTOS.find((m) => m.tipo === seguimiento.tipo?.toLocaleLowerCase('es')) ?? MOVIMIENTOS[0]
+    : MOVIMIENTOS.find((m) => m.estado === estadoActual) ?? MOVIMIENTOS[0];
+  const [movimiento, setMovimiento] = useState(`${movimientoActual.tipo}|${movimientoActual.estado}`);
+  const [descripcion, setDescripcion] = useState(editando ? seguimiento.descripcion : '');
+  const [fechaEntregaEstimada, setFechaEntregaEstimada] = useState(
+    editando && seguimiento.fechaEntregaEstimada ? String(seguimiento.fechaEntregaEstimada).slice(0, 10) : '',
+  );
+  const [fotos, setFotos] = useState([]);
+  const [verFoto, setVerFoto] = useState(null);
+  const [fotoABorrar, setFotoABorrar] = useState(null);
+  const idp = editando ? 'fe' : 'fu';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const updated = await onSubmit(caso.id, { tipo, estado: estado || undefined, descripcion, fotos });
+    const [tipo, estado] = movimiento.split('|');
+    if (editando) {
+      await onSubmit(caso.id, seguimiento.id, {
+        ...(esIngreso(seguimiento) ? {} : { tipo }),
+        fechaEntregaEstimada,
+        descripcion,
+        fotos,
+      });
+      return;
+    }
+    const updated = await onSubmit(caso.id, {
+      tipo,
+      estado,
+      fechaEntregaEstimada: fechaEntregaEstimada || undefined,
+      descripcion,
+      fotos,
+    });
     if (updated) {
       setDescripcion('');
-      setEstado(KEEP);
+      const estadoNuevo = normalizeEstado(updated.estado);
+      const siguiente = MOVIMIENTOS.find((m) => m.estado === estadoNuevo) ?? MOVIMIENTOS[0];
+      setMovimiento(`${siguiente.tipo}|${siguiente.estado}`);
+      setFechaEntregaEstimada('');
       setFotos([]);
     }
   };
 
   return (
-    <form className={styles.followUp} onSubmit={handleSubmit}>
-      <h3 className={styles.sectionTitle} style={{ marginBottom: 14 }}>
-        Registrar movimiento
-      </h3>
+    <form className={editando ? undefined : styles.followUp} onSubmit={handleSubmit}>
+      {!editando && (
+        <h3 className={styles.sectionTitle} style={{ marginBottom: 14 }}>
+          Registrar movimiento
+        </h3>
+      )}
 
       <div className={styles.formGrid}>
         <div className={styles.field}>
-          <label className={styles.label} htmlFor="fu-tipo">
-            Tipo de movimiento
+          <label className={styles.label} htmlFor={`${idp}-movimiento`}>
+            Movimiento y estado
           </label>
-          <select id="fu-tipo" className={styles.select} value={tipo} onChange={(e) => setTipo(e.target.value)}>
-            {TIPOS_SEGUIMIENTO.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
+          {editando && esIngreso(seguimiento) ? (
+            <select id={`${idp}-movimiento`} className={styles.select} value="ingreso" disabled>
+              <option value="ingreso">Ingreso inicial · En laboratorio</option>
+            </select>
+          ) : (
+            <select id={`${idp}-movimiento`} className={styles.select} value={movimiento} onChange={(e) => setMovimiento(e.target.value)}>
+              {MOVIMIENTOS.map((m) => (
+                <option key={m.tipo} value={`${m.tipo}|${m.estado}`}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         <div className={styles.field}>
-          <label className={styles.label} htmlFor="fu-estado">
-            Estado del caso
+          <label className={styles.label} htmlFor={`${idp}-entrega`}>
+            Entrega estimada de este seguimiento
           </label>
-          <select id="fu-estado" className={styles.select} value={estado} onChange={(e) => setEstado(e.target.value)}>
-            <option value={KEEP}>Mantener ({estadoActual})</option>
-            {ESTADOS.filter((s) => s !== estadoActual).map((s) => (
-              <option key={s} value={s}>
-                Cambiar a {s}
-              </option>
-            ))}
-          </select>
+          <input
+            id={`${idp}-entrega`}
+            className={styles.input}
+            type="date"
+            value={fechaEntregaEstimada}
+            onChange={(e) => setFechaEntregaEstimada(e.target.value)}
+          />
         </div>
 
         <div className={`${styles.field} ${styles.fieldFull}`}>
-          <label className={styles.label} htmlFor="fu-desc">
+          <label className={styles.label} htmlFor={`${idp}-desc`}>
             Descripción <span className={styles.required}>*</span>
           </label>
           <textarea
-            id="fu-desc"
+            id={`${idp}-desc`}
             className={styles.textarea}
             value={descripcion}
             onChange={(e) => setDescripcion(e.target.value)}
@@ -72,16 +114,68 @@ export default function FollowUpForm({ caso, saving, onSubmit }) {
         </div>
 
         <div className={`${styles.field} ${styles.fieldFull}`}>
-          <span className={styles.label}>Fotografías</span>
+          {editando && (seguimiento.imagenes?.length ?? 0) > 0 && (
+            <>
+              <span className={styles.label}>Fotografías actuales</span>
+              <div className={styles.photoEdit}>
+                {seguimiento.imagenes.map((img) => (
+                  <div key={img.id} className={styles.photoEditItem}>
+                    <button
+                      type="button"
+                      className={styles.timelineImgBtn}
+                      onClick={() => setVerFoto(img.urlImagen)}
+                      aria-label="Ampliar fotografía"
+                    >
+                      <img src={img.urlImagen} alt="Fotografía del seguimiento" loading="lazy" />
+                    </button>
+                    {onDeleteImage && (
+                      <button
+                        type="button"
+                        className={styles.photoEditDelete}
+                        onClick={() => setFotoABorrar(img.id)}
+                        disabled={saving}
+                        aria-label="Eliminar fotografía"
+                        title="Eliminar fotografía"
+                      >
+                        <Icon name="trash" size={14} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+          <span className={styles.label}>{editando ? 'Agregar fotografías' : 'Fotografías'}</span>
           <PhotoPicker files={fotos} onChange={setFotos} />
         </div>
       </div>
 
       <div className={styles.formActions}>
+        {editando && (
+          <button type="button" className={styles.secondaryBtn} onClick={onCancel} disabled={saving}>
+            Volver a la lista
+          </button>
+        )}
         <button type="submit" className={styles.primaryBtn} disabled={saving}>
-          {saving ? 'Guardando…' : 'Guardar seguimiento'}
+          {saving ? 'Guardando…' : editando ? 'Guardar cambios' : 'Guardar seguimiento'}
         </button>
       </div>
+
+      {verFoto && <ImageViewer src={verFoto} onClose={() => setVerFoto(null)} />}
+      {fotoABorrar && (
+        <ConfirmModal
+          title="Eliminar fotografía"
+          confirmLabel="Eliminar foto"
+          busyLabel="Eliminando…"
+          busy={saving}
+          onCancel={() => setFotoABorrar(null)}
+          onConfirm={async () => {
+            if (await onDeleteImage(fotoABorrar)) setFotoABorrar(null);
+          }}
+        >
+          <p>La foto se borra del historial y del almacenamiento. No se puede deshacer.</p>
+        </ConfirmModal>
+      )}
     </form>
   );
 }

@@ -11,10 +11,10 @@ import ClientesView from './ClientesView.jsx';
 import AlertasView from './AlertasView.jsx';
 import CuentasCobroView from './CuentasCobroView.jsx';
 import EditCaseForm from './components/EditCaseForm.jsx';
-import Modal from './components/Modal.jsx';
+import Modal, { ConfirmModal } from './components/Modal.jsx';
+import { PageHeader } from './components/ui.jsx';
 import Toast from './components/Toast.jsx';
 import { Icon } from './components/Icon.jsx';
-import { downloadRespaldo } from '../services/remisiones.service.js';
 
 /** Vista pura: recibe todo el estado y las acciones desde el controlador (useCasesController) */
 export default function DashboardView({ controller, remisionesController }) {
@@ -41,40 +41,16 @@ export default function DashboardView({ controller, remisionesController }) {
     createCase,
     deleteCase,
     addFollowUp,
+    updateFollowUp,
     dismissToast,
   } = controller;
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
-  const [respaldando, setRespaldando] = useState(false);
   // Vistas con una tabla/lista grande: ocupan la pantalla y el scroll ocurre dentro de la tabla
   const fillView = activeView !== 'resumen';
   const showRemisiones = activeView === 'remisiones';
   const pageTitle = activeView === 'resumen' ? 'Resumen de casos' : 'Panel de casos';
-
-  useEffect(() => {
-    if ((!createModalOpen && !deleteTarget) || saving || deletingId !== null) return undefined;
-    const closeOnEscape = (event) => {
-      if (event.key === 'Escape') {
-        setCreateModalOpen(false);
-        setDeleteTarget(null);
-      }
-    };
-    window.addEventListener('keydown', closeOnEscape);
-    return () => window.removeEventListener('keydown', closeOnEscape);
-  }, [createModalOpen, deleteTarget, deletingId, saving]);
-
-  const respaldar = async () => {
-    setRespaldando(true);
-    try {
-      await downloadRespaldo();
-      showToast('success', 'Respaldo descargado');
-    } catch (reason) {
-      showToast('error', reason.message);
-    } finally {
-      setRespaldando(false);
-    }
-  };
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
@@ -112,32 +88,18 @@ export default function DashboardView({ controller, remisionesController }) {
             <CuentasCobroView showToast={showToast} />
           ) : (
             <>
-              <header className={styles.appHeader}>
-                <div>
-                  <h1 className={styles.pageTitle}>{pageTitle}</h1>
-                  <p className={styles.pageSubtitle}>
-                    {activeView === 'resumen'
-                      ? 'Estadísticas generales y los últimos casos registrados.'
-                      : 'Busca, filtra y administra los casos registrados.'}
-                  </p>
-                </div>
+              <PageHeader
+                title={pageTitle}
+                subtitle={activeView === 'resumen'
+                  ? 'Estadísticas generales y los últimos casos registrados.'
+                  : 'Busca, filtra y administra los casos registrados.'}
+              >
                 <div className={styles.headerActions}>
-                  {activeView === 'resumen' && (
-                    <button
-                      type="button"
-                      className={styles.secondaryBtn}
-                      onClick={respaldar}
-                      disabled={respaldando}
-                      title="Descarga en un Excel todos los casos, remisiones, clientes y la lista de precios"
-                    >
-                      <Icon name="download" size={16} /> {respaldando ? 'Preparando…' : 'Respaldo en Excel'}
-                    </button>
-                  )}
                   <button type="button" className={styles.primaryBtn} onClick={() => setCreateModalOpen(true)}>
                     <Icon name="plus" size={16} /> Registrar caso
                   </button>
                 </div>
-              </header>
+              </PageHeader>
 
               {activeView === 'resumen' ? (
                 <>
@@ -172,75 +134,32 @@ export default function DashboardView({ controller, remisionesController }) {
       </div>
 
       {createModalOpen && (
-        <div
-          className={styles.modalOverlay}
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget && !saving) setCreateModalOpen(false);
-          }}
-        >
-          <section className={styles.modalPanel} role="dialog" aria-modal="true" aria-labelledby="create-case-title">
-            <header className={styles.modalHeader}>
-              <div>
-                <h2 id="create-case-title" className={styles.modalTitle}>Registrar caso</h2>
-                <p className={styles.pageSubtitle}>Ingresa la información inicial del caso.</p>
-              </div>
-              <button
-                type="button"
-                className={styles.iconBtn}
-                onClick={() => setCreateModalOpen(false)}
-                disabled={saving}
-                aria-label="Cerrar"
-              >
-                <Icon name="close" size={20} />
-              </button>
-            </header>
-            <div className={styles.modalBody}>
-              <NewCaseForm
-                saving={saving}
-                onSubmit={async (payload) => {
-                  const created = await createCase(payload);
-                  if (created) setCreateModalOpen(false);
-                  return created;
-                }}
-                onCancel={() => setCreateModalOpen(false)}
-              />
-            </div>
-          </section>
-        </div>
+        <Modal title="Registrar caso" subtitle="Ingresa la información inicial del caso." onClose={() => setCreateModalOpen(false)} busy={saving}>
+          <NewCaseForm
+            saving={saving}
+            onSubmit={async (payload) => {
+              const created = await createCase(payload);
+              if (created) setCreateModalOpen(false);
+              return created;
+            }}
+            onCancel={() => setCreateModalOpen(false)}
+          />
+        </Modal>
       )}
 
       {deleteTarget && (
-        <div
-          className={styles.modalOverlay}
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget && deletingId === null) setDeleteTarget(null);
-          }}
+        <ConfirmModal
+          title="Eliminar caso"
+          confirmLabel="Eliminar caso"
+          busyLabel="Eliminando…"
+          busy={deletingId !== null}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={confirmDelete}
         >
-          <section className={styles.confirmModal} role="dialog" aria-modal="true" aria-labelledby="delete-case-title">
-            <h2 id="delete-case-title" className={styles.modalTitle}>Eliminar caso</h2>
-            <p>
-              ¿Eliminar definitivamente el caso <strong>{deleteTarget.codigo}</strong>? Se borran también su historial y sus fotos. Esta acción no se puede deshacer.
-            </p>
-            <div className={styles.formActions}>
-              <button
-                type="button"
-                className={styles.secondaryBtn}
-                onClick={() => setDeleteTarget(null)}
-                disabled={deletingId !== null}
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className={styles.dangerBtn}
-                onClick={confirmDelete}
-                disabled={deletingId !== null}
-              >
-                {deletingId !== null ? 'Eliminando…' : 'Eliminar caso'}
-              </button>
-            </div>
-          </section>
-        </div>
+          <p>
+            ¿Eliminar definitivamente la orden de trabajo <strong>{deleteTarget.codigo}</strong>? Se borran también su historial y sus fotos. Esta acción no se puede deshacer.
+          </p>
+        </ConfirmModal>
       )}
 
       {selectedCase && (
@@ -249,6 +168,7 @@ export default function DashboardView({ controller, remisionesController }) {
           saving={saving}
           onClose={closeCase}
           onAddFollowUp={addFollowUp}
+          onUpdateFollowUp={updateFollowUp}
           onEdit={setEditTarget}
           onArchive={archiveCase}
           onDeleteImage={removePhoto}
@@ -258,7 +178,7 @@ export default function DashboardView({ controller, remisionesController }) {
       )}
 
       {editTarget && (
-        <Modal title={`Editar caso ${editTarget.codigo}`} subtitle="Cambia los datos del caso; el historial y las fotos no se tocan." onClose={() => setEditTarget(null)} busy={saving}>
+        <Modal title={`Editar orden de trabajo ${editTarget.codigo}`} subtitle="Cambia los datos del caso; el historial y las fotos no se tocan." onClose={() => setEditTarget(null)} busy={saving}>
           <EditCaseForm
             caso={editTarget}
             saving={saving}

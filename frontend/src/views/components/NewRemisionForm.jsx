@@ -4,6 +4,8 @@ import r from '../remisiones.module.css';
 import { formatMoney } from '../../utils/format.js';
 import { Icon } from './Icon.jsx';
 import StatusBadge from './StatusBadge.jsx';
+import { SearchField } from './ui.jsx';
+import { normalizeSearchText } from '../../utils/search.js';
 import { remisionesService } from '../../services/remisiones.service.js';
 
 const MAX_LINEAS = 9; // lo que cabe en el formato de remisión del laboratorio
@@ -14,23 +16,17 @@ const today = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
-const normalize = (text) =>
-  String(text ?? '')
-    .toLocaleLowerCase('es')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
-
 function CasePicker({ casos, selected, onSelect, locked = false }) {
   const [query, setQuery] = useState('');
   const [desde, setDesde] = useState('');
   const [hasta, setHasta] = useState('');
 
   const matches = useMemo(() => {
-    const term = normalize(query.trim());
+    const term = normalizeSearchText(query.trim());
     const list = casos.filter((c) => {
       const fecha = String(c.fechaIngreso ?? c.creadoEn ?? '').slice(0, 10);
       return (!desde || fecha >= desde) && (!hasta || fecha <= hasta) &&
-        (!term || [c.codigo, c.titulo, c.cliente?.nombre, c.pacienteNombre].some((v) => normalize(v).includes(term)));
+        (!term || [c.codigo, c.doctorNombre, c.numeroFactura, c.cliente?.nombre, c.pacienteNombre].some((v) => normalizeSearchText(v).includes(term)));
     });
     return list.slice(0, 50);
   }, [casos, desde, hasta, query]);
@@ -40,7 +36,7 @@ function CasePicker({ casos, selected, onSelect, locked = false }) {
       <div className={r.selectedCase}>
         <div className={r.pickerItemMain}>
           <div className={r.pickerItemTitle}>
-            <span className={r.code}>{selected.codigo}</span> · {selected.titulo}
+            <span className={r.code}>Orden {selected.codigo}</span>
           </div>
           <div className={r.pickerItemMeta}>
             {selected.cliente?.nombre} · Paciente: {selected.pacienteNombre || '—'}
@@ -57,17 +53,14 @@ function CasePicker({ casos, selected, onSelect, locked = false }) {
 
   return (
     <div className={r.pickerBox}>
-      <label className={r.pickerSearch}>
-        <Icon name="search" size={17} />
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar por código, título, cliente o paciente"
-          aria-label="Buscar caso"
-          autoFocus
-        />
-      </label>
+      <SearchField
+        className={r.pickerSearch}
+        value={query}
+        onChange={setQuery}
+        placeholder="Buscar por orden, doctor, cliente o paciente"
+        label="Buscar caso"
+        autoFocus
+      />
       <div className={r.pickerFilters}>
         <label>
           <span>Desde</span>
@@ -89,7 +82,7 @@ function CasePicker({ casos, selected, onSelect, locked = false }) {
               <button type="button" className={r.pickerItem} onClick={() => onSelect(caso)}>
                 <div className={r.pickerItemMain}>
                   <div className={r.pickerItemTitle}>
-                    <span className={r.code}>{caso.codigo}</span> · {caso.titulo}
+                    <span className={r.code}>Orden {caso.codigo}</span>
                   </div>
                   <div className={r.pickerItemMeta}>
                     {caso.cliente?.nombre} · Paciente: {caso.pacienteNombre || '—'}
@@ -210,8 +203,8 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
     const soloNumeros = /^\d+$/.test(term);
     const coincide = (p) =>
       soloNumeros
-        ? String(p.codigo).startsWith(term) || normalize(p.descripcion).includes(term)
-        : [p.codigo, p.descripcion, p.categoria].some((v) => normalize(v).includes(term));
+        ? String(p.codigo).startsWith(term) || normalizeSearchText(p.descripcion).includes(term)
+        : [p.codigo, p.descripcion, p.categoria].some((v) => normalizeSearchText(v).includes(term));
     const filtrados = productos.filter((p) =>
       (!categoria || p.categoria === categoria) &&
       (!term || coincide(p)),
@@ -335,16 +328,13 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
           </span>
           <div className={r.pickerBox}>
             <div className={r.pickerBar}>
-              <label className={r.pickerSearch}>
-                <Icon name="search" size={17} />
-                <input
-                  type="search"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Buscar por código o descripción"
-                  aria-label="Buscar producto por código o descripción"
-                />
-              </label>
+              <SearchField
+                className={r.pickerSearch}
+                value={query}
+                onChange={setQuery}
+                placeholder="Buscar por código o descripción"
+                label="Buscar producto por código o descripción"
+              />
               <select
                 className={`${styles.select} ${r.pickerCategory}`}
                 value={categoria}
@@ -421,7 +411,7 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
         </button>
         <button type="submit" className={styles.primaryBtn} disabled={!puedeGuardar}>
           <Icon name="download" size={16} />{' '}
-          {saving ? (editando ? 'Guardando…' : 'Generando…') : editando ? 'Guardar corrección' : 'Crear remisión y descargar Excel'}
+          {saving ? (editando ? 'Guardando…' : 'Generando…') : editando ? 'Guardar corrección' : 'Crear remisión'}
         </button>
       </div>
     </form>

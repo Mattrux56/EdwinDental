@@ -500,3 +500,40 @@
 .checkPago {
   vertical-align: middle;
 }
+
+/* Cuentas de cobro: barra de filtros sobre la lista de clientes y modal de pagos */
+.cuentaToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+
+.cuentaToolbar > label {
+  flex: 1 1 220px;
+  min-width: 180px;
+}
+
+.cuentaToolbar > select {
+  width: auto;
+}
+
+.clienteRow {
+  cursor: pointer;
+}
+
+.clienteRow:hover td {
+  background: #f4f8fa;
+}
+
+.cuentaFooter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 4px;
+}

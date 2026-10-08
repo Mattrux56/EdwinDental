@@ -4,6 +4,8 @@ import { formatMoney } from '../utils/format.js';
 import { downloadListaPrecios, remisionesService } from '../services/remisiones.service.js';
 import { Icon } from './components/Icon.jsx';
 import ProductoForm from './components/ProductoForm.jsx';
+import Modal from './components/Modal.jsx';
+import { EmptyState, ErrorBanner, LoadingState, PageHeader, Panel, SearchField } from './components/ui.jsx';
 
 export default function ProductosView({ showToast }) {
   const [productos, setProductos] = useState([]);
@@ -30,15 +32,6 @@ export default function ProductosView({ showToast }) {
   useEffect(() => {
     load();
   }, [load]);
-
-  useEffect(() => {
-    if (!modal || saving) return undefined;
-    const closeOnEscape = (event) => {
-      if (event.key === 'Escape') setModal(null);
-    };
-    window.addEventListener('keydown', closeOnEscape);
-    return () => window.removeEventListener('keydown', closeOnEscape);
-  }, [modal, saving]);
 
   const filtered = useMemo(() => {
     const term = query.trim().toLocaleLowerCase('es');
@@ -107,11 +100,7 @@ export default function ProductosView({ showToast }) {
 
   return (
     <>
-      <header className={styles.appHeader}>
-        <div>
-          <h1 className={styles.pageTitle}>Productos</h1>
-          <p className={styles.pageSubtitle}>Administra el catálogo y los precios usados en las remisiones.</p>
-        </div>
+      <PageHeader title="Productos" subtitle="Administra el catálogo y los precios usados en las remisiones.">
         <div className={styles.headerActions}>
           <input ref={archivoRef} type="file" accept=".xlsx" className={styles.hiddenInput} onChange={importar} />
           <button type="button" className={styles.secondaryBtn} onClick={exportar} title="Descarga la lista de precios actual en Excel">
@@ -124,49 +113,21 @@ export default function ProductosView({ showToast }) {
             <Icon name="plus" size={16} /> Nuevo producto
           </button>
         </div>
-      </header>
+      </PageHeader>
 
-      <section className={`${styles.panel} ${styles.panelFill}`}>
-        <div className={styles.panelHeader}>
-          <h2 className={styles.panelTitle}>Catálogo de productos</h2>
-          <span className={styles.panelMeta}>
-            {loading ? 'Cargando…' : `${filtered.length} ${filtered.length === 1 ? 'producto' : 'productos'}`}
-          </span>
-        </div>
-
+      <Panel title="Catálogo de productos" meta={loading ? 'Cargando…' : `${filtered.length} ${filtered.length === 1 ? 'producto' : 'productos'}`}>
         <div className={styles.caseToolbar}>
-          <label className={styles.caseSearch}>
-            <Icon name="search" size={17} />
-            <input
-              type="search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Buscar por código, categoría o descripción"
-              aria-label="Buscar productos"
-            />
-          </label>
+          <SearchField value={query} onChange={setQuery} placeholder="Buscar por código, categoría o descripción" label="Buscar productos" />
         </div>
 
-        {error && (
-          <div className={styles.errorBanner} role="alert">
-            <span>{error}</span>
-            <button type="button" className={styles.secondaryBtn} onClick={load}>
-              <Icon name="refresh" size={16} /> Reintentar
-            </button>
-          </div>
-        )}
+        {error && <ErrorBanner onRetry={load}>{error}</ErrorBanner>}
 
-        {loading && productos.length === 0 && !error && (
-          <div className={styles.loadingState}><span className={styles.spinner} /> Cargando productos…</div>
-        )}
+        {loading && productos.length === 0 && !error && <LoadingState>Cargando productos…</LoadingState>}
 
         {!loading && !error && filtered.length === 0 && (
-          <div className={styles.emptyState}>
-            <p className={styles.emptyTitle}>{productos.length ? 'No hay coincidencias' : 'El catálogo está vacío'}</p>
-            <span>
-              {productos.length ? 'Prueba otra búsqueda.' : 'Agrega productos para poder seleccionarlos en las remisiones.'}
-            </span>
-          </div>
+          <EmptyState title={productos.length ? 'No hay coincidencias' : 'El catálogo está vacío'}>
+            {productos.length ? 'Prueba otra búsqueda.' : 'Agrega productos para poder seleccionarlos en las remisiones.'}
+          </EmptyState>
         )}
 
         {filtered.length > 0 && (
@@ -220,39 +181,24 @@ export default function ProductosView({ showToast }) {
             </table>
           </div>
         )}
-      </section>
+      </Panel>
 
       {modal && (
-        <div
-          className={styles.modalOverlay}
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget && !saving) setModal(null);
-          }}
+        <Modal
+          title={modal.producto ? 'Editar producto' : 'Nuevo producto'}
+          subtitle="El producto se guardará en la base de datos."
+          onClose={() => setModal(null)}
+          busy={saving}
         >
-          <section className={styles.modalPanel} role="dialog" aria-modal="true" aria-labelledby="producto-modal-title">
-            <header className={styles.modalHeader}>
-              <div>
-                <h2 id="producto-modal-title" className={styles.modalTitle}>
-                  {modal.producto ? 'Editar producto' : 'Nuevo producto'}
-                </h2>
-                <p className={styles.pageSubtitle}>El producto se guardará en la base de datos.</p>
-              </div>
-              <button type="button" className={styles.iconBtn} onClick={() => setModal(null)} disabled={saving} aria-label="Cerrar">
-                <Icon name="close" size={20} />
-              </button>
-            </header>
-            <div className={styles.modalBody}>
-              <ProductoForm
-                key={modal.producto?.id ?? 'new'}
-                producto={modal.producto}
-                categorias={categorias}
-                saving={saving}
-                onSubmit={save}
-                onCancel={() => setModal(null)}
-              />
-            </div>
-          </section>
-        </div>
+          <ProductoForm
+            key={modal.producto?.id ?? 'new'}
+            producto={modal.producto}
+            categorias={categorias}
+            saving={saving}
+            onSubmit={save}
+            onCancel={() => setModal(null)}
+          />
+        </Modal>
       )}
     </>
   );

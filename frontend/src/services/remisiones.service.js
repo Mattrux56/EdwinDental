@@ -86,10 +86,9 @@ export const remisionesService = {
 
 };
 
-/** Descarga el Excel de una remisión */
-export function downloadRemisionExcel(id, numero) {
+/** Imprimir una remisión: guarda su archivo de Excel donde elija la persona («Guardar como») */
+export function imprimirRemision(id, numero) {
   return downloadFile(`/remisiones/${id}/excel`, `REMISION_No_${numero ?? id}.xlsx`);
 }
 
 export const downloadListaPrecios = () => downloadFile('/productos/exportar', 'lista_de_precios.xlsx');
-export const downloadRespaldo = () => downloadFile('/respaldo/excel', 'respaldo_labtrace.xlsx');

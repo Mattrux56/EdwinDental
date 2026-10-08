@@ -12,9 +12,11 @@ const today = () => {
 };
 
 const initialForm = () => ({
+  codigo: '',
   clienteNombre: '',
   pacienteNombre: '',
-  titulo: '',
+  doctorNombre: '',
+  numeroFactura: '',
   descripcion: '',
   fechaIngreso: today(),
   fechaEntregaEstimada: '',
@@ -111,6 +113,23 @@ export default function NewCaseForm({ saving, onSubmit, onCancel }) {
           </div>
 
           <div className={styles.field}>
+            <label className={styles.label} htmlFor="ordenTrabajo">
+              Orden de trabajo <span className={styles.required}>*</span>
+            </label>
+            <input
+              id="ordenTrabajo"
+              className={styles.input}
+              value={form.codigo}
+              onChange={(event) => setForm((prev) => ({ ...prev, codigo: event.target.value.replace(/\D/g, '').slice(0, 20) }))}
+              required
+              maxLength={20}
+              pattern="[0-9]+"
+              inputMode="numeric"
+              placeholder="Número ingresado manualmente"
+            />
+          </div>
+
+          <div className={styles.field}>
             <label className={styles.label} htmlFor="pacienteNombre">
               Nombre del paciente <span className={styles.required}>*</span>
             </label>
@@ -126,18 +145,33 @@ export default function NewCaseForm({ saving, onSubmit, onCancel }) {
             />
           </div>
 
-          <div className={`${styles.field} ${styles.fieldFull}`}>
-            <label className={styles.label} htmlFor="titulo">
-              Título del caso <span className={styles.required}>*</span>
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="doctorNombre">
+              Nombre del doctor <span className={styles.required}>*</span>
             </label>
             <input
-              id="titulo"
+              id="doctorNombre"
               className={styles.input}
-              value={form.titulo}
-              onChange={update('titulo')}
+              value={form.doctorNombre}
+              onChange={update('doctorNombre')}
               required
-              maxLength={200}
-              placeholder="Ej.: Prótesis parcial superior — ajuste de oclusión"
+              maxLength={150}
+              placeholder="Nombre completo"
+            />
+          </div>
+
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="numeroFactura">
+              Número de factura
+            </label>
+            <input
+              id="numeroFactura"
+              className={styles.input}
+              value={form.numeroFactura}
+              onChange={(event) => setForm((prev) => ({ ...prev, numeroFactura: event.target.value.replace(/\D/g, '').slice(0, 30) }))}
+              maxLength={30}
+              pattern="[0-9]*"
+              inputMode="numeric"
             />
           </div>
 

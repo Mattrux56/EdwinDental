@@ -2,91 +2,70 @@ import { useMemo, useState } from 'react';
 import styles from '../dashboard.module.css';
 import r from '../remisiones.module.css';
 import { formatEstimatedDate, formatMoney } from '../../utils/format.js';
-import { downloadRemisionExcel } from '../../services/remisiones.service.js';
 import { Icon } from './Icon.jsx';
+import PrintRemisionButton from './PrintRemisionButton.jsx';
+import { EmptyState, ErrorBanner, LoadingState, Panel, SearchField } from './ui.jsx';
+import { normalizeSearchText } from '../../utils/search.js';
 
-const normalize = (text) =>
-  String(text ?? '')
-    .toLocaleLowerCase('es')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
+const MESES = ['Todo el año', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
 export default function RemisionesTable({ remisiones, loading, error, onRetry, onAnular, onReactivar, onView, onEdit, anulandoId, showToast }) {
   const [query, setQuery] = useState('');
-  const [descargandoId, setDescargandoId] = useState(null);
-
-  const descargar = async (rem) => {
-    setDescargandoId(rem.id);
-    try {
-      await downloadRemisionExcel(rem.id, rem.numero);
-    } catch (reason) {
-      showToast?.('error', reason.message);
-    } finally {
-      setDescargandoId(null);
-    }
-  };
+  const hoy = new Date();
+  const [mes, setMes] = useState(hoy.getMonth() + 1);
+  const [anio, setAnio] = useState(String(hoy.getFullYear()));
 
   const filtered = useMemo(() => {
-    const term = normalize(query.trim());
-    if (!term) return remisiones;
-    return remisiones.filter((rem) =>
-      [rem.numero, rem.noOrden, rem.caso?.codigo, rem.caso?.titulo, rem.caso?.cliente?.nombre, rem.caso?.pacienteNombre].some(
-        (v) => normalize(v).includes(term),
-      ),
-    );
-  }, [remisiones, query]);
+    const term = normalizeSearchText(query.trim());
+    return remisiones.filter((rem) => {
+      const fecha = String(rem.fecha).slice(0, 10);
+      const periodoCoincide = !anio || fecha.startsWith(`${anio}-${mes ? String(mes).padStart(2, '0') : ''}`);
+      if (!periodoCoincide) return false;
+      return !term || [rem.numero, rem.noOrden, rem.caso?.codigo, rem.caso?.cliente?.nombre, rem.caso?.pacienteNombre, rem.caso?.numeroFactura].some(
+        (v) => normalizeSearchText(v).includes(term),
+      );
+    });
+  }, [remisiones, query, mes, anio]);
 
   const empty = !loading && !error && filtered.length === 0;
 
   return (
-    <section className={`${styles.panel} ${styles.panelFill}`}>
-      <div className={styles.panelHeader}>
-        <h2 className={styles.panelTitle}>Remisiones emitidas</h2>
-        <span className={styles.panelMeta}>
-          {loading ? 'Cargando…' : `${filtered.length} ${filtered.length === 1 ? 'remisión' : 'remisiones'}`}
-        </span>
-      </div>
-
+    <Panel title="Remisiones emitidas" meta={loading ? 'Cargando…' : `${filtered.length} ${filtered.length === 1 ? 'remisión' : 'remisiones'}`}>
       <div className={styles.caseToolbar}>
-        <label className={styles.caseSearch}>
-          <Icon name="search" size={17} />
+        <SearchField value={query} onChange={setQuery} placeholder="Buscar por número, caso, cliente o paciente" label="Buscar remisiones" />
+        <div className={r.periodControl}>
+          <select className={styles.select} value={mes} onChange={(event) => setMes(Number(event.target.value))} aria-label="Filtrar por mes">
+            {MESES.map((nombre, index) => <option key={nombre} value={index}>{nombre}</option>)}
+          </select>
           <input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar por número, caso, cliente o paciente"
-            aria-label="Buscar remisiones"
+            className={styles.input}
+            type="number"
+            min="2000"
+            max="2100"
+            value={anio}
+            onChange={(event) => setAnio(event.target.value)}
+            onBlur={() => {
+              const value = Number(anio);
+              if (!Number.isInteger(value) || value < 2000 || value > 2100) setAnio(String(hoy.getFullYear()));
+            }}
+            aria-label="Filtrar por año"
           />
-        </label>
+        </div>
       </div>
 
       {error && (
-        <div className={styles.errorBanner} role="alert">
-          <span>
-            {error}
-            {/relation|table|does not exist|Prisma/i.test(error) && ' (¿ya ejecutaste el SQL de la base de datos?)'}
-          </span>
-          <button type="button" className={styles.secondaryBtn} onClick={onRetry}>
-            <Icon name="refresh" size={16} /> Reintentar
-          </button>
-        </div>
+        <ErrorBanner onRetry={onRetry}>
+          {error}
+          {/relation|table|does not exist|Prisma/i.test(error) && ' (¿ya ejecutaste el SQL de la base de datos?)'}
+        </ErrorBanner>
       )}
 
-      {loading && remisiones.length === 0 && !error && (
-        <div className={styles.loadingState}>
-          <span className={styles.spinner} /> Cargando remisiones…
-        </div>
-      )}
+      {loading && remisiones.length === 0 && !error && <LoadingState>Cargando remisiones…</LoadingState>}
 
       {empty && (
-        <div className={styles.emptyState}>
-          <p className={styles.emptyTitle}>
-            {remisiones.length === 0 ? 'Aún no hay remisiones' : 'No hay remisiones para esta búsqueda'}
-          </p>
-          <span>
-            {remisiones.length === 0 ? 'Usa “Nueva remisión” para crear la primera.' : 'Cambia el texto de búsqueda.'}
-          </span>
-        </div>
+        <EmptyState title={remisiones.length === 0 ? 'Aún no hay remisiones' : 'No hay remisiones para esta búsqueda'}>
+          {remisiones.length === 0 ? 'Usa “Nueva remisión” para crear la primera.' : 'Cambia el texto de búsqueda.'}
+        </EmptyState>
       )}
 
       {filtered.length > 0 && (
@@ -105,15 +84,27 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
             </thead>
             <tbody>
               {filtered.map((rem) => (
-                <tr key={rem.id} className={rem.anulada ? r.cancelledRow : undefined}>
+                <tr
+                  key={rem.id}
+                  className={`${rem.anulada ? r.cancelledRow : ''} ${styles.rowClickable}`}
+                  onClick={() => onView(rem)}
+                  onKeyDown={(event) => {
+                    if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
+                      event.preventDefault();
+                      onView(rem);
+                    }
+                  }}
+                  tabIndex={0}
+                  aria-label={`Ver remisión ${rem.numero}`}
+                >
                   <td className={r.numberCell}>
-                    <button type="button" className={styles.linkBtn} onClick={() => onView(rem)} title="Ver detalle">{rem.numero}</button>
+                    {rem.numero}
                     {rem.anulada && <span className={r.cancelledBadge}>Anulada</span>}
                   </td>
                   <td className={styles.mutedText}>{formatEstimatedDate(rem.fecha)}</td>
                   <td>
                     <div className={styles.codeCell}>{rem.caso?.codigo}</div>
-                    <div className={styles.clientDoc}>{rem.caso?.titulo}</div>
+                    <div className={styles.clientDoc}>Orden de trabajo</div>
                   </td>
                   <td>
                     <div className={styles.clientName}>{rem.caso?.cliente?.nombre}</div>
@@ -123,14 +114,9 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
                   <td className={r.moneyCell}>{formatMoney(rem.total)}</td>
                   <td>
                     <div className={r.rowActions}>
-                      <button type="button" className={styles.secondaryBtn} onClick={() => onView(rem)}>
-                        <Icon name="eye" size={15} /> Ver
-                      </button>
-                      <button type="button" className={styles.traceBtn} onClick={() => descargar(rem)} disabled={descargandoId === rem.id}>
-                        <Icon name="download" size={15} /> {descargandoId === rem.id ? '…' : 'Excel'}
-                      </button>
+                      <PrintRemisionButton remision={rem} showToast={showToast} className={styles.traceBtn} />
                       {!rem.anulada && (
-                        <button type="button" className={styles.secondaryBtn} onClick={() => onEdit(rem)}>
+                        <button type="button" className={styles.secondaryBtn} onClick={(event) => { event.stopPropagation(); onEdit(rem); }}>
                           <Icon name="edit" size={15} /> Corregir
                         </button>
                       )}
@@ -138,7 +124,7 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
                         <button
                           type="button"
                           className={styles.secondaryBtn}
-                          onClick={() => onReactivar(rem)}
+                          onClick={(event) => { event.stopPropagation(); onReactivar(rem); }}
                           disabled={anulandoId === rem.id}
                           aria-label={`Reactivar remisión ${rem.numero}`}
                         >
@@ -149,7 +135,7 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
                         <button
                           type="button"
                           className={styles.deleteBtn}
-                          onClick={() => onAnular(rem)}
+                          onClick={(event) => { event.stopPropagation(); onAnular(rem); }}
                           disabled={anulandoId === rem.id}
                           aria-label={`Anular remisión ${rem.numero}`}
                         >
@@ -164,6 +150,6 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
           </table>
         </div>
       )}
-    </section>
+    </Panel>
   );
 }

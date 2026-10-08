@@ -19,9 +19,22 @@ export class UpdateCaseDto {
   @IsOptional()
   @Transform(trim)
   @IsString()
-  @IsNotEmpty({ message: 'El título no puede quedar vacío' })
-  @MaxLength(200)
-  titulo?: string;
+  @Matches(/^\d{1,20}$/, { message: 'La orden de trabajo debe contener solo números' })
+  codigo?: string;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @IsNotEmpty({ message: 'El nombre del doctor no puede quedar vacío' })
+  @MaxLength(150)
+  doctorNombre?: string;
+
+  @IsOptional()
+  @Transform(({ value }) => (value === '' ? null : typeof value === 'string' ? value.trim() : value))
+  @ValidateIf((_o, value) => value !== null)
+  @IsString()
+  @Matches(/^\d{1,30}$/, { message: 'El número de factura debe contener solo números' })
+  numeroFactura?: string | null;
 
   @IsOptional()
   @Transform(trim)

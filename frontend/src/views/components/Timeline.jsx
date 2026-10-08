@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import styles from '../dashboard.module.css';
-import { formatDateTime } from '../../utils/format.js';
+import { formatDateTime, formatEstimatedDate } from '../../utils/format.js';
 import { Icon } from './Icon.jsx';
 
 function dotFor(tipo = '') {
@@ -12,7 +12,7 @@ function dotFor(tipo = '') {
   return { cls: styles.dotResultado, icon: 'flask' };
 }
 
-export default function Timeline({ seguimientos, onOpenImage, onDeleteImage, busy = false }) {
+export default function Timeline({ seguimientos, onOpenImage, onEdit, editDisabled = false }) {
   const [newestFirst, setNewestFirst] = useState(false);
   const items = newestFirst ? [...seguimientos].reverse() : seguimientos;
 
@@ -20,11 +20,18 @@ export default function Timeline({ seguimientos, onOpenImage, onDeleteImage, bus
     <>
       <div className={styles.sectionHeader}>
         <h3 className={styles.sectionTitle}>Historial de trazabilidad ({seguimientos.length})</h3>
-        {seguimientos.length > 1 && (
-          <button type="button" className={styles.linkBtn} onClick={() => setNewestFirst((v) => !v)}>
-            {newestFirst ? 'Ver en orden cronológico' : 'Ver más recientes primero'}
-          </button>
-        )}
+        <div className={styles.sectionActions}>
+          {seguimientos.length > 1 && (
+            <button type="button" className={styles.linkBtn} onClick={() => setNewestFirst((v) => !v)}>
+              {newestFirst ? 'Ver en orden cronológico' : 'Ver más recientes primero'}
+            </button>
+          )}
+          {onEdit && seguimientos.length > 0 && (
+            <button type="button" className={styles.secondaryBtn} onClick={onEdit} disabled={editDisabled}>
+              <Icon name="edit" size={15} /> Editar historial
+            </button>
+          )}
+        </div>
       </div>
 
       <ol className={styles.timeline}>
@@ -41,34 +48,26 @@ export default function Timeline({ seguimientos, onOpenImage, onDeleteImage, bus
                   <time className={styles.timelineDate} dateTime={seg.creadoEn}>
                     {formatDateTime(seg.creadoEn)}
                   </time>
+                  {seg.fechaEntregaEstimada && (
+                    <span className={styles.timelineDelivery}>
+                      Entrega estimada: {formatEstimatedDate(seg.fechaEntregaEstimada)}
+                    </span>
+                  )}
                 </div>
                 <p className={styles.timelineText}>{seg.descripcion}</p>
 
                 {seg.imagenes?.length > 0 && (
                   <div className={styles.timelineImages}>
                     {seg.imagenes.map((img) => (
-                      <div key={img.id} className={styles.timelineImgWrap}>
-                        <button
-                          type="button"
-                          className={styles.timelineImgBtn}
-                          onClick={() => onOpenImage(img.urlImagen)}
-                          aria-label="Ampliar fotografía"
-                        >
-                          <img src={img.urlImagen} alt="Fotografía del seguimiento" loading="lazy" />
-                        </button>
-                        {onDeleteImage && (
-                          <button
-                            type="button"
-                            className={styles.timelineImgDelete}
-                            onClick={() => onDeleteImage(img.id)}
-                            disabled={busy}
-                            aria-label="Eliminar fotografía"
-                            title="Eliminar fotografía"
-                          >
-                            <Icon name="trash" size={13} />
-                          </button>
-                        )}
-                      </div>
+                      <button
+                        key={img.id}
+                        type="button"
+                        className={styles.timelineImgBtn}
+                        onClick={() => onOpenImage(img.urlImagen)}
+                        aria-label="Ampliar fotografía"
+                      >
+                        <img src={img.urlImagen} alt="Fotografía del seguimiento" loading="lazy" />
+                      </button>
                     ))}
                   </div>
                 )}

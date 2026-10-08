@@ -26,7 +26,15 @@ export class CuentasCobroService {
       where: { anulada: false, fecha: rango(anio, mes) },
       include: {
         items: true,
-        caso: { select: { codigo: true, pacienteNombre: true, cliente: { select: { id: true, nombre: true } } } },
+        caso: {
+          select: {
+            codigo: true,
+            pacienteNombre: true,
+            doctorNombre: true,
+            numeroFactura: true,
+            cliente: { select: { id: true, nombre: true } },
+          },
+        },
       },
       orderBy: { numero: 'asc' },
     });
@@ -53,17 +61,31 @@ export class CuentasCobroService {
       .sort((a, b) => a.cliente.localeCompare(b.cliente, 'es'));
   }
 
-  /** Marca (o desmarca) como pagadas todas las remisiones vigentes de un cliente en el mes */
-  async marcarCuenta(clienteId: number, anio: number, mes: number, pagada: boolean) {
+  /**
+   * Guarda el estado de pago de las remisiones vigentes de un cliente en el mes:
+   * las que vienen en `pagadas` quedan pagadas y todas las demás pendientes.
+   */
+  async guardarPagos(clienteId: number, anio: number, mes: number, pagadas: number[]) {
     validarPeriodo(anio, mes);
     const cliente = await this.prisma.cliente.findUnique({ where: { id: clienteId }, select: { id: true } });
     if (!cliente) throw new NotFoundException(`El cliente #${clienteId} no existe`);
-    const r = await this.prisma.remision.updateMany({
+    const vigentes = await this.prisma.remision.findMany({
       where: { anulada: false, fecha: rango(anio, mes), caso: { clienteId } },
-      data: { pagada, pagadaEn: pagada ? new Date() : null },
+      select: { id: true, pagada: true },
     });
-    if (r.count === 0) throw new BadRequestException('Ese cliente no tiene remisiones vigentes en el periodo');
-    return { remisiones: r.count, pagada };
+    if (vigentes.length === 0) throw new BadRequestException('Ese cliente no tiene remisiones vigentes en el periodo');
+    const validas = new Set(vigentes.map((r) => r.id));
+    if (pagadas.some((id) => !validas.has(id))) {
+      throw new BadRequestException('Hay remisiones que no pertenecen a esta cuenta de cobro');
+    }
+    const marcar = new Set(pagadas);
+    const aPagar = vigentes.filter((r) => marcar.has(r.id) && !r.pagada).map((r) => r.id);
+    const aPendiente = vigentes.filter((r) => !marcar.has(r.id) && r.pagada).map((r) => r.id);
+    await this.prisma.$transaction([
+      this.prisma.remision.updateMany({ where: { id: { in: aPagar } }, data: { pagada: true, pagadaEn: new Date() } }),
+      this.prisma.remision.updateMany({ where: { id: { in: aPendiente } }, data: { pagada: false, pagadaEn: null } }),
+    ]);
+    return { pagadas: marcar.size, pendientes: vigentes.length - marcar.size };
   }
 
   private linea(r: {
@@ -72,16 +94,25 @@ export class CuentasCobroService {
     fecha: Date;
     noOrden: string | null;
     pacienteNombre: string | null;
+    doctorNombre: string | null;
     pagada: boolean;
     pagadaEn: Date | null;
     items: { cantidad: number; valorUnitario: number }[];
-    caso: { pacienteNombre: string | null };
+    caso: {
+      pacienteNombre: string | null;
+      doctorNombre: string | null;
+      numeroFactura: string | null;
+      codigo: string;
+    };
   }) {
     return {
       id: r.id,
       numero: r.numero,
       fecha: r.fecha,
       noOrden: r.noOrden,
+      doctor: r.doctorNombre ?? r.caso.doctorNombre,
+      numeroFactura: r.caso.numeroFactura,
+      ordenTrabajo: r.caso.codigo,
       paciente: r.pacienteNombre ?? r.caso.pacienteNombre,
       total: r.items.reduce((acc, i) => acc + i.cantidad * i.valorUnitario, 0),
       pagada: r.pagada,

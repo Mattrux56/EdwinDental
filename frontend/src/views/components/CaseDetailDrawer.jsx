@@ -3,17 +3,20 @@ import styles from '../dashboard.module.css';
 import { formatDate, formatEstimatedDate, formatMoney } from '../../utils/format.js';
 import { remisionesService } from '../../services/remisiones.service.js';
 import RemisionDetailModal from './RemisionDetailModal.jsx';
-import { ConfirmModal } from './Modal.jsx';
+import { useEscape } from './Modal.jsx';
 import { Icon } from './Icon.jsx';
 import StatusBadge from './StatusBadge.jsx';
 import Timeline from './Timeline.jsx';
 import FollowUpForm from './FollowUpForm.jsx';
+import EditHistorialModal from './EditHistorialModal.jsx';
+import ImageViewer from './ImageViewer.jsx';
 
 export default function CaseDetailDrawer({
   caso,
   saving,
   onClose,
   onAddFollowUp,
+  onUpdateFollowUp,
   onEdit,
   onArchive,
   onDeleteImage,
@@ -21,21 +24,15 @@ export default function CaseDetailDrawer({
   blocked = false,
 }) {
   const [lightbox, setLightbox] = useState(null);
-  const [imagenABorrar, setImagenABorrar] = useState(null);
   const [remisiones, setRemisiones] = useState([]);
   const [remisionAbierta, setRemisionAbierta] = useState(null);
-  const subModalAbierto = Boolean(imagenABorrar || remisionAbierta);
+  const [editandoHistorial, setEditandoHistorial] = useState(false);
+  const subModalAbierto = Boolean(remisionAbierta || editandoHistorial);
 
-  // Escape cierra primero la imagen ampliada y luego el panel (los submodales manejan su propio Escape)
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key !== 'Escape' || subModalAbierto || blocked) return;
-      if (lightbox) setLightbox(null);
-      else onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [lightbox, onClose, subModalAbierto, blocked]);
+  // Escape cierra el panel solo si no hay otra ventana encima
+  useEscape(() => {
+    if (!subModalAbierto && !blocked && !lightbox) onClose();
+  });
 
   // Remisiones emitidas para este caso
   useEffect(() => {
@@ -55,7 +52,7 @@ export default function CaseDetailDrawer({
               <span>{caso.codigo}</span>
               <StatusBadge estado={caso.estado} />
             </div>
-            <h2 className={styles.drawerTitle}>{caso.titulo}</h2>
+            <h2 className={styles.drawerTitle}>Orden de trabajo {caso.codigo}</h2>
             {caso.archivado && <span className={styles.archivedTag}>Archivado</span>}
           </div>
           <button type="button" className={styles.iconBtn} onClick={onClose} aria-label="Cerrar">
@@ -83,14 +80,18 @@ export default function CaseDetailDrawer({
               <div className={styles.infoValue}>{caso.pacienteNombre || '—'}</div>
             </div>
             <div>
+              <div className={styles.infoLabel}>Doctor</div>
+              <div className={styles.infoValue}>{caso.doctorNombre || '—'}</div>
+            </div>
+            <div>
+              <div className={styles.infoLabel}>Factura</div>
+              <div className={styles.infoValue}>{caso.numeroFactura || '—'}</div>
+            </div>
+            <div>
               <div className={styles.infoLabel}>Ingresó el</div>
               <div className={styles.infoValue}>
                 {caso.fechaIngreso ? formatEstimatedDate(caso.fechaIngreso) : formatDate(caso.creadoEn)}
               </div>
-            </div>
-            <div>
-              <div className={styles.infoLabel}>Entrega estimada</div>
-              <div className={styles.infoValue}>{formatEstimatedDate(caso.fechaEntregaEstimada)}</div>
             </div>
           </div>
 
@@ -114,42 +115,30 @@ export default function CaseDetailDrawer({
 
           <Timeline
             seguimientos={caso.seguimientos ?? []}
+            onEdit={onUpdateFollowUp ? () => setEditandoHistorial(true) : undefined}
+            editDisabled={saving}
             onOpenImage={setLightbox}
-            onDeleteImage={(id) => setImagenABorrar(id)}
-            busy={saving}
           />
 
           <FollowUpForm key={caso.id} caso={caso} saving={saving} onSubmit={onAddFollowUp} />
         </div>
       </section>
 
-      {imagenABorrar && (
-        <ConfirmModal
-          title="Eliminar fotografía"
-          confirmLabel="Eliminar foto"
-          busyLabel="Eliminando…"
-          busy={saving}
-          onCancel={() => setImagenABorrar(null)}
-          onConfirm={async () => {
-            if (await onDeleteImage(imagenABorrar)) setImagenABorrar(null);
-          }}
-        >
-          <p>La foto se borra del historial y del almacenamiento. No se puede deshacer.</p>
-        </ConfirmModal>
+      {editandoHistorial && (
+        <EditHistorialModal
+          caso={caso}
+          saving={saving}
+          onClose={() => setEditandoHistorial(false)}
+          onSave={onUpdateFollowUp}
+          onDeleteImage={onDeleteImage}
+        />
       )}
 
       {remisionAbierta && (
         <RemisionDetailModal remision={remisionAbierta} onClose={() => setRemisionAbierta(null)} showToast={showToast} />
       )}
 
-      {lightbox && (
-        <div className={styles.lightbox} onClick={() => setLightbox(null)}>
-          <img className={styles.lightboxImg} src={lightbox} alt="Fotografía ampliada" />
-          <button type="button" className={styles.lightboxClose} onClick={() => setLightbox(null)} aria-label="Cerrar imagen">
-            <Icon name="close" size={20} />
-          </button>
-        </div>
-      )}
+      {lightbox && <ImageViewer src={lightbox} onClose={() => setLightbox(null)} />}
 
     </div>
   );

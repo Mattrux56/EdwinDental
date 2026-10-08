@@ -11,12 +11,12 @@ import { claveNombre } from '../clientes/nombre';
 import { SupabaseService } from '../supabase/supabase.service';
 import { CreateCaseDto } from './dto/create-case.dto';
 import { CreateSeguimientoDto } from './dto/create-seguimiento.dto';
+import { UpdateSeguimientoDto } from './dto/update-seguimiento.dto';
 import { UpdateCaseDto } from './dto/update-case.dto';
+import { ESTADO_POR_MOVIMIENTO } from './cases.constants';
 
 /** Días de anticipación con los que un caso aparece en Alertas */
 const ALERTA_DIAS = 3;
-
-const CODIGO_CARACTERES = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 /** YYYY-MM-DD + n días (sin depender de la zona horaria) */
 function addDays(fecha: string, dias: number): string {
@@ -43,7 +43,7 @@ export class CasesService {
 
   // ---------------------------------------------------------------- LECTURA
 
-  /** Búsqueda flexible e insensible a mayúsculas: código, título, paciente, cliente o ID */
+  /** Búsqueda flexible e insensible a mayúsculas: orden, doctor, paciente, cliente o ID */
   async findAll(search?: string, archivados = false) {
     const term = search?.trim();
     const where: Prisma.CasoWhereInput = { archivado: archivados };
@@ -51,7 +51,7 @@ export class CasesService {
     if (term) {
       const or: Prisma.CasoWhereInput[] = [
         { codigo: { contains: term, mode: 'insensitive' } },
-        { titulo: { contains: term, mode: 'insensitive' } },
+        { doctorNombre: { contains: term, mode: 'insensitive' } },
         { pacienteNombre: { contains: term, mode: 'insensitive' } },
         { cliente: { nombre: { contains: term, mode: 'insensitive' } } },
       ];
@@ -94,17 +94,19 @@ export class CasesService {
       where: { codigoPublico: codigo },
       select: {
         codigo: true,
-        titulo: true,
         estado: true,
         creadoEn: true,
         fechaIngreso: true,
         fechaEntregaEstimada: true,
+        doctorNombre: true,
+        numeroFactura: true,
         seguimientos: {
           orderBy: { creadoEn: 'asc' },
           select: {
             id: true,
             tipo: true,
             descripcion: true,
+            fechaEntregaEstimada: true,
             creadoEn: true,
             imagenes: {
               orderBy: { subidoEn: 'asc' },
@@ -125,11 +127,11 @@ export class CasesService {
         id: true,
         codigo: true,
         codigoPublico: true,
-        titulo: true,
+        doctorNombre: true,
+        numeroFactura: true,
         estado: true,
         creadoEn: true,
         fechaEntregaEstimada: true,
-        precio: true,
         cliente: { select: { nombre: true } },
       },
     });
@@ -182,7 +184,6 @@ export class CasesService {
       select: {
         id: true,
         codigo: true,
-        titulo: true,
         estado: true,
         pacienteNombre: true,
         fechaEntregaEstimada: true,
@@ -204,48 +205,53 @@ export class CasesService {
   // -------------------------------------------------------------- ESCRITURA
 
   async create(dto: CreateCaseDto, files: Express.Multer.File[] = []) {
+    const codigoExistente = await this.prisma.caso.findUnique({
+      where: { codigo: dto.codigo.trim() },
+      select: { id: true },
+    });
+    if (codigoExistente) throw new BadRequestException(`La orden de trabajo ${dto.codigo} ya existe`);
+
     // 1) Fotos primero: si falla la subida no se crea nada en la base de datos
     const urls = await this.uploadFiles(files, `casos/${new Date().getFullYear()}`);
 
-    // 2) Creación atómica (cliente + caso + primer seguimiento + imágenes)
-    //    con reintento si dos usuarios generan el mismo código a la vez.
-    for (let attempt = 0; attempt < 5; attempt++) {
-      const codigo = await this.nextCodigo();
-      try {
-        return await this.prisma.caso.create({
-          data: {
-            codigo,
-            codigoPublico: randomBytes(6).toString('hex'),
-            titulo: dto.titulo.trim(),
-            pacienteNombre: dto.pacienteNombre.trim(),
-            estado: 'En laboratorio',
-            fechaIngreso: dateOnlyToUtc(dto.fechaIngreso ?? todayLocal()),
-            ...(dto.fechaEntregaEstimada
-              ? { fechaEntregaEstimada: dateOnlyToUtc(dto.fechaEntregaEstimada) }
-              : {}),
-            cliente: await this.buildClienteRelation(dto),
-            seguimientos: {
-              create: {
-                tipo: 'prueba',
-                    descripcion: dto.descripcion.trim(),
-                imagenes: { create: urls.map((urlImagen) => ({ urlImagen })) },
-              },
+    // 2) Creación atómica (cliente + caso + primer seguimiento + imágenes).
+    try {
+      return await this.prisma.caso.create({
+        data: {
+          codigo: dto.codigo.trim(),
+          codigoPublico: randomBytes(6).toString('hex'),
+          pacienteNombre: dto.pacienteNombre.trim(),
+          doctorNombre: dto.doctorNombre.trim(),
+          numeroFactura: dto.numeroFactura?.trim() || null,
+          estado: 'En laboratorio',
+          fechaIngreso: dateOnlyToUtc(dto.fechaIngreso ?? todayLocal()),
+          ...(dto.fechaEntregaEstimada
+            ? { fechaEntregaEstimada: dateOnlyToUtc(dto.fechaEntregaEstimada) }
+            : {}),
+          cliente: await this.buildClienteRelation(dto),
+          seguimientos: {
+            create: {
+              tipo: 'Ingreso inicial',
+              descripcion: dto.descripcion.trim(),
+              ...(dto.fechaEntregaEstimada
+                ? { fechaEntregaEstimada: dateOnlyToUtc(dto.fechaEntregaEstimada) }
+                : {}),
+              imagenes: { create: urls.map((urlImagen) => ({ urlImagen })) },
             },
           },
-          include: CASO_INCLUDE,
-        });
-      } catch (e) {
-        const codigoDuplicado =
-          e instanceof Prisma.PrismaClientKnownRequestError &&
-          e.code === 'P2002' &&
-          /codigo/i.test(String(e.meta?.target)); // también cubre codigoPublico
-        if (codigoDuplicado) continue; // recalcular y reintentar
-        throw e;
+        },
+        include: CASO_INCLUDE,
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002' &&
+        /(^|[^a-z])codigo([^a-z]|$)/i.test(String(error.meta?.target))
+      ) {
+        throw new BadRequestException(`La orden de trabajo ${dto.codigo} ya existe`);
       }
+      throw error;
     }
-    throw new BadRequestException(
-      'No fue posible generar un código único para el caso. Intenta de nuevo.',
-    );
   }
 
   async remove(id: number) {
@@ -279,7 +285,9 @@ export class CasesService {
   async update(id: number, dto: UpdateCaseDto) {
     await this.ensureExists(id);
     const data: Prisma.CasoUpdateInput = {};
-    if (dto.titulo !== undefined) data.titulo = dto.titulo.trim();
+    if (dto.codigo !== undefined) data.codigo = dto.codigo.trim();
+    if (dto.doctorNombre !== undefined) data.doctorNombre = dto.doctorNombre.trim();
+    if (dto.numeroFactura !== undefined) data.numeroFactura = dto.numeroFactura?.trim() || null;
     if (dto.pacienteNombre !== undefined) data.pacienteNombre = dto.pacienteNombre.trim();
     if (dto.fechaIngreso !== undefined) data.fechaIngreso = dateOnlyToUtc(dto.fechaIngreso);
     if (dto.fechaEntregaEstimada !== undefined) {
@@ -295,7 +303,18 @@ export class CasesService {
       data.cliente = await this.clientePorNombre(nombre);
     }
     if (Object.keys(data).length === 0) throw new BadRequestException('Indica al menos un dato para actualizar');
-    await this.prisma.caso.update({ where: { id }, data });
+    try {
+      await this.prisma.caso.update({ where: { id }, data });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002' &&
+        /(^|[^a-z])codigo([^a-z]|$)/i.test(String(error.meta?.target))
+      ) {
+        throw new BadRequestException(`La orden de trabajo ${dto.codigo} ya existe`);
+      }
+      throw error;
+    }
     return this.findOne(id);
   }
 
@@ -317,24 +336,83 @@ export class CasesService {
     files: Express.Multer.File[] = [],
   ) {
     await this.ensureExists(casoId);
+    if (ESTADO_POR_MOVIMIENTO[dto.tipo] !== dto.estado) {
+      throw new BadRequestException('El movimiento y el estado seleccionado no coinciden');
+    }
     const urls = await this.uploadFiles(files, `casos/${casoId}`);
-
-    const nuevoEstado = dto.estado?.trim();
+    const nuevoEstado = dto.estado.trim();
+    const fechaEntrega = dto.fechaEntregaEstimada
+      ? dateOnlyToUtc(dto.fechaEntregaEstimada)
+      : undefined;
 
     await this.prisma.caso.update({
       where: { id: casoId },
       data: {
         ...(nuevoEstado ? { estado: nuevoEstado } : {}),
+        fechaEntregaEstimada: fechaEntrega ?? null,
         seguimientos: {
           create: {
-            tipo: dto.tipo?.trim() || 'reingreso',
+            tipo: dto.tipo.trim(),
             descripcion: dto.descripcion.trim(),
+            ...(fechaEntrega ? { fechaEntregaEstimada: fechaEntrega } : {}),
             imagenes: { create: urls.map((urlImagen) => ({ urlImagen })) },
           },
         },
       },
     });
 
+    return this.findOne(casoId);
+  }
+
+  /**
+   * Edita un seguimiento del historial (tipo, descripción, fecha de entrega y fotos nuevas).
+   * El estado y la fecha vigente del caso siguen siempre al seguimiento más reciente.
+   */
+  async updateSeguimiento(
+    casoId: number,
+    seguimientoId: number,
+    dto: UpdateSeguimientoDto,
+    files: Express.Multer.File[] = [],
+  ) {
+    await this.ensureExists(casoId);
+    const seg = await this.prisma.seguimiento.findFirst({
+      where: { id: seguimientoId, casoId },
+      select: { id: true, tipo: true },
+    });
+    if (!seg) throw new NotFoundException(`El seguimiento #${seguimientoId} no existe en este caso`);
+    const esIngreso = seg.tipo.toLocaleLowerCase('es') === 'ingreso inicial';
+    if (dto.tipo !== undefined && esIngreso) {
+      throw new BadRequestException('El ingreso inicial no cambia de tipo; edita su descripción o su fecha');
+    }
+    const data: Prisma.SeguimientoUpdateInput = {};
+    if (dto.tipo !== undefined) data.tipo = dto.tipo;
+    if (dto.descripcion !== undefined) data.descripcion = dto.descripcion.trim();
+    if (dto.fechaEntregaEstimada !== undefined) {
+      data.fechaEntregaEstimada = dto.fechaEntregaEstimada ? dateOnlyToUtc(dto.fechaEntregaEstimada) : null;
+    }
+    const urls = await this.uploadFiles(files, `casos/${casoId}`);
+    if (Object.keys(data).length === 0 && urls.length === 0) {
+      throw new BadRequestException('Indica al menos un dato para actualizar');
+    }
+    if (urls.length > 0) data.imagenes = { create: urls.map((urlImagen) => ({ urlImagen })) };
+    await this.prisma.seguimiento.update({ where: { id: seguimientoId }, data });
+
+    // El caso refleja el seguimiento más reciente: su estado y su entrega estimada
+    const ultimo = await this.prisma.seguimiento.findFirst({
+      where: { casoId },
+      orderBy: [{ creadoEn: 'desc' }, { id: 'desc' }],
+      select: { tipo: true, fechaEntregaEstimada: true },
+    });
+    if (ultimo) {
+      const tipo = ultimo.tipo.toLocaleLowerCase('es');
+      const estado = tipo === 'ingreso inicial'
+        ? 'En laboratorio'
+        : ESTADO_POR_MOVIMIENTO[tipo as keyof typeof ESTADO_POR_MOVIMIENTO];
+      await this.prisma.caso.update({
+        where: { id: casoId },
+        data: { ...(estado ? { estado } : {}), fechaEntregaEstimada: ultimo.fechaEntregaEstimada ?? null },
+      });
+    }
     return this.findOne(casoId);
   }
 
@@ -364,15 +442,6 @@ export class CasesService {
     const existentes = await this.prisma.cliente.findMany({ select: { id: true, nombre: true } });
     const igual = existentes.find((c) => claveNombre(c.nombre) === clave);
     return igual ? { connect: { id: igual.id } } : { create: { nombre } };
-  }
-
-  /** Código del caso: CASO-2026-A7K3Q (año + 5 letras y números sin caracteres confusos como O/0 o I/1) */
-  private async nextCodigo(): Promise<string> {
-    const prefix = `CASO-${new Date().getFullYear()}-`;
-    const bytes = randomBytes(5);
-    let sufijo = '';
-    for (const b of bytes) sufijo += CODIGO_CARACTERES[b % CODIGO_CARACTERES.length];
-    return `${prefix}${sufijo}`; // si ya existe, create() reintenta con otro
   }
 
   private async ensureExists(id: number) {

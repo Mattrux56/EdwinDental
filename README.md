@@ -24,8 +24,7 @@ create policy "casos-fotos: borrar" on storage.objects
 ```
 
 3. Crea las tablas ejecutando el SQL en **SQL Editor** de Supabase:
-   - Base **nueva**: `backend/prisma/base-de-datos-completa.sql` (tablas, índices, bucket, permisos y lista de precios).
-   - Base **ya existente** (viene de una versión anterior): `backend/prisma/mejoras.sql`. Es seguro ejecutarlo más de una vez.
+   - Base **ya existente**: pega una sola vez el contenido de `backend/prisma/actualizar-base-de-datos.sql` en Supabase → SQL Editor → Run. Es seguro ejecutarlo más de una vez y conserva los datos.
    - Alternativa para desarrolladores: `npm run db:push`.
 4. Administra el catálogo desde la opción **Productos** de la aplicación. El catálogo se almacena en la tabla `Producto`.
 
@@ -46,7 +45,7 @@ Requisito: Node.js 18 o superior.
 | Resumen / Panel de casos | Casos en tarjetas; editar, archivar/restaurar, fotos, remisiones del caso. **Respaldo en Excel** en el Resumen. |
 | Alertas de entrega | Casos sin finalizar vencidos, para hoy o que vencen en 3 días (con contador en el menú). |
 | Remisiones | Crear, ver el detalle, **corregir** (mismo número) y anular. |
-| Cuentas de cobro | Total del mes por cliente (sin remisiones anuladas). El pago se marca por remisión o con «Marcar todas pagadas». |
+| Cuentas de cobro | Total del mes por cliente (sin remisiones anuladas). Al abrir un cliente se ven sus remisiones: se marca cuáles están pagadas y se guarda con «Confirmar remisiones». Hay filtros por mes, cliente y estado de pago. |
 | Clientes | Crear, editar, eliminar (si no tiene casos) y aviso de «posible duplicado». Un caso nuevo con el nombre de un cliente existente reutiliza ese cliente. |
 | Productos | Lista de precios con categorías, **Exportar** e **Importar** Excel (Código, Categoría, Descripción, Valor). |
 
@@ -64,7 +63,7 @@ La aplicación es de un solo usuario (el dueño): no hay inicio de sesión. La c
 | DELETE | `/api/cases/imagenes/:id` | Elimina una foto (registro y archivo) |
 | GET/POST/PATCH/DELETE | `/api/clientes` | Gestión de clientes |
 | PATCH | `/api/remisiones/:id` | Corrige una remisión sin cambiar su número |
-| GET | `/api/cuentas-cobro?anio=&mes=` | Cuentas por cliente · PATCH `/:clienteId/:anio/:mes/pago` (todas las remisiones) · PATCH `/api/remisiones/:id/pago` (una) |
+| GET | `/api/cuentas-cobro?anio=&mes=` | Cuentas por cliente · PATCH `/:clienteId/:anio/:mes/pagos` con `{ pagadas: [ids] }` (guarda cuáles remisiones del mes quedan pagadas) |
 | GET | `/api/productos/exportar` · POST `/api/productos/importar` | Lista de precios en Excel |
 | GET | `/api/respaldo/excel` | Respaldo completo en Excel |
 | GET | `/api/cases?search=texto&archivados=1` | Busca por código, título, cliente o ID (los archivados solo con `archivados=1`) |
@@ -73,8 +72,9 @@ La aplicación es de un solo usuario (el dueño): no hay inicio de sesión. La c
 | GET | `/api/cases/publico/:codigo` | Consulta pública de trazabilidad. El `codigo` es el **código público aleatorio** del caso (no el `CASO-2026-001`) |
 | GET | `/api/cases/:id/ticket` | Datos de caso y cliente para comprobante |
 | GET | `/api/cases/:id` | Caso con su línea de tiempo |
-| POST | `/api/cases` | `multipart/form-data`: `clienteId?` o `clienteNombre`, `titulo`, `descripcion`, `fechaEntregaEstimada?`, `precio?`, `fotos[]?` |
+| POST | `/api/cases` | `multipart/form-data`: `codigo`, `clienteId?` o `clienteNombre`, `pacienteNombre`, `doctorNombre`, `numeroFactura?`, `descripcion`, `fechaEntregaEstimada?`, `fotos[]?` |
 | POST | `/api/cases/:id/seguimiento` | `multipart/form-data`: `descripcion`, `tipo?`, `estado?`, `fotos[]?` |
+| PATCH | `/api/cases/:id/seguimiento/:seguimientoId` | `multipart/form-data`: `tipo?`, `descripcion?`, `fechaEntregaEstimada?` (vacía la quita), `fotos[]?` (se suman). El caso toma el estado y la entrega del seguimiento más reciente |
 | DELETE | `/api/cases/:id` | Elimina el caso y sus seguimientos e imágenes asociados en la base de datos |
 | GET | `/api/productos` | Lista de precios activa (código, categoría, descripción, valor) |
 | GET | `/api/productos/admin` | Catálogo completo, incluidos los productos inactivos |
@@ -87,7 +87,7 @@ La aplicación es de un solo usuario (el dueño): no hay inicio de sesión. La c
 | GET | `/api/remisiones/:id/excel` | Descarga la remisión en Excel con el formato del laboratorio |
 | PATCH | `/api/remisiones/:id/anular` | Anula la remisión sin liberar su número |
 
-Los casos se consultan desde el navegador en `/consulta/:codigoPublico`. Los códigos de caso nuevos tienen el formato `CASO-2026-A7K3Q` (año + 5 letras y números). La tabla `Cliente` existente ya guarda los clientes vinculados a sus casos; el formulario permite seleccionar uno previo o registrar uno nuevo, por lo que no es necesario borrar el campo de documento histórico ni cambiar la estructura de la base. El resumen muestra los últimos tres casos y el Panel de casos ofrece búsqueda, filtro por fecha, página de 9/18/36 casos y eliminación confirmada. El esquema también contiene `fechaEntregaEstimada` y `precio` en `Caso`; aplica cualquier cambio de esquema con `npm run db:push` desde la raíz.
+Los casos se consultan desde el navegador en `/consulta/:codigoPublico`. Los códigos de caso nuevos tienen el formato `CASO-2026-A7K3Q` (año + 5 letras y números). La tabla `Cliente` existente ya guarda los clientes vinculados a sus casos; el formulario permite seleccionar uno previo o registrar uno nuevo, por lo que no es necesario borrar el campo de documento histórico ni cambiar la estructura de la base. El resumen muestra los últimos tres casos y el Panel de casos ofrece búsqueda, filtro por fecha, página de 9/18/36 casos y eliminación confirmada. El esquema también contiene `fechaEntregaEstimada` en `Caso`; aplica cualquier cambio de esquema con `npm run db:push` desde la raíz.
 
 Al iniciar con `LabTrace.bat`, el lanzador local monitorea las pestañas abiertas mediante heartbeats. Si el navegador se cierra sin enviar el evento de cierre, el servidor espera a que venza la señal (75 segundos) y después se apaga. Si no se abre ninguna página, el lanzador se apaga después de dos minutos.
 

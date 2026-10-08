@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { downloadRemisionExcel, remisionesService } from '../services/remisiones.service.js';
+import { imprimirRemision, remisionesService } from '../services/remisiones.service.js';
 
 export function useRemisionesController({ showToast }) {
   const [remisiones, setRemisiones] = useState([]);
@@ -31,14 +31,20 @@ export function useRemisionesController({ showToast }) {
     load();
   }, [load]);
 
-  /** Crea la remisión y descarga su Excel de inmediato */
+  /** Abre «Guardar como» con el Excel de la remisión recién emitida o corregida */
+  const guardarCopia = useCallback(
+    (remision) => imprimirRemision(remision.id, remision.numero).catch((e) => showToast('error', e.message)),
+    [showToast],
+  );
+
+  /** Crea la remisión y pide dónde guardar su Excel */
   const createRemision = useCallback(
     async (payload) => {
       setSaving(true);
       try {
         const created = await remisionesService.create(payload);
-        showToast('success', `Remisión N° ${created.numero} creada. Descargando Excel…`);
-        downloadRemisionExcel(created.id, created.numero).catch((e) => showToast('error', e.message));
+        showToast('success', `Remisión N° ${created.numero} creada`);
+        guardarCopia(created);
         await load();
         return created;
       } catch (e) {
@@ -48,16 +54,17 @@ export function useRemisionesController({ showToast }) {
         setSaving(false);
       }
     },
-    [load, showToast],
+    [guardarCopia, load, showToast],
   );
 
-  /** Corrige la remisión (sin cambiar su número) y descarga el Excel actualizado */
+  /** Corrige la remisión (sin cambiar su número) y pide dónde guardar el Excel actualizado */
   const updateRemision = useCallback(
     async (id, payload) => {
       setSaving(true);
       try {
         const updated = await remisionesService.update(id, payload);
         showToast('success', `Remisión N° ${updated.numero} actualizada`);
+        guardarCopia(updated);
         await load();
         return updated;
       } catch (e) {
@@ -67,7 +74,7 @@ export function useRemisionesController({ showToast }) {
         setSaving(false);
       }
     },
-    [load, showToast],
+    [guardarCopia, load, showToast],
   );
 
   const anularRemision = useCallback(

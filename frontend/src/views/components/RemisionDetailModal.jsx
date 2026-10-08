@@ -1,26 +1,12 @@
-import { useState } from 'react';
 import styles from '../dashboard.module.css';
 import r from '../remisiones.module.css';
 import { formatDateTime, formatEstimatedDate, formatMoney } from '../../utils/format.js';
-import { downloadRemisionExcel } from '../../services/remisiones.service.js';
 import { Icon } from './Icon.jsx';
 import Modal from './Modal.jsx';
+import PrintRemisionButton from './PrintRemisionButton.jsx';
 
 /** Detalle de una remisión: encabezado, líneas con cantidades y precios, total. Editar/anular solo si se pasan los callbacks. */
 export default function RemisionDetailModal({ remision, onClose, onEdit, onAnular, onReactivar, reactivando, showToast }) {
-  const [descargando, setDescargando] = useState(false);
-
-  const descargar = async () => {
-    setDescargando(true);
-    try {
-      await downloadRemisionExcel(remision.id, remision.numero);
-    } catch (reason) {
-      showToast?.('error', reason.message);
-    } finally {
-      setDescargando(false);
-    }
-  };
-
   const doctor = remision.doctorNombre ?? remision.caso?.cliente?.nombre;
   const paciente = remision.pacienteNombre ?? remision.caso?.pacienteNombre;
 
@@ -33,7 +19,8 @@ export default function RemisionDetailModal({ remision, onClose, onEdit, onAnula
     >
       <div className={styles.infoGrid}>
         <div><div className={styles.infoLabel}>Fecha</div><div className={styles.infoValue}>{formatEstimatedDate(remision.fecha)}</div></div>
-        <div><div className={styles.infoLabel}>Caso</div><div className={styles.infoValue}>{remision.caso?.codigo} · {remision.caso?.titulo}</div></div>
+        <div><div className={styles.infoLabel}>Orden de trabajo</div><div className={styles.infoValue}>{remision.caso?.codigo}</div></div>
+        <div><div className={styles.infoLabel}>Número de factura</div><div className={styles.infoValue}>{remision.caso?.numeroFactura || '—'}</div></div>
         <div><div className={styles.infoLabel}>Doctor(a) / clínica</div><div className={styles.infoValue}>{doctor || '—'}</div></div>
         <div><div className={styles.infoLabel}>Paciente</div><div className={styles.infoValue}>{paciente || '—'}</div></div>
         <div><div className={styles.infoLabel}>No. de orden</div><div className={styles.infoValue}>{remision.noOrden || '—'}</div></div>
@@ -79,9 +66,7 @@ export default function RemisionDetailModal({ remision, onClose, onEdit, onAnula
         {onEdit && !remision.anulada && (
           <button type="button" className={styles.secondaryBtn} onClick={() => onEdit(remision)}><Icon name="edit" size={15} /> Corregir</button>
         )}
-        <button type="button" className={styles.primaryBtn} onClick={descargar} disabled={descargando}>
-          <Icon name="download" size={16} /> {descargando ? 'Descargando…' : 'Descargar Excel'}
-        </button>
+        <PrintRemisionButton remision={remision} showToast={showToast} className={styles.primaryBtn} iconSize={16} busyLabel="Guardando…" />
       </div>
     </Modal>
   );

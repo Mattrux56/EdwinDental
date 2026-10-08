@@ -91,11 +91,11 @@ export const casesService = {
   },
 
   /** POST /cases */
-  create({ clienteId, clienteNombre, pacienteNombre, titulo, descripcion, fechaIngreso, fechaEntregaEstimada, fotos }) {
+  create({ codigo, clienteId, clienteNombre, pacienteNombre, doctorNombre, numeroFactura, descripcion, fechaIngreso, fechaEntregaEstimada, fotos }) {
     return request('/cases', {
       method: 'POST',
       body: buildFormData(
-        { clienteId, clienteNombre, pacienteNombre, titulo, descripcion, fechaIngreso, fechaEntregaEstimada },
+        { codigo, clienteId, clienteNombre, pacienteNombre, doctorNombre, numeroFactura, descripcion, fechaIngreso, fechaEntregaEstimada },
         fotos,
       ),
     });
@@ -116,11 +116,21 @@ export const casesService = {
     return request(`/cases/publico/${encodeURIComponent(codigo)}`);
   },
 
+  /** PATCH /cases/:id/seguimiento/:seguimientoId (la fecha vacía la quita; las fotos se agregan a las existentes) */
+  updateFollowUp(casoId, seguimientoId, { tipo, descripcion, fechaEntregaEstimada, fotos = [] }) {
+    const fd = new FormData();
+    if (tipo) fd.append('tipo', tipo);
+    fd.append('descripcion', descripcion.trim());
+    fd.append('fechaEntregaEstimada', fechaEntregaEstimada ?? '');
+    fotos.forEach((file) => fd.append('fotos', file));
+    return request(`/cases/${casoId}/seguimiento/${seguimientoId}`, { method: 'PATCH', body: fd });
+  },
+
   /** POST /cases/:id/seguimiento */
-  addFollowUp(id, { tipo, descripcion, estado, fotos }) {
+  addFollowUp(id, { tipo, descripcion, estado, fechaEntregaEstimada, fotos }) {
     return request(`/cases/${id}/seguimiento`, {
       method: 'POST',
-      body: buildFormData({ tipo, descripcion, estado }, fotos),
+      body: buildFormData({ tipo, descripcion, estado, fechaEntregaEstimada }, fotos),
     });
   },
 };

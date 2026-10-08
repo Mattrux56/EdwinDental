@@ -4,8 +4,8 @@ import { clientesService } from '../services/clientes.service.js';
 import { clientesParecidos, idsDuplicados } from '../utils/clientes.js';
 import { Icon } from './components/Icon.jsx';
 import Modal, { ConfirmModal } from './components/Modal.jsx';
-
-const norm = (t) => String(t ?? '').toLocaleLowerCase('es').normalize('NFD').replace(/[̀-ͯ]/g, '');
+import { EmptyState, ErrorBanner, LoadingState, PageHeader, Panel, SearchField } from './components/ui.jsx';
+import { normalizeSearchText } from '../utils/search.js';
 
 function ClienteForm({ cliente, clientes, saving, onSubmit, onCancel }) {
   const [nombre, setNombre] = useState(cliente?.nombre ?? '');
@@ -65,10 +65,10 @@ export default function ClientesView({ showToast, onChanged }) {
   const filtrarDuplicados = soloDuplicados && duplicados.size > 0;
 
   const filtered = useMemo(() => {
-    const term = norm(query.trim());
+    const term = normalizeSearchText(query.trim());
     return clientes.filter((c) =>
       (!filtrarDuplicados || duplicados.has(c.id)) &&
-      (!term || norm(c.nombre).includes(term)),
+      (!term || normalizeSearchText(c.nombre).includes(term)),
     );
   }, [clientes, duplicados, query, filtrarDuplicados]);
 
@@ -96,28 +96,15 @@ export default function ClientesView({ showToast, onChanged }) {
 
   return (
     <>
-      <header className={styles.appHeader}>
-        <div>
-          <h1 className={styles.pageTitle}>Clientes</h1>
-          <p className={styles.pageSubtitle}>Doctores y clínicas. Corrige los nombres y revisa los repetidos.</p>
-        </div>
+      <PageHeader title="Clientes" subtitle="Doctores y clínicas. Corrige los nombres y revisa los repetidos.">
         <button type="button" className={styles.primaryBtn} onClick={() => setModal({ tipo: 'form', cliente: null })}>
           <Icon name="plus" size={16} /> Nuevo cliente
         </button>
-      </header>
+      </PageHeader>
 
-      <section className={`${styles.panel} ${styles.panelFill}`}>
-        <div className={styles.panelHeader}>
-          <h2 className={styles.panelTitle}>Listado de clientes</h2>
-          <span className={styles.panelMeta}>
-            {loading ? 'Cargando…' : `${filtered.length} ${filtered.length === 1 ? 'cliente' : 'clientes'}`}
-          </span>
-        </div>
+      <Panel title="Listado de clientes" meta={loading ? 'Cargando…' : `${filtered.length} ${filtered.length === 1 ? 'cliente' : 'clientes'}`}>
         <div className={styles.caseToolbar}>
-          <label className={styles.caseSearch}>
-            <Icon name="search" size={17} />
-            <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por nombre" aria-label="Buscar clientes" />
-          </label>
+          <SearchField value={query} onChange={setQuery} placeholder="Buscar por nombre" label="Buscar clientes" />
           {duplicados.size > 0 && (
             <button
               type="button"
@@ -130,18 +117,12 @@ export default function ClientesView({ showToast, onChanged }) {
           )}
         </div>
 
-        {error && (
-          <div className={styles.errorBanner} role="alert">
-            <span>{error}</span>
-            <button type="button" className={styles.secondaryBtn} onClick={load}><Icon name="refresh" size={16} /> Reintentar</button>
-          </div>
-        )}
-        {loading && clientes.length === 0 && !error && <div className={styles.loadingState}><span className={styles.spinner} /> Cargando clientes…</div>}
+        {error && <ErrorBanner onRetry={load}>{error}</ErrorBanner>}
+        {loading && clientes.length === 0 && !error && <LoadingState>Cargando clientes…</LoadingState>}
         {!loading && !error && filtered.length === 0 && (
-          <div className={styles.emptyState}>
-            <p className={styles.emptyTitle}>{clientes.length ? 'No hay coincidencias' : 'Aún no hay clientes'}</p>
-            <span>{clientes.length ? 'Prueba otra búsqueda.' : 'Se crean al registrar un caso o con “Nuevo cliente”.'}</span>
-          </div>
+          <EmptyState title={clientes.length ? 'No hay coincidencias' : 'Aún no hay clientes'}>
+            {clientes.length ? 'Prueba otra búsqueda.' : 'Se crean al registrar un caso o con “Nuevo cliente”.'}
+          </EmptyState>
         )}
 
         {filtered.length > 0 && (
@@ -184,7 +165,7 @@ export default function ClientesView({ showToast, onChanged }) {
             </table>
           </div>
         )}
-      </section>
+      </Panel>
 
       {modal?.tipo === 'form' && (
         <Modal title={modal.cliente ? 'Editar cliente' : 'Nuevo cliente'} onClose={() => setModal(null)} busy={saving}>

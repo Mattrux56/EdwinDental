@@ -15,6 +15,11 @@ const trim = ({ value }: { value: unknown }) => (typeof value === 'string' ? val
 const SOLO_FECHA = /^\d{4}-\d{2}-\d{2}$/;
 
 export class CreateCaseDto {
+  @Transform(trim)
+  @IsString()
+  @Matches(/^\d{1,20}$/, { message: 'La orden de trabajo debe contener solo números' })
+  codigo!: string;
+
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -37,9 +42,15 @@ export class CreateCaseDto {
 
   @Transform(trim)
   @IsString()
-  @IsNotEmpty()
-  @MaxLength(200)
-  titulo!: string;
+  @IsNotEmpty({ message: 'El nombre del doctor es obligatorio' })
+  @MaxLength(150)
+  doctorNombre!: string;
+
+  @IsOptional()
+  @Transform(trim)
+  @IsString()
+  @Matches(/^\d{1,30}$/, { message: 'El número de factura debe contener solo números' })
+  numeroFactura?: string;
 
   @Transform(trim)
   @IsString()
