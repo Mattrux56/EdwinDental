@@ -111,3 +111,6 @@ LabTrace.bat · scripts/start.mjs   Lanzador local
 backend/src/{cases,clientes,remisiones,cuentas-cobro,productos,respaldo,prisma,supabase} API
 frontend/src/{services,controllers,views}   Servicio → controlador (hook) → vista
 ```
+
+## Instalacion
+Ver `INSTRUCCIONES.md`.
