@@ -198,7 +198,7 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
   const productosPorId = useMemo(() => new Map(productos.map((p) => [p.id, p])), [productos]);
 
   const grupos = useMemo(() => {
-    const term = normalize(query.trim());
+    const term = normalizeSearchText(query.trim());
     // Si lo escrito son solo números se busca por código (que empiece así) o en la descripción
     const soloNumeros = /^\d+$/.test(term);
     const coincide = (p) =>
