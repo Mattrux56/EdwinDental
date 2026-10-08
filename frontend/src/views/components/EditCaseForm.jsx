@@ -13,7 +13,6 @@ export default function EditCaseForm({ caso, saving, onSubmit, onCancel }) {
   const [form, setForm] = useState({
     codigo: caso.codigo ?? '',
     doctorNombre: caso.doctorNombre ?? '',
-    numeroFactura: caso.numeroFactura ?? '',
     pacienteNombre: caso.pacienteNombre ?? '',
     fechaIngreso: dateOnly(caso.fechaIngreso ?? caso.creadoEn),
   });
@@ -35,7 +34,6 @@ export default function EditCaseForm({ caso, saving, onSubmit, onCancel }) {
     const payload = {
       codigo: form.codigo,
       doctorNombre: form.doctorNombre,
-      numeroFactura: form.numeroFactura || null,
       pacienteNombre: form.pacienteNombre,
       fechaIngreso: form.fechaIngreso,
     };
@@ -66,10 +64,6 @@ export default function EditCaseForm({ caso, saving, onSubmit, onCancel }) {
         <div className={styles.field}>
           <label className={styles.label} htmlFor="ec-doctor">Nombre del doctor <span className={styles.required}>*</span></label>
           <input id="ec-doctor" className={styles.input} value={form.doctorNombre} onChange={set('doctorNombre')} required maxLength={150} />
-        </div>
-        <div className={styles.field}>
-          <label className={styles.label} htmlFor="ec-factura">Número de factura</label>
-          <input id="ec-factura" className={styles.input} value={form.numeroFactura} onChange={(event) => setForm((prev) => ({ ...prev, numeroFactura: event.target.value.replace(/\D/g, '').slice(0, 30) }))} maxLength={30} pattern="[0-9]*" inputMode="numeric" />
         </div>
         {nuevo && (
           <div className={`${styles.field} ${styles.fieldFull}`}>

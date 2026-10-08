@@ -99,7 +99,6 @@ export class CasesService {
         fechaIngreso: true,
         fechaEntregaEstimada: true,
         doctorNombre: true,
-        numeroFactura: true,
         seguimientos: {
           orderBy: { creadoEn: 'asc' },
           select: {
@@ -128,7 +127,6 @@ export class CasesService {
         codigo: true,
         codigoPublico: true,
         doctorNombre: true,
-        numeroFactura: true,
         estado: true,
         creadoEn: true,
         fechaEntregaEstimada: true,
@@ -222,7 +220,6 @@ export class CasesService {
           codigoPublico: randomBytes(6).toString('hex'),
           pacienteNombre: dto.pacienteNombre.trim(),
           doctorNombre: dto.doctorNombre.trim(),
-          numeroFactura: dto.numeroFactura?.trim() || null,
           estado: 'En laboratorio',
           fechaIngreso: dateOnlyToUtc(dto.fechaIngreso ?? todayLocal()),
           ...(dto.fechaEntregaEstimada
@@ -287,7 +284,6 @@ export class CasesService {
     const data: Prisma.CasoUpdateInput = {};
     if (dto.codigo !== undefined) data.codigo = dto.codigo.trim();
     if (dto.doctorNombre !== undefined) data.doctorNombre = dto.doctorNombre.trim();
-    if (dto.numeroFactura !== undefined) data.numeroFactura = dto.numeroFactura?.trim() || null;
     if (dto.pacienteNombre !== undefined) data.pacienteNombre = dto.pacienteNombre.trim();
     if (dto.fechaIngreso !== undefined) data.fechaIngreso = dateOnlyToUtc(dto.fechaIngreso);
     if (dto.fechaEntregaEstimada !== undefined) {

@@ -3,6 +3,7 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
+  IsEnum,
   IsInt,
   IsISO8601,
   IsOptional,
@@ -14,6 +15,11 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { MAX_LINEAS_REMISION } from '../remision-excel';
+
+export enum TipoRemision {
+  NORMAL = 'NORMAL',
+  ELECTRONICA = 'ELECTRONICA',
+}
 
 export class RemisionItemDto {
   @Type(() => Number)
@@ -29,6 +35,10 @@ export class RemisionItemDto {
 }
 
 export class CreateRemisionDto {
+  @IsOptional()
+  @IsEnum(TipoRemision)
+  tipo?: TipoRemision;
+
   @IsOptional()
   @Type(() => Number)
   @IsInt()

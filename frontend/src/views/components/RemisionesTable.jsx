@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import styles from '../dashboard.module.css';
 import r from '../remisiones.module.css';
-import { formatEstimatedDate, formatMoney } from '../../utils/format.js';
+import { formatEstimatedDate, formatMoney, formatRemisionNumber } from '../../utils/format.js';
 import { Icon } from './Icon.jsx';
 import PrintRemisionButton from './PrintRemisionButton.jsx';
 import { EmptyState, ErrorBanner, LoadingState, Panel, SearchField } from './ui.jsx';
@@ -21,7 +21,7 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
       const fecha = String(rem.fecha).slice(0, 10);
       const periodoCoincide = !anio || fecha.startsWith(`${anio}-${mes ? String(mes).padStart(2, '0') : ''}`);
       if (!periodoCoincide) return false;
-      return !term || [rem.numero, rem.noOrden, rem.caso?.codigo, rem.caso?.cliente?.nombre, rem.caso?.pacienteNombre, rem.caso?.numeroFactura].some(
+      return !term || [formatRemisionNumber(rem), rem.noOrden, rem.caso?.codigo, rem.caso?.cliente?.nombre, rem.caso?.pacienteNombre].some(
         (v) => normalizeSearchText(v).includes(term),
       );
     });
@@ -95,10 +95,10 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
                     }
                   }}
                   tabIndex={0}
-                  aria-label={`Ver remisión ${rem.numero}`}
+                  aria-label={`Ver remisión ${formatRemisionNumber(rem)}`}
                 >
                   <td className={r.numberCell}>
-                    {rem.numero}
+                    {formatRemisionNumber(rem)}
                     {rem.anulada && <span className={r.cancelledBadge}>Anulada</span>}
                   </td>
                   <td className={styles.mutedText}>{formatEstimatedDate(rem.fecha)}</td>
@@ -126,7 +126,7 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
                           className={styles.secondaryBtn}
                           onClick={(event) => { event.stopPropagation(); onReactivar(rem); }}
                           disabled={anulandoId === rem.id}
-                          aria-label={`Reactivar remisión ${rem.numero}`}
+                          aria-label={`Reactivar remisión ${formatRemisionNumber(rem)}`}
                         >
                           {anulandoId === rem.id ? 'Reactivando…' : 'Quitar anulación'}
                         </button>
@@ -137,7 +137,7 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
                           className={styles.deleteBtn}
                           onClick={(event) => { event.stopPropagation(); onAnular(rem); }}
                           disabled={anulandoId === rem.id}
-                          aria-label={`Anular remisión ${rem.numero}`}
+                          aria-label={`Anular remisión ${formatRemisionNumber(rem)}`}
                         >
                           {anulandoId === rem.id ? 'Anulando…' : 'Anular'}
                         </button>

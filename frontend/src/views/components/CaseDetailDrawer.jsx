@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import styles from '../dashboard.module.css';
-import { formatDate, formatEstimatedDate, formatMoney } from '../../utils/format.js';
+import { formatDate, formatEstimatedDate, formatMoney, formatRemisionNumber } from '../../utils/format.js';
 import { remisionesService } from '../../services/remisiones.service.js';
 import RemisionDetailModal from './RemisionDetailModal.jsx';
 import { useEscape } from './Modal.jsx';
@@ -84,10 +84,6 @@ export default function CaseDetailDrawer({
               <div className={styles.infoValue}>{caso.doctorNombre || '—'}</div>
             </div>
             <div>
-              <div className={styles.infoLabel}>Factura</div>
-              <div className={styles.infoValue}>{caso.numeroFactura || '—'}</div>
-            </div>
-            <div>
               <div className={styles.infoLabel}>Ingresó el</div>
               <div className={styles.infoValue}>
                 {caso.fechaIngreso ? formatEstimatedDate(caso.fechaIngreso) : formatDate(caso.creadoEn)}
@@ -102,7 +98,7 @@ export default function CaseDetailDrawer({
                 {remisiones.map((rem) => (
                   <li key={rem.id}>
                     <button type="button" className={styles.linkBtn} onClick={() => setRemisionAbierta(rem)}>
-                      N° {rem.numero}
+                      N° {formatRemisionNumber(rem)}
                     </button>
                     <span className={styles.mutedText}>{formatEstimatedDate(rem.fecha)}</span>
                     <span>{formatMoney(rem.total)}</span>

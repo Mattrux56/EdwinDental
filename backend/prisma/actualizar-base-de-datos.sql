@@ -1,103 +1,124 @@
 -- =====================================================================
--- LabTrace · actualización de base existente (fechas por seguimiento, datos de orden/factura,
--- archivar casos, enlace público seguro, copia de nombres en remisiones,
--- pago por remisión e índices)
--- Pegar completo en Supabase → SQL Editor → Run.
--- Para una base existente de LabTrace; no es un instalador para una base vacía.
--- Se puede ejecutar varias veces.
+-- LabTrace · BASE DE DATOS COMPLETA (Supabase > SQL Editor)
+-- Crea tablas , índices, llaves foráneas, el bucket de fotos y la lista
+-- de precios 2026 (88 productos). Para una base NUEVA / VACÍA.
+-- Si ya tienes las tablas, NO lo ejecutes: fallará sin cambiar nada.
 -- =====================================================================
 BEGIN;
 
--- ---- Limpieza: el sistema de usuarios ya no existe (si no estaba, no pasa nada)
-DROP TABLE IF EXISTS "Usuario";
-ALTER TABLE "Caso" DROP COLUMN IF EXISTS "creadoPor";
-ALTER TABLE "Seguimiento" DROP COLUMN IF EXISTS "creadoPor";
-ALTER TABLE "Remision" DROP COLUMN IF EXISTS "creadoPor";
+CREATE TABLE "Cliente" (
+    "id" SERIAL NOT NULL,
+    "nombre" TEXT NOT NULL,
+    "creadoEn" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "Cliente_pkey" PRIMARY KEY ("id")
+);
 
--- ---- Casos: archivado y código público aleatorio
--- Columnas que el programa ya no usa
-ALTER TABLE "Caso" DROP COLUMN IF EXISTS "titulo";
-ALTER TABLE "Caso" DROP COLUMN IF EXISTS "precio";
-ALTER TABLE "Caso" ADD COLUMN IF NOT EXISTS "doctorNombre" TEXT;
-ALTER TABLE "Caso" ADD COLUMN IF NOT EXISTS "numeroFactura" TEXT;
-ALTER TABLE "Seguimiento" ADD COLUMN IF NOT EXISTS "fechaEntregaEstimada" DATE;
+CREATE TABLE "Caso" (
+    "id" SERIAL NOT NULL,
+    "codigo" TEXT NOT NULL,
+    "clienteId" INTEGER NOT NULL,
+    "pacienteNombre" TEXT,
+    "doctorNombre" TEXT,
+    "estado" TEXT NOT NULL DEFAULT 'En laboratorio',
+    "creadoEn" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "fechaIngreso" DATE,
+    "fechaEntregaEstimada" TIMESTAMP(3),
+    "archivado" BOOLEAN NOT NULL DEFAULT false,
+    "archivadoEn" TIMESTAMP(3),
+    "codigoPublico" TEXT,
+    CONSTRAINT "Caso_pkey" PRIMARY KEY ("id")
+);
 
--- Mantiene la fecha vigente de cada caso en su seguimiento más reciente
-UPDATE "Seguimiento" s
-SET "fechaEntregaEstimada" = c."fechaEntregaEstimada"::date
-FROM "Caso" c
-WHERE s."casoId" = c."id"
-  AND c."fechaEntregaEstimada" IS NOT NULL
-  AND s."fechaEntregaEstimada" IS NULL
-  AND s."id" = (
-    SELECT s2."id"
-    FROM "Seguimiento" s2
-    WHERE s2."casoId" = c."id"
-    ORDER BY s2."creadoEn" DESC, s2."id" DESC
-    LIMIT 1
-  );
+CREATE TABLE "Seguimiento" (
+    "id" SERIAL NOT NULL,
+    "casoId" INTEGER NOT NULL,
+    "tipo" TEXT NOT NULL DEFAULT 'Ingreso Inicial',
+    "descripcion" TEXT NOT NULL,
+    "fechaEntregaEstimada" DATE,
+    "creadoEn" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "Seguimiento_pkey" PRIMARY KEY ("id")
+);
 
-ALTER TABLE "Caso" ADD COLUMN IF NOT EXISTS "archivado" BOOLEAN NOT NULL DEFAULT false;
-ALTER TABLE "Caso" ADD COLUMN IF NOT EXISTS "archivadoEn" TIMESTAMP(3);
-ALTER TABLE "Caso" ADD COLUMN IF NOT EXISTS "codigoPublico" TEXT;
+CREATE TABLE "CasoImagen" (
+    "id" SERIAL NOT NULL,
+    "seguimientoId" INTEGER NOT NULL,
+    "urlImagen" TEXT NOT NULL,
+    "subidoEn" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "CasoImagen_pkey" PRIMARY KEY ("id")
+);
 
--- Los casos que ya existen reciben su código público aleatorio
-UPDATE "Caso"
-SET "codigoPublico" = substr(md5(random()::text || clock_timestamp()::text || "id"::text), 1, 12)
-WHERE "codigoPublico" IS NULL;
+CREATE TABLE "Producto" (
+    "id" SERIAL NOT NULL,
+    "codigo" INTEGER NOT NULL,
+    "categoria" TEXT NOT NULL,
+    "descripcion" TEXT NOT NULL,
+    "valor" INTEGER NOT NULL,
+    "activo" BOOLEAN NOT NULL DEFAULT true,
+    "creadoEn" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "Producto_pkey" PRIMARY KEY ("id")
+);
 
-CREATE UNIQUE INDEX IF NOT EXISTS "Caso_codigoPublico_key" ON "Caso"("codigoPublico");
+CREATE TABLE "Remision" (
+    "id" SERIAL NOT NULL,
+    "numero" INTEGER NOT NULL,
+    "tipo" TEXT NOT NULL DEFAULT 'NORMAL',
+    "casoId" INTEGER NOT NULL,
+    "fecha" DATE NOT NULL,
+    "noOrden" TEXT,
+    "creadoEn" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "anulada" BOOLEAN NOT NULL DEFAULT false,
+    "anuladaEn" TIMESTAMP(3),
+    "pagada" BOOLEAN NOT NULL DEFAULT false,
+    "pagadaEn" TIMESTAMP(3),
+    "doctorNombre" TEXT,
+    "pacienteNombre" TEXT,
+    "editadaEn" TIMESTAMP(3),
+    CONSTRAINT "Remision_pkey" PRIMARY KEY ("id")
+);
 
--- ---- Remisiones: copia de los nombres al emitirla y fecha de edición
-ALTER TABLE "Remision" ADD COLUMN IF NOT EXISTS "doctorNombre" TEXT;
-ALTER TABLE "Remision" ADD COLUMN IF NOT EXISTS "pacienteNombre" TEXT;
-ALTER TABLE "Remision" ADD COLUMN IF NOT EXISTS "editadaEn" TIMESTAMP(3);
+CREATE TABLE "RemisionItem" (
+    "id" SERIAL NOT NULL,
+    "remisionId" INTEGER NOT NULL,
+    "productoId" INTEGER,
+    "descripcion" TEXT NOT NULL,
+    "cantidad" INTEGER NOT NULL,
+    "valorUnitario" INTEGER NOT NULL,
+    CONSTRAINT "RemisionItem_pkey" PRIMARY KEY ("id")
+);
 
--- Las remisiones ya emitidas guardan los nombres actuales del caso
-UPDATE "Remision" r
-SET "doctorNombre" = cl."nombre",
-    "pacienteNombre" = c."pacienteNombre"
-FROM "Caso" c
-JOIN "Cliente" cl ON cl."id" = c."clienteId"
-WHERE r."casoId" = c."id" AND r."doctorNombre" IS NULL;
+-- Índices únicos
+CREATE UNIQUE INDEX "Caso_codigo_key" ON "Caso"("codigo");
+CREATE UNIQUE INDEX "Producto_codigo_descripcion_key" ON "Producto"("codigo", "descripcion");
+CREATE UNIQUE INDEX "Remision_tipo_numero_key" ON "Remision"("tipo", "numero");
+CREATE UNIQUE INDEX "Caso_codigoPublico_key" ON "Caso"("codigoPublico");
 
--- ---- Cuentas de cobro: el pago se marca por remisión
-ALTER TABLE "Remision" ADD COLUMN IF NOT EXISTS "pagada" BOOLEAN NOT NULL DEFAULT false;
-ALTER TABLE "Remision" ADD COLUMN IF NOT EXISTS "pagadaEn" TIMESTAMP(3);
+-- Índices de apoyo en las llaves foráneas
+CREATE INDEX "Caso_clienteId_idx" ON "Caso"("clienteId");
+CREATE INDEX "Seguimiento_casoId_idx" ON "Seguimiento"("casoId");
+CREATE INDEX "CasoImagen_seguimientoId_idx" ON "CasoImagen"("seguimientoId");
+CREATE INDEX "Remision_casoId_idx" ON "Remision"("casoId");
+CREATE INDEX "Remision_fecha_idx" ON "Remision"("fecha");
+CREATE INDEX "RemisionItem_remisionId_idx" ON "RemisionItem"("remisionId");
 
--- Si había cuentas marcadas como pagadas (versión anterior), sus remisiones pasan a pagadas
-DO $$ BEGIN
-  IF to_regclass('public."CuentaCobro"') IS NOT NULL THEN
-    UPDATE "Remision" r
-    SET "pagada" = true, "pagadaEn" = cc."pagadaEn"
-    FROM "Caso" c
-    JOIN "CuentaCobro" cc ON cc."clienteId" = c."clienteId" AND cc."pagada" = true
-    WHERE r."casoId" = c."id"
-      AND r."anulada" = false
-      AND cc."anio" = EXTRACT(YEAR FROM r."fecha")::int
-      AND cc."mes" = EXTRACT(MONTH FROM r."fecha")::int;
-  END IF;
-END $$;
-DROP TABLE IF EXISTS "CuentaCobro";
+-- Conexiones (llaves foráneas)
+ALTER TABLE "Caso" ADD CONSTRAINT "Caso_clienteId_fkey" FOREIGN KEY ("clienteId") REFERENCES "Cliente"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Seguimiento" ADD CONSTRAINT "Seguimiento_casoId_fkey" FOREIGN KEY ("casoId") REFERENCES "Caso"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "CasoImagen" ADD CONSTRAINT "CasoImagen_seguimientoId_fkey" FOREIGN KEY ("seguimientoId") REFERENCES "Seguimiento"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "Remision" ADD CONSTRAINT "Remision_casoId_fkey" FOREIGN KEY ("casoId") REFERENCES "Caso"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "RemisionItem" ADD CONSTRAINT "RemisionItem_remisionId_fkey" FOREIGN KEY ("remisionId") REFERENCES "Remision"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "RemisionItem" ADD CONSTRAINT "RemisionItem_productoId_fkey" FOREIGN KEY ("productoId") REFERENCES "Producto"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
--- ---- Clientes: el documento / NIT ya no se usa
-ALTER TABLE "Cliente" DROP COLUMN IF EXISTS "documentoIdentidad";
+-- Bucket público de fotos de los casos (lo usa el backend: 'casos-fotos')
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('casos-fotos', 'casos-fotos', true)
+ON CONFLICT (id) DO NOTHING;
 
--- ---- Índices en las llaves foráneas (listas más rápidas al crecer los datos)
-CREATE INDEX IF NOT EXISTS "Caso_clienteId_idx" ON "Caso"("clienteId");
-CREATE INDEX IF NOT EXISTS "Seguimiento_casoId_idx" ON "Seguimiento"("casoId");
-CREATE INDEX IF NOT EXISTS "CasoImagen_seguimientoId_idx" ON "CasoImagen"("seguimientoId");
-CREATE INDEX IF NOT EXISTS "Remision_casoId_idx" ON "Remision"("casoId");
-CREATE INDEX IF NOT EXISTS "Remision_fecha_idx" ON "Remision"("fecha");
-CREATE INDEX IF NOT EXISTS "RemisionItem_remisionId_idx" ON "RemisionItem"("remisionId");
-
--- ---- Storage: permitir borrar fotos desde la aplicación (solo si no existe ya la política)
-DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'casos-fotos borrar'
-  ) THEN
-    CREATE POLICY "casos-fotos borrar" ON storage.objects FOR DELETE USING (bucket_id = 'casos-fotos');
-  END IF;
-END $$;
+-- Permiso para subir, ver y borrar fotos con la clave anon que usa el backend
+DROP POLICY IF EXISTS "casos-fotos lectura" ON storage.objects;
+DROP POLICY IF EXISTS "casos-fotos subida" ON storage.objects;
+DROP POLICY IF EXISTS "casos-fotos borrar" ON storage.objects;
+CREATE POLICY "casos-fotos lectura" ON storage.objects FOR SELECT USING (bucket_id = 'casos-fotos');
+CREATE POLICY "casos-fotos subida" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'casos-fotos');
+CREATE POLICY "casos-fotos borrar" ON storage.objects FOR DELETE USING (bucket_id = 'casos-fotos');
 
 COMMIT;

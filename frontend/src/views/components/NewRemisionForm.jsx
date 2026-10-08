@@ -26,7 +26,7 @@ function CasePicker({ casos, selected, onSelect, locked = false }) {
     const list = casos.filter((c) => {
       const fecha = String(c.fechaIngreso ?? c.creadoEn ?? '').slice(0, 10);
       return (!desde || fecha >= desde) && (!hasta || fecha <= hasta) &&
-        (!term || [c.codigo, c.doctorNombre, c.numeroFactura, c.cliente?.nombre, c.pacienteNombre].some((v) => normalizeSearchText(v).includes(term)));
+        (!term || [c.codigo, c.doctorNombre, c.cliente?.nombre, c.pacienteNombre].some((v) => normalizeSearchText(v).includes(term)));
     });
     return list.slice(0, 50);
   }, [casos, desde, hasta, query]);
@@ -123,7 +123,7 @@ function QuantityControl({ value, onChange, disabled, label }) {
 }
 
 /**
- * Crea una remisión nueva o, si se pasa `remision`, la corrige: el número y el caso no cambian,
+ * Crea una remisión nueva o, si se pasa `remision`, permite corregir sus datos y numeración,
  * los productos que ya estaban conservan su precio y los nuevos toman el precio vigente.
  */
 export default function NewRemisionForm({ casos, productos: productosActivos, saving, onSubmit, onCancel, remision }) {
@@ -131,6 +131,7 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
   const [caso, setCaso] = useState(remision?.caso ?? null);
   const [fecha, setFecha] = useState(remision ? String(remision.fecha).slice(0, 10) : today);
   const [noOrden, setNoOrden] = useState(remision?.noOrden ?? '');
+  const [tipo, setTipo] = useState(remision?.tipo ?? 'NORMAL');
   const [doctorNombre, setDoctorNombre] = useState(remision?.doctorNombre ?? remision?.caso?.cliente?.nombre ?? '');
   const [pacienteNombre, setPacienteNombre] = useState(remision?.pacienteNombre ?? remision?.caso?.pacienteNombre ?? '');
   const [lineas, setLineas] = useState(
@@ -162,7 +163,7 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
   useEffect(() => {
     if (editando) return undefined;
     let activo = true;
-    remisionesService.siguienteNumero().then(
+    remisionesService.siguienteNumero(tipo).then(
       ({ siguiente }) => {
         if (activo) {
           setPrimeraRemision(siguiente === null);
@@ -180,7 +181,7 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
     return () => {
       activo = false;
     };
-  }, [editando]);
+  }, [editando, tipo]);
 
   const cantidadDe = (id) => lineas.find((l) => l.productoId === id)?.cantidad ?? 0;
   const llena = lineas.length >= MAX_LINEAS;
@@ -226,13 +227,15 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
   });
   const total = detalle.reduce((acc, l) => acc + l.subtotal, 0);
   const numeroValido = Number.isInteger(Number(numero)) && Number(numero) >= 1 && Number(numero) <= 2147483647;
-  const puedeGuardar = Boolean(caso) && lineas.length > 0 && Boolean(fecha) && (editando || numeroValido) && !saving;
+  const puedeGuardar = Boolean(caso) && lineas.length > 0 && Boolean(fecha) && numeroValido && !saving;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!puedeGuardar) return;
     if (editando) {
       await onSubmit({
+        tipo,
+        numero: Number(numero),
         fecha,
         noOrden: noOrden.trim() || undefined,
         doctorNombre,
@@ -243,6 +246,7 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
     }
     await onSubmit({
       casoId: caso.id,
+      tipo,
       numero: Number(numero),
       fecha,
       noOrden: noOrden.trim() || undefined,
@@ -254,8 +258,22 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
     <form className={styles.formCard} onSubmit={handleSubmit}>
       <div className={styles.formGrid}>
         <div className={styles.field}>
+          <label className={styles.label} htmlFor="rem-tipo">Tipo de remisión</label>
+          <select id="rem-tipo" className={styles.select} value={tipo} disabled={saving} onChange={(e) => {
+            setTipo(e.target.value);
+            if (!editando) {
+              setNumero('');
+              setNumeroError('');
+              setNumeroConsultado(false);
+            }
+          }}>
+            <option value="NORMAL">Normal</option>
+            <option value="ELECTRONICA">Electrónica (FE-)</option>
+          </select>
+        </div>
+        <div className={styles.field}>
           <label className={styles.label} htmlFor="rem-numero">
-            N° de remisión <span className={styles.required}>*</span>
+            N° de remisión {tipo === 'ELECTRONICA' && '(FE-)'} <span className={styles.required}>*</span>
           </label>
           <input
             id="rem-numero"
@@ -266,12 +284,12 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
             step="1"
             required
             value={numero}
-            disabled={editando}
+            disabled={saving}
             onChange={(e) => {
               setNumero(e.target.value);
             }}
           />
-          {editando && <small className={r.numberHelp}>El número no se puede cambiar: si quedó mal, anula la remisión y crea otra.</small>}
+          {editando && <small className={r.numberHelp}>El número debe ser único dentro de la serie elegida.</small>}
           {!numero && numeroConsultado && primeraRemision && (
             <small className={r.numberHelp}>Escribe el número de la primera remisión; las siguientes continuarán desde ahí</small>
           )}

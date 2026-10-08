@@ -24,8 +24,8 @@ export const remisionesService = {
   },
 
   /** GET /remisiones/siguiente-numero */
-  siguienteNumero() {
-    return request('/remisiones/siguiente-numero');
+  siguienteNumero(tipo = 'NORMAL') {
+    return request(`/remisiones/siguiente-numero?tipo=${encodeURIComponent(tipo)}`);
   },
 
   /** GET /productos (lista de precios activa) */
@@ -87,8 +87,9 @@ export const remisionesService = {
 };
 
 /** Imprimir una remisión: guarda su archivo de Excel donde elija la persona («Guardar como») */
-export function imprimirRemision(id, numero) {
-  return downloadFile(`/remisiones/${id}/excel`, `REMISION_No_${numero ?? id}.xlsx`);
+export function imprimirRemision(id, numero, tipo = 'NORMAL') {
+  const etiqueta = tipo === 'ELECTRONICA' ? `FE-${numero ?? id}` : `No_${numero ?? id}`;
+  return downloadFile(`/remisiones/${id}/excel`, `REMISION_${etiqueta}.xlsx`);
 }
 
 export const downloadListaPrecios = () => downloadFile('/productos/exportar', 'lista_de_precios.xlsx');

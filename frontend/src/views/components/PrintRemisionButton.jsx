@@ -10,7 +10,7 @@ export default function PrintRemisionButton({ remision, showToast, className, ic
     event.stopPropagation();
     setBusy(true);
     try {
-      await imprimirRemision(remision.id, remision.numero);
+      await imprimirRemision(remision.id, remision.numero, remision.tipo);
     } catch (reason) {
       showToast?.('error', reason.message);
     } finally {

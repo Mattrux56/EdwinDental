@@ -1,6 +1,6 @@
 import styles from '../dashboard.module.css';
 import r from '../remisiones.module.css';
-import { formatDateTime, formatEstimatedDate, formatMoney } from '../../utils/format.js';
+import { formatDateTime, formatEstimatedDate, formatMoney, formatRemisionNumber } from '../../utils/format.js';
 import { Icon } from './Icon.jsx';
 import Modal from './Modal.jsx';
 import PrintRemisionButton from './PrintRemisionButton.jsx';
@@ -12,7 +12,7 @@ export default function RemisionDetailModal({ remision, onClose, onEdit, onAnula
 
   return (
     <Modal
-      title={`Remisión N° ${remision.numero}`}
+      title={`Remisión N° ${formatRemisionNumber(remision)}`}
       subtitle={remision.anulada ? 'Anulada: no cuenta en las cuentas de cobro.' : undefined}
       onClose={onClose}
       className={r.wideModal}
@@ -20,7 +20,7 @@ export default function RemisionDetailModal({ remision, onClose, onEdit, onAnula
       <div className={styles.infoGrid}>
         <div><div className={styles.infoLabel}>Fecha</div><div className={styles.infoValue}>{formatEstimatedDate(remision.fecha)}</div></div>
         <div><div className={styles.infoLabel}>Orden de trabajo</div><div className={styles.infoValue}>{remision.caso?.codigo}</div></div>
-        <div><div className={styles.infoLabel}>Número de factura</div><div className={styles.infoValue}>{remision.caso?.numeroFactura || '—'}</div></div>
+        <div><div className={styles.infoLabel}>Tipo</div><div className={styles.infoValue}>{remision.tipo === 'ELECTRONICA' ? 'Electrónica' : 'Normal'}</div></div>
         <div><div className={styles.infoLabel}>Doctor(a) / clínica</div><div className={styles.infoValue}>{doctor || '—'}</div></div>
         <div><div className={styles.infoLabel}>Paciente</div><div className={styles.infoValue}>{paciente || '—'}</div></div>
         <div><div className={styles.infoLabel}>No. de orden</div><div className={styles.infoValue}>{remision.noOrden || '—'}</div></div>

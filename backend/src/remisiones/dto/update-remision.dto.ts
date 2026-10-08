@@ -3,18 +3,33 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
+  IsEnum,
+  IsInt,
   IsISO8601,
   IsOptional,
   IsString,
   Matches,
+  Max,
   MaxLength,
+  Min,
   ValidateNested,
 } from 'class-validator';
 import { MAX_LINEAS_REMISION } from '../remision-excel';
-import { RemisionItemDto } from './create-remision.dto';
+import { RemisionItemDto, TipoRemision } from './create-remision.dto';
 
-/** Corrección de una remisión: el número no se puede cambiar */
+/** Corrección de una remisión existente */
 export class UpdateRemisionDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(2147483647)
+  numero?: number;
+
+  @IsOptional()
+  @IsEnum(TipoRemision)
+  tipo?: TipoRemision;
+
   @IsOptional()
   @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'La fecha debe tener el formato AAAA-MM-DD' })
   @IsISO8601({ strict: true }, { message: 'La fecha no es válida' })

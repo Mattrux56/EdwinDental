@@ -30,13 +30,6 @@ export class UpdateCaseDto {
   doctorNombre?: string;
 
   @IsOptional()
-  @Transform(({ value }) => (value === '' ? null : typeof value === 'string' ? value.trim() : value))
-  @ValidateIf((_o, value) => value !== null)
-  @IsString()
-  @Matches(/^\d{1,30}$/, { message: 'El número de factura debe contener solo números' })
-  numeroFactura?: string | null;
-
-  @IsOptional()
   @Transform(trim)
   @IsString()
   @IsNotEmpty({ message: 'El nombre del paciente no puede quedar vacío' })

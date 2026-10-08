@@ -37,3 +37,5 @@ const money = new Intl.NumberFormat('es-CO', {
   maximumFractionDigits: 0,
 });
 export const formatMoney = (value) => money.format(value ?? 0);
+export const formatRemisionNumber = (remision) =>
+  remision?.tipo === 'ELECTRONICA' ? `FE-${remision.numero}` : String(remision?.numero ?? '');

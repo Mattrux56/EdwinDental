@@ -16,7 +16,6 @@ const initialForm = () => ({
   clienteNombre: '',
   pacienteNombre: '',
   doctorNombre: '',
-  numeroFactura: '',
   descripcion: '',
   fechaIngreso: today(),
   fechaEntregaEstimada: '',
@@ -157,21 +156,6 @@ export default function NewCaseForm({ saving, onSubmit, onCancel }) {
               required
               maxLength={150}
               placeholder="Nombre completo"
-            />
-          </div>
-
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="numeroFactura">
-              Número de factura
-            </label>
-            <input
-              id="numeroFactura"
-              className={styles.input}
-              value={form.numeroFactura}
-              onChange={(event) => setForm((prev) => ({ ...prev, numeroFactura: event.target.value.replace(/\D/g, '').slice(0, 30) }))}
-              maxLength={30}
-              pattern="[0-9]*"
-              inputMode="numeric"
             />
           </div>
 

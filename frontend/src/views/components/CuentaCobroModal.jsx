@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import styles from '../dashboard.module.css';
 import r from '../remisiones.module.css';
-import { formatEstimatedDate, formatMoney } from '../../utils/format.js';
+import { formatEstimatedDate, formatMoney, formatRemisionNumber } from '../../utils/format.js';
 import Modal from './Modal.jsx';
 
 /** Remisiones de un cliente en el mes: se marca cuáles están pagadas y se guarda con «Confirmar remisiones» */
@@ -51,7 +51,6 @@ export default function CuentaCobroModal({ cuenta, periodo, saving, onClose, onC
               <th>Doctor</th>
               <th>Paciente</th>
               <th>Orden de trabajo</th>
-              <th>Factura</th>
               <th style={{ textAlign: 'right' }}>Valor</th>
             </tr>
           </thead>
@@ -65,7 +64,7 @@ export default function CuentaCobroModal({ cuenta, periodo, saving, onClose, onC
                     checked={pagadas.has(x.id)}
                     onChange={(e) => alternar(x.id, e.target.checked)}
                     disabled={saving}
-                    aria-label={`Remisión ${x.numero} pagada`}
+                    aria-label={`Remisión ${formatRemisionNumber(x)} pagada`}
                   />
                 </td>
                 <td>
@@ -73,12 +72,11 @@ export default function CuentaCobroModal({ cuenta, periodo, saving, onClose, onC
                     {pagadas.has(x.id) ? 'Pagada' : 'Pendiente'}
                   </span>
                 </td>
-                <td>{x.numero}</td>
+                <td>{formatRemisionNumber(x)}</td>
                 <td>{formatEstimatedDate(x.fecha)}</td>
                 <td>{x.doctor || '—'}</td>
                 <td>{x.paciente || '—'}</td>
                 <td>{x.ordenTrabajo || x.noOrden || '—'}</td>
-                <td>{x.numeroFactura || '—'}</td>
                 <td className={r.moneyCell}>{formatMoney(x.total)}</td>
               </tr>
             ))}

@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { Prisma } from '@prisma/client';
 import { dateOnlyToUtc, todayLocal } from '../common/date-only';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateRemisionDto } from './dto/create-remision.dto';
+import { CreateRemisionDto, TipoRemision } from './dto/create-remision.dto';
 import { UpdateRemisionDto } from './dto/update-remision.dto';
 import { generarRemisionExcel } from './remision-excel';
 
@@ -11,7 +11,6 @@ const REMISION_INCLUDE = {
     select: {
       id: true,
       codigo: true,
-      numeroFactura: true,
       doctorNombre: true,
       pacienteNombre: true,
       cliente: { select: { id: true, nombre: true } },
@@ -31,7 +30,7 @@ export class RemisionesService {
     const remisiones = await this.prisma.remision.findMany({
       where: casoId ? { casoId } : undefined,
       include: REMISION_INCLUDE,
-      orderBy: { numero: 'desc' },
+      orderBy: [{ numero: 'desc' }, { tipo: 'asc' }],
     });
     return remisiones.map((r) => this.withTotal(r));
   }
@@ -40,8 +39,8 @@ export class RemisionesService {
     return this.withTotal(await this.getOrFail(id));
   }
 
-  async siguienteNumero() {
-    return { siguiente: await this.nextNumero() };
+  async siguienteNumero(tipo: TipoRemision = TipoRemision.NORMAL) {
+    return { siguiente: await this.nextNumero(tipo) };
   }
 
   async create(dto: CreateRemisionDto) {
@@ -67,24 +66,26 @@ export class RemisionesService {
     }
     const porId = new Map(productos.map((p) => [p.id, p]));
 
-    const numero = dto.numero ?? await this.nextNumero();
+    const tipo = dto.tipo ?? TipoRemision.NORMAL;
+    const numero = dto.numero ?? await this.nextNumero(tipo);
     if (numero === null) {
-      const ultima = await this.prisma.remision.aggregate({ _max: { numero: true } });
-      if (ultima._max.numero === null) {
-        throw new BadRequestException('Indica el número de la primera remisión');
-      }
-      throw new BadRequestException('No hay números de remisión disponibles');
+      throw new BadRequestException(
+        await this.prisma.remision.count({ where: { tipo } }) === 0
+          ? `Indica el número de la primera remisión ${tipo === TipoRemision.ELECTRONICA ? 'electrónica' : 'normal'}`
+          : 'No hay números de remisión disponibles',
+      );
     }
-    if (dto.numero === undefined && (await this.prisma.remision.count()) === 0) {
-      throw new BadRequestException('Indica el número de la primera remisión');
-    }
-    const existing = await this.prisma.remision.findUnique({ where: { numero }, select: { id: true } });
-    if (existing) throw this.numeroDuplicado(numero);
+    const existing = await this.prisma.remision.findUnique({
+      where: { tipo_numero: { tipo, numero } },
+      select: { id: true },
+    });
+    if (existing) throw this.numeroDuplicado(numero, tipo);
 
     try {
       const creada = await this.prisma.remision.create({
         data: {
           numero,
+          tipo,
           casoId: caso.id,
           fecha: dateOnlyToUtc(dto.fecha ?? todayLocal()),
           noOrden: dto.noOrden?.trim() || caso.codigo,
@@ -110,16 +111,17 @@ export class RemisionesService {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002' &&
+        String(error.meta?.target).includes('tipo') &&
         String(error.meta?.target).includes('numero')
       ) {
-        throw this.numeroDuplicado(numero);
+        throw this.numeroDuplicado(numero, tipo);
       }
       throw error;
     }
   }
 
   /**
-   * Corrige una remisión SIN cambiar su número: fecha, no. de orden, nombres que salen impresos y productos/cantidades.
+   * Corrige una remisión: tipo, número, fecha, orden, nombres impresos y productos/cantidades.
    * Los productos que ya estaban conservan su precio original; los nuevos toman el precio vigente de la lista.
    * Una remisión anulada no se edita.
    */
@@ -127,7 +129,17 @@ export class RemisionesService {
     const actual = await this.getOrFail(id);
     if (actual.anulada) throw new BadRequestException('Una remisión anulada no se puede editar');
 
+    const tipo = dto.tipo ?? actual.tipo as TipoRemision;
+    const numero = dto.numero ?? actual.numero;
+    const existente = await this.prisma.remision.findUnique({
+      where: { tipo_numero: { tipo, numero } },
+      select: { id: true },
+    });
+    if (existente && existente.id !== id) throw this.numeroDuplicado(numero, tipo);
+
     const data: Prisma.RemisionUpdateInput = { editadaEn: new Date() };
+    if (dto.tipo !== undefined) data.tipo = tipo;
+    if (dto.numero !== undefined) data.numero = numero;
     if (dto.fecha !== undefined) data.fecha = dateOnlyToUtc(dto.fecha);
     if (dto.noOrden !== undefined) data.noOrden = dto.noOrden.trim() || actual.caso.codigo;
     if (dto.doctorNombre !== undefined) data.doctorNombre = dto.doctorNombre.trim() || null;
@@ -171,13 +183,24 @@ export class RemisionesService {
       }
     }
 
-    await this.prisma.$transaction(async (tx) => {
-      if (nuevasLineas) {
-        await tx.remisionItem.deleteMany({ where: { remisionId: id } });
-        await tx.remisionItem.createMany({ data: nuevasLineas });
+    try {
+      await this.prisma.$transaction(async (tx) => {
+        if (nuevasLineas) {
+          await tx.remisionItem.deleteMany({ where: { remisionId: id } });
+          await tx.remisionItem.createMany({ data: nuevasLineas });
+        }
+        await tx.remision.update({ where: { id }, data });
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002' &&
+        String(error.meta?.target).includes('numero')
+      ) {
+        throw this.numeroDuplicado(numero, tipo);
       }
-      await tx.remision.update({ where: { id }, data });
-    });
+      throw error;
+    }
     return this.withTotal(await this.getOrFail(id));
   }
 
@@ -218,7 +241,7 @@ export class RemisionesService {
   async excel(id: number) {
     const r = await this.getOrFail(id);
     const buffer = await generarRemisionExcel({
-      numero: r.numero,
+      numero: r.tipo === TipoRemision.ELECTRONICA ? `FE-${r.numero}` : r.numero,
       fecha: r.fecha,
       doctor: r.doctorNombre ?? r.caso.cliente.nombre,
       paciente: r.pacienteNombre ?? r.caso.pacienteNombre ?? '',
@@ -230,7 +253,8 @@ export class RemisionesService {
         valorUnitario: i.valorUnitario,
       })),
     });
-    return { buffer, filename: `REMISION_No_${r.numero}.xlsx` };
+    const etiqueta = r.tipo === TipoRemision.ELECTRONICA ? `FE-${r.numero}` : `No_${r.numero}`;
+    return { buffer, filename: `REMISION_${etiqueta}.xlsx` };
   }
 
   // ---------------------------------------------------------------- HELPERS
@@ -245,13 +269,14 @@ export class RemisionesService {
     return { ...r, total: r.items.reduce((acc, i) => acc + i.cantidad * i.valorUnitario, 0) };
   }
 
-  private async nextNumero(): Promise<number | null> {
-    const ultima = await this.prisma.remision.aggregate({ _max: { numero: true } });
+  private async nextNumero(tipo: TipoRemision): Promise<number | null> {
+    const ultima = await this.prisma.remision.aggregate({ where: { tipo }, _max: { numero: true } });
     if (ultima._max.numero === null) return null;
     return ultima._max.numero < MAX_NUMERO_REMISION ? ultima._max.numero + 1 : null;
   }
 
-  private numeroDuplicado(numero: number) {
-    return new BadRequestException(`El número de remisión ${numero} ya existe`);
+  private numeroDuplicado(numero: number, tipo: TipoRemision) {
+    const etiqueta = tipo === TipoRemision.ELECTRONICA ? `FE-${numero}` : String(numero);
+    return new BadRequestException(`El número de remisión ${etiqueta} ya existe`);
   }
 }

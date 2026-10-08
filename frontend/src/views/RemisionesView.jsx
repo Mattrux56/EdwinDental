@@ -7,6 +7,7 @@ import { PageHeader } from './components/ui.jsx';
 import NewRemisionForm from './components/NewRemisionForm.jsx';
 import RemisionesTable from './components/RemisionesTable.jsx';
 import RemisionDetailModal from './components/RemisionDetailModal.jsx';
+import { formatRemisionNumber } from '../utils/format.js';
 
 /** Vista de Remisiones: lista + creación a partir de un caso existente y la lista de precios */
 export default function RemisionesView({ casos, controller, showToast }) {
@@ -59,8 +60,8 @@ export default function RemisionesView({ casos, controller, showToast }) {
 
       {editTarget && (
         <Modal
-          title={`Corregir remisión N° ${editTarget.numero}`}
-          subtitle="Se mantiene el mismo número. Puedes cambiar fecha, orden, nombres impresos, productos y cantidades."
+          title={`Corregir remisión N° ${formatRemisionNumber(editTarget)}`}
+          subtitle="Puedes cambiar tipo, número, fecha, orden, nombres impresos, productos y cantidades."
           onClose={() => setEditTarget(null)}
           busy={saving}
           className={r.wideModal}
@@ -114,7 +115,7 @@ export default function RemisionesView({ casos, controller, showToast }) {
           onCancel={() => setAnularTarget(null)}
           onConfirm={confirmAnular}
         >
-          <p>¿Anular la remisión N° {anularTarget.numero}? El número no se reutiliza. Si fue un error, podrás reactivarla.</p>
+          <p>¿Anular la remisión N° {formatRemisionNumber(anularTarget)}? El número no se reutiliza. Si fue un error, podrás reactivarla.</p>
         </ConfirmModal>
       )}
     </>

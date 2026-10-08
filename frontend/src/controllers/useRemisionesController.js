@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { imprimirRemision, remisionesService } from '../services/remisiones.service.js';
+import { formatRemisionNumber } from '../utils/format.js';
 
 export function useRemisionesController({ showToast }) {
   const [remisiones, setRemisiones] = useState([]);
@@ -33,7 +34,7 @@ export function useRemisionesController({ showToast }) {
 
   /** Abre «Guardar como» con el Excel de la remisión recién emitida o corregida */
   const guardarCopia = useCallback(
-    (remision) => imprimirRemision(remision.id, remision.numero).catch((e) => showToast('error', e.message)),
+    (remision) => imprimirRemision(remision.id, remision.numero, remision.tipo).catch((e) => showToast('error', e.message)),
     [showToast],
   );
 
@@ -43,7 +44,7 @@ export function useRemisionesController({ showToast }) {
       setSaving(true);
       try {
         const created = await remisionesService.create(payload);
-        showToast('success', `Remisión N° ${created.numero} creada`);
+        showToast('success', `Remisión N° ${formatRemisionNumber(created)} creada`);
         guardarCopia(created);
         await load();
         return created;
@@ -57,13 +58,13 @@ export function useRemisionesController({ showToast }) {
     [guardarCopia, load, showToast],
   );
 
-  /** Corrige la remisión (sin cambiar su número) y pide dónde guardar el Excel actualizado */
+  /** Corrige la remisión y pide dónde guardar el Excel actualizado */
   const updateRemision = useCallback(
     async (id, payload) => {
       setSaving(true);
       try {
         const updated = await remisionesService.update(id, payload);
-        showToast('success', `Remisión N° ${updated.numero} actualizada`);
+        showToast('success', `Remisión N° ${formatRemisionNumber(updated)} actualizada`);
         guardarCopia(updated);
         await load();
         return updated;
@@ -82,7 +83,7 @@ export function useRemisionesController({ showToast }) {
       setAnulandoId(remision.id);
       try {
         await remisionesService.anular(remision.id);
-        showToast('success', `Remisión N° ${remision.numero} anulada`);
+        showToast('success', `Remisión N° ${formatRemisionNumber(remision)} anulada`);
         await load();
         return true;
       } catch (e) {
@@ -100,7 +101,7 @@ export function useRemisionesController({ showToast }) {
       setAnulandoId(remision.id);
       try {
         await remisionesService.reactivar(remision.id);
-        showToast('success', `Remisión N° ${remision.numero} reactivada`);
+        showToast('success', `Remisión N° ${formatRemisionNumber(remision)} reactivada`);
         await load();
         return true;
       } catch (e) {

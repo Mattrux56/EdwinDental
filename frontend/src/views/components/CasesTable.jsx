@@ -50,7 +50,7 @@ export default function CasesTable({
       const fecha = ingresoDate(caso);
       if (desde && fecha < desde) return false;
       if (!term) return true;
-      return [caso.codigo, caso.doctorNombre, caso.numeroFactura, caso.cliente?.nombre, caso.pacienteNombre]
+      return [caso.codigo, caso.doctorNombre, caso.cliente?.nombre, caso.pacienteNombre]
         .some((valor) => normalizeSearchText(valor).includes(term));
     });
   }, [casos, desde, filter, query]);

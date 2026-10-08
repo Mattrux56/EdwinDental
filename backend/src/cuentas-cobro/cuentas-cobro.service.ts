@@ -31,12 +31,11 @@ export class CuentasCobroService {
             codigo: true,
             pacienteNombre: true,
             doctorNombre: true,
-            numeroFactura: true,
             cliente: { select: { id: true, nombre: true } },
           },
         },
       },
-      orderBy: { numero: 'asc' },
+      orderBy: [{ numero: 'asc' }, { tipo: 'asc' }],
     });
 
     const grupos = new Map<number, { clienteId: number; cliente: string; remisiones: ReturnType<CuentasCobroService['linea']>[] }>();
@@ -91,6 +90,7 @@ export class CuentasCobroService {
   private linea(r: {
     id: number;
     numero: number;
+    tipo: string;
     fecha: Date;
     noOrden: string | null;
     pacienteNombre: string | null;
@@ -101,17 +101,16 @@ export class CuentasCobroService {
     caso: {
       pacienteNombre: string | null;
       doctorNombre: string | null;
-      numeroFactura: string | null;
       codigo: string;
     };
   }) {
     return {
       id: r.id,
       numero: r.numero,
+      tipo: r.tipo,
       fecha: r.fecha,
       noOrden: r.noOrden,
       doctor: r.doctorNombre ?? r.caso.doctorNombre,
-      numeroFactura: r.caso.numeroFactura,
       ordenTrabajo: r.caso.codigo,
       paciente: r.pacienteNombre ?? r.caso.pacienteNombre,
       total: r.items.reduce((acc, i) => acc + i.cantidad * i.valorUnitario, 0),

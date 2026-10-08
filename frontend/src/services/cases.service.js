@@ -91,11 +91,11 @@ export const casesService = {
   },
 
   /** POST /cases */
-  create({ codigo, clienteId, clienteNombre, pacienteNombre, doctorNombre, numeroFactura, descripcion, fechaIngreso, fechaEntregaEstimada, fotos }) {
+  create({ codigo, clienteId, clienteNombre, pacienteNombre, doctorNombre, descripcion, fechaIngreso, fechaEntregaEstimada, fotos }) {
     return request('/cases', {
       method: 'POST',
       body: buildFormData(
-        { codigo, clienteId, clienteNombre, pacienteNombre, doctorNombre, numeroFactura, descripcion, fechaIngreso, fechaEntregaEstimada },
+        { codigo, clienteId, clienteNombre, pacienteNombre, doctorNombre, descripcion, fechaIngreso, fechaEntregaEstimada },
         fotos,
       ),
     });

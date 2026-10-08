@@ -22,7 +22,6 @@ model Caso {
   cliente      Cliente       @relation(fields: [clienteId], references: [id])
   pacienteNombre String?
   doctorNombre String?
-  numeroFactura String?
   estado       String        @default("En laboratorio")
   creadoEn     DateTime      @default(now())
   fechaIngreso DateTime?     @db.Date
@@ -78,7 +77,8 @@ model Producto {
 
 model Remision {
   id       Int            @id @default(autoincrement())
-  numero   Int            @unique
+  numero   Int
+  tipo     String         @default("NORMAL")
   casoId   Int
   caso     Caso           @relation(fields: [casoId], references: [id])
   fecha    DateTime       @db.Date
@@ -95,6 +95,7 @@ model Remision {
   editadaEn      DateTime?
   items    RemisionItem[]
 
+  @@unique([tipo, numero])
   @@index([casoId])
   @@index([fecha])
 }

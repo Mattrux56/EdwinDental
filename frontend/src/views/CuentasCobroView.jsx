@@ -93,7 +93,7 @@ export default function CuentasCobroView({ showToast }) {
       />
 
       <div className={r.kpis}>
-        <div className={r.kpi}><span>Facturado en {MESES[mes - 1].toLowerCase()}</span><strong>{formatMoney(resumen.total)}</strong></div>
+        <div className={r.kpi}><span>Total de remisiones en {MESES[mes - 1].toLowerCase()}</span><strong>{formatMoney(resumen.total)}</strong></div>
         <div className={r.kpi}><span>Pagado</span><strong>{formatMoney(resumen.pagado)}</strong></div>
         <div className={r.kpi}><span>Pendiente de cobro</span><strong>{formatMoney(resumen.pendiente)}</strong></div>
       </div>

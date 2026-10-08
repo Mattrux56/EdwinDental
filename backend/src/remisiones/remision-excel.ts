@@ -19,7 +19,7 @@ const CARACTERES_POR_RENGLON = 42; // descripción en negrita y mayúsculas dent
 const CARACTERES_EN_LETRAS = 80; // el valor en letras ocupa B13:E13
 
 export interface RemisionExcelData {
-  numero: number;
+  numero: number | string;
   /** Fecha sin hora: medianoche UTC del día (así la devuelve Prisma para columnas @db.Date) */
   fecha: Date;
   /** Doctor(a) o clínica (cliente del caso) */

@@ -1,5 +1,6 @@
 import {
   Body,
+  BadRequestException,
   Controller,
   Get,
   Param,
@@ -10,7 +11,7 @@ import {
   StreamableFile,
 } from '@nestjs/common';
 import { IsBoolean } from 'class-validator';
-import { CreateRemisionDto } from './dto/create-remision.dto';
+import { CreateRemisionDto, TipoRemision } from './dto/create-remision.dto';
 import { UpdateRemisionDto } from './dto/update-remision.dto';
 import { RemisionesService } from './remisiones.service';
 
@@ -33,8 +34,12 @@ export class RemisionesController {
 
   /** GET /remisiones/siguiente-numero */
   @Get('siguiente-numero')
-  siguienteNumero() {
-    return this.remisiones.siguienteNumero();
+  siguienteNumero(@Query('tipo') tipo?: string) {
+    const tipoValido = Object.values(TipoRemision).find((opcion) => opcion === tipo);
+    if (tipo && !tipoValido) {
+      throw new BadRequestException('El tipo de remisión no es válido');
+    }
+    return this.remisiones.siguienteNumero(tipoValido ?? TipoRemision.NORMAL);
   }
 
   /** PATCH /remisiones/:id/anular */
@@ -74,7 +79,7 @@ export class RemisionesController {
     return this.remisiones.create(dto);
   }
 
-  /** PATCH /remisiones/:id  (corrige la remisión sin cambiar su número) */
+  /** PATCH /remisiones/:id  (corrige los datos y numeración de la remisión) */
   @Patch(':id')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateRemisionDto) {
     return this.remisiones.update(id, dto);

@@ -46,12 +46,6 @@ export class CreateCaseDto {
   @MaxLength(150)
   doctorNombre!: string;
 
-  @IsOptional()
-  @Transform(trim)
-  @IsString()
-  @Matches(/^\d{1,30}$/, { message: 'El número de factura debe contener solo números' })
-  numeroFactura?: string;
-
   @Transform(trim)
   @IsString()
   @IsNotEmpty()
