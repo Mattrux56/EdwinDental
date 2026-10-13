@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'" />
+    <title>Actualizando LabTrace</title>
+    <style>
+      body { margin: 0; padding: 24px 28px; font: 14px/1.45 "Segoe UI", system-ui, sans-serif; color: #1c2430; background: #f5f7fa; }
+      h1 { margin: 0 0 4px; font-size: 16px; font-weight: 600; }
+      p { margin: 0 0 16px; color: #556070; }
+      .bar { height: 10px; background: #dde3ec; border-radius: 999px; overflow: hidden; }
+      #fill { height: 100%; width: 0; background: #2f6fed; border-radius: 999px; transition: width 0.2s; }
+    </style>
+  </head>
+  <body>
+    <h1 id="titulo">Descargando la actualización…</h1>
+    <p id="detalle">0 % · LabTrace se reiniciará al terminar.</p>
+    <div class="bar"><div id="fill"></div></div>
+    <script>
+      const version = new URLSearchParams(location.search).get('version');
+      if (version) document.getElementById('titulo').textContent = `Descargando LabTrace ${version}…`;
+      window.avance = (porcentaje) => {
+        document.getElementById('fill').style.width = `${porcentaje}%`;
+        document.getElementById('detalle').textContent =
+          porcentaje >= 100 ? 'Instalando… LabTrace se reiniciará en un momento.' : `${porcentaje} % · LabTrace se reiniciará al terminar.`;
+      };
+    </script>
+  </body>
+</html>

@@ -49,16 +49,28 @@ cpSync(join(ROOT, 'backend', 'dist'), join(STAGE, 'backend', 'dist'), { recursiv
 cpSync(join(ROOT, 'backend', 'templates'), join(STAGE, 'backend', 'templates'), { recursive: true });
 cpSync(join(ROOT, 'backend', 'prisma', 'schema.prisma'), join(STAGE, 'backend', 'prisma', 'schema.prisma'));
 cpSync(join(ROOT, 'frontend', 'dist'), join(STAGE, 'frontend', 'dist'), { recursive: true });
-for (const file of ['main.cjs', 'preload.cjs', 'setup.html', 'LabTrace.ico']) cpSync(join(DESKTOP, file), join(STAGE, 'electron', file));
+for (const file of ['main.cjs', 'updater.cjs', 'preload.cjs', 'setup.html', 'update.html', 'LabTrace.ico']) {
+  cpSync(join(DESKTOP, file), join(STAGE, 'electron', file));
+}
 
-// Dependencias de producción del backend, en la versión exacta instalada (la misma con la que se probó)
-const version = json(join(ROOT, 'package.json')).version;
-const dependencies = Object.fromEntries(
-  Object.keys(json(join(ROOT, 'backend', 'package.json')).dependencies).map((name) => {
-    const local = join(ROOT, 'backend', 'node_modules', name, 'package.json');
-    return [name, json(existsSync(local) ? local : join(ROOT, 'node_modules', name, 'package.json')).version];
-  }),
-);
+// LABTRACE_VERSION permite generar una copia de prueba con otra versión (p. ej. para ver el aviso de actualización)
+const version = process.env.LABTRACE_VERSION || json(join(ROOT, 'package.json')).version;
+const publicar = process.argv.includes('--publish');
+if (publicar && process.env.GITHUB_REF_NAME && process.env.GITHUB_REF_NAME !== `v${version}`) {
+  console.error(`\n✖ La etiqueta ${process.env.GITHUB_REF_NAME} no coincide con la versión ${version} de package.json\n`);
+  process.exit(1);
+}
+// Dependencias de producción del backend, en la versión exacta instalada (la misma con la que se probó),
+// más las propias de la app de escritorio (el actualizador)
+const dependencies = {
+  ...Object.fromEntries(
+    Object.keys(json(join(ROOT, 'backend', 'package.json')).dependencies).map((name) => {
+      const local = join(ROOT, 'backend', 'node_modules', name, 'package.json');
+      return [name, json(existsSync(local) ? local : join(ROOT, 'node_modules', name, 'package.json')).version];
+    }),
+  ),
+  ...json(join(DESKTOP, 'package.json')).dependencies,
+};
 writeFileSync(
   join(STAGE, 'package.json'),
   `${JSON.stringify({
@@ -83,7 +95,10 @@ const { build, Platform, Arch } = await import(pathToFileURL(join(DESKTOP, 'node
 await build({
   targets: Platform.WINDOWS.createTarget('nsis', Arch.x64),
   projectDir: DESKTOP,
+  publish: publicar ? 'always' : 'never',
   config: {
+    // De aquí lee la app instalada dónde buscar versiones nuevas (Releases del repositorio)
+    publish: { provider: 'github', owner: 'Mattrux56', repo: 'EdwinDental', releaseType: 'release' },
     appId: 'com.labtrace.app',
     productName: 'LabTrace',
     electronVersion: json(join(DESKTOP, 'node_modules', 'electron', 'package.json')).version,

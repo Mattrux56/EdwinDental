@@ -9,7 +9,7 @@
 Necesita internet (la base de datos y las fotos estan en Supabase).
 
 - Cambiar las claves: menu **Archivo > Configurar conexion**.
-- Actualizar: instalar el `LabTrace-Setup` nuevo encima. Las claves se conservan (estan en `%APPDATA%\LabTrace\.env`).
+- Actualizar: es automatico. Si hay una version nueva, al abrir LabTrace aparece un aviso con **Actualizar ahora** (descarga, instala y vuelve a abrir) y **En otro momento** (vuelve a preguntar la proxima vez). Las claves se conservan (estan en `%APPDATA%\LabTrace\.env`).
 - Desinstalar: Configuracion de Windows > Aplicaciones > LabTrace.
 - Si algo falla al abrir: menu **Archivo > Abrir carpeta de registros** (`labtrace.log`).
 
@@ -18,8 +18,13 @@ Necesita internet (la base de datos y las fotos estan en Supabase).
 2. Base nueva y vacia: pegar `backend/prisma/actualizar-base-de-datos.sql` en SQL Editor y ejecutar. Base LabTrace existente: pegar `backend/prisma/migrar-remisiones-electronicas.sql` (se puede ejecutar mas de una vez).
 3. Copiar las claves: Project Settings > Database (pooler 6543 y directa 5432) y Project Settings > API (URL y anon key).
 
-## Generar el instalador (desarrollador)
-Con Node.js instalado, desde la carpeta del proyecto: `npm run desktop:build`. El instalador queda en `desktop\release\`. La version sale de `package.json` (raiz). `npm run desktop:dev` abre la app sin empaquetar.
+## Publicar un parche (desarrollador)
+Desde la carpeta del proyecto: `npm run release 1.0.2` (el numero debe ser mayor que el actual). Sube la version a GitHub, que compila el instalador y lo publica en 5-10 minutos en https://github.com/Mattrux56/EdwinDental/releases. Desde ese momento las apps instaladas ofrecen actualizarse al abrirse.
+- Si el parche cambia la base de datos, hay que ejecutar su SQL en Supabase aparte.
+- El instalador para un equipo nuevo se descarga de esa misma pagina de Releases.
+
+## Probar sin publicar (desarrollador)
+`npm run desktop:dev` abre la app sin empaquetar. `npm run desktop:build` genera el instalador en `desktop\release\` sin publicarlo.
 
 ## Avisos
 - Supabase gratis pausa el proyecto tras 1 semana sin uso (se reactiva desde su panel) y no hace copias: usar el respaldo Excel de la app.

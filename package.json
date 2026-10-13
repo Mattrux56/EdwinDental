@@ -10,6 +10,7 @@
     "build": "npm run build -w backend && npm run build -w frontend",
     "desktop:dev": "node desktop/build.mjs --dev",
     "desktop:build": "node desktop/build.mjs",
+    "release": "node desktop/release.mjs",
     "db:push": "npm run prisma:push -w backend"
   },
   "devDependencies": {

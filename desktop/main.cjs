@@ -4,6 +4,7 @@ const { app, BrowserWindow, Menu, dialog, ipcMain, shell, utilityProcess } = req
 const { createWriteStream, existsSync, mkdirSync, readFileSync, writeFileSync } = require('node:fs');
 const { createServer } = require('node:net');
 const { dirname, join } = require('node:path');
+const { buscarActualizacion } = require('./updater.cjs');
 
 // Instalada: <app>/electron/main.cjs · En desarrollo: <repo>/desktop/main.cjs. En ambos casos el backend queda en ../backend
 const ROOT = join(__dirname, '..');
@@ -197,6 +198,7 @@ async function lanzar() {
     }
     abrirPrincipal(port);
     setupWin?.close();
+    buscarActualizacion(() => mainWin);
     return { ok: true };
   } catch (error) {
     await detenerServidor();

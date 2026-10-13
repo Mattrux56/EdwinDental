@@ -7,6 +7,9 @@
   "scripts": {
     "start": "electron ."
   },
+  "dependencies": {
+    "electron-updater": "6.8.10"
+  },
   "devDependencies": {
     "electron": "44.4.5",
     "electron-builder": "26.17.0"

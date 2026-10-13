@@ -31,6 +31,7 @@ create policy "casos-fotos: borrar" on storage.objects
 | Cómo | Qué hace |
 |---|---|
 | **App de escritorio** (Windows) | `npm run desktop:build` genera `desktop/release/LabTrace-Setup-<versión>.exe`. Instala LabTrace con su icono y ventana propia (Electron); no requiere Node.js en el equipo. Las claves de Supabase se piden la primera vez y se guardan en `%APPDATA%\LabTrace\.env`. `npm run desktop:dev` la abre sin empaquetar. |
+| `npm run release 1.0.2` | Publica un parche: sube la versión, hace commit, crea la etiqueta `v1.0.2` y la envía. GitHub Actions (`.github/workflows/release.yml`) compila el instalador y lo publica como Release; las apps instaladas lo detectan al abrirse (`desktop/updater.cjs`, electron-updater) y preguntan «Actualizar ahora» / «En otro momento». |
 | `npm run dev` | Modo desarrollo con recarga automática: API en :3000, web en http://127.0.0.1:5173 (se abre sola). Usa las claves de `backend/.env`. |
 
 Requisito para desarrollar o generar el instalador: Node.js 18 o superior. El equipo donde se instala la app no necesita Node.js.
@@ -101,7 +102,8 @@ La opción **Remisiones** del menú lateral permite elegir un caso existente, in
 ## 4. Estructura
 
 ```
-desktop/{main.cjs,preload.cjs,setup.html,build.mjs}   App de escritorio: levanta el servidor en un puerto libre y lo muestra en una ventana; build.mjs crea el instalador
+desktop/{main.cjs,preload.cjs,setup.html,updater.cjs,update.html}   App de escritorio: levanta el servidor en un puerto libre, lo muestra en una ventana y se actualiza sola
+desktop/{build.mjs,release.mjs} · .github/workflows/release.yml   Instalador y publicación de versiones
 backend/src/{cases,clientes,remisiones,cuentas-cobro,productos,respaldo,prisma,supabase,common} API
 backend/prisma/   Esquema y SQL para crear o migrar la base · backend/templates/remision.xlsx   Formato de la remisión
 frontend/src/{services,controllers,views}   Servicio → controlador (hook) → vista
