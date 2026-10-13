@@ -55,8 +55,8 @@ for (const file of ['main.cjs', 'updater.cjs', 'preload.cjs', 'setup.html', 'upd
 
 // LABTRACE_VERSION permite generar una copia de prueba con otra versión (p. ej. para ver el aviso de actualización)
 const version = process.env.LABTRACE_VERSION || json(join(ROOT, 'package.json')).version;
-const publicar = process.argv.includes('--publish');
-if (publicar && process.env.GITHUB_REF_NAME && process.env.GITHUB_REF_NAME !== `v${version}`) {
+// En GitHub Actions la etiqueta que disparó la compilación debe ser la versión de package.json
+if (/^v\d/.test(process.env.GITHUB_REF_NAME ?? '') && process.env.GITHUB_REF_NAME !== `v${version}`) {
   console.error(`\n✖ La etiqueta ${process.env.GITHUB_REF_NAME} no coincide con la versión ${version} de package.json\n`);
   process.exit(1);
 }
@@ -95,7 +95,7 @@ const { build, Platform, Arch } = await import(pathToFileURL(join(DESKTOP, 'node
 await build({
   targets: Platform.WINDOWS.createTarget('nsis', Arch.x64),
   projectDir: DESKTOP,
-  publish: publicar ? 'always' : 'never',
+  publish: 'never', // los archivos los sube el flujo de GitHub Actions (.github/workflows/release.yml)
   config: {
     // De aquí lee la app instalada dónde buscar versiones nuevas (Releases del repositorio)
     publish: { provider: 'github', owner: 'Mattrux56', repo: 'EdwinDental', releaseType: 'release' },
@@ -121,11 +121,13 @@ await build({
   },
 });
 
-mkdirSync(RELEASE, { recursive: true });
 const instalador = readdirSync(OUT).find((name) => /^LabTrace-Setup-.*\.exe$/.test(name));
 if (!instalador) {
   console.error(`\n✖ No se encontró el instalador en ${OUT}\n`);
   process.exit(1);
 }
-cpSync(join(OUT, instalador), join(RELEASE, instalador));
+// El instalador y lo que el actualizador necesita junto a él (latest.yml y el mapa de bloques)
+rmSync(RELEASE, { recursive: true, force: true });
+mkdirSync(RELEASE, { recursive: true });
+for (const file of [instalador, `${instalador}.blockmap`, 'latest.yml']) cpSync(join(OUT, file), join(RELEASE, file));
 console.log(`\n✔ Instalador listo: ${join(RELEASE, instalador)}\n  Versión sin instalar para pruebas: ${join(OUT, 'win-unpacked', 'LabTrace.exe')}\n`);

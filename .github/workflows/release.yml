@@ -19,6 +19,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: node desktop/build.mjs --publish
+      - run: node desktop/build.mjs
+      # Un solo Release con el instalador, su mapa de bloques y latest.yml (lo que lee el actualizador)
+      - name: Publicar Release
+        shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "$GITHUB_REF_NAME" desktop/release/* --title "LabTrace ${GITHUB_REF_NAME#v}" --generate-notes
