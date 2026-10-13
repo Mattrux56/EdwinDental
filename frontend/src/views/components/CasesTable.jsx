@@ -36,6 +36,7 @@ export default function CasesTable({
   onToggleArchivados,
   archivadosCount = 0,
   compact = false,
+  actions,
 }) {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('Todos');
@@ -70,6 +71,7 @@ export default function CasesTable({
       title={compact ? 'Últimos casos registrados' : verArchivados ? 'Casos archivados' : 'Casos registrados'}
       meta={loading ? 'Cargando…' : `${compact ? shown.length : filtered.length} ${(compact ? shown.length : filtered.length) === 1 ? 'caso' : 'casos'}`}
       fill={!compact}
+      actions={actions}
     >
 
       <div className={styles.caseBody}>

@@ -4,7 +4,7 @@ import { clientesService } from '../services/clientes.service.js';
 import { clientesParecidos, idsDuplicados } from '../utils/clientes.js';
 import { Icon } from './components/Icon.jsx';
 import Modal, { ConfirmModal } from './components/Modal.jsx';
-import { EmptyState, ErrorBanner, LoadingState, PageHeader, Panel, SearchField } from './components/ui.jsx';
+import { EmptyState, ErrorBanner, LoadingState, Panel, SearchField } from './components/ui.jsx';
 import { normalizeSearchText } from '../utils/search.js';
 
 function ClienteForm({ cliente, clientes, saving, onSubmit, onCancel }) {
@@ -96,13 +96,15 @@ export default function ClientesView({ showToast, onChanged }) {
 
   return (
     <>
-      <PageHeader title="Clientes" subtitle="Doctores y clínicas. Corrige los nombres y revisa los repetidos.">
-        <button type="button" className={styles.primaryBtn} onClick={() => setModal({ tipo: 'form', cliente: null })}>
-          <Icon name="plus" size={16} /> Nuevo cliente
-        </button>
-      </PageHeader>
-
-      <Panel title="Listado de clientes" meta={loading ? 'Cargando…' : `${filtered.length} ${filtered.length === 1 ? 'cliente' : 'clientes'}`}>
+      <Panel
+        title="Clientes"
+        meta={loading ? 'Cargando…' : `${filtered.length} ${filtered.length === 1 ? 'cliente' : 'clientes'}`}
+        actions={(
+          <button type="button" className={styles.primaryBtn} onClick={() => setModal({ tipo: 'form', cliente: null })}>
+            <Icon name="plus" size={16} /> Nuevo cliente
+          </button>
+        )}
+      >
         <div className={styles.caseToolbar}>
           <SearchField value={query} onChange={setQuery} placeholder="Buscar por nombre" label="Buscar clientes" />
           {duplicados.size > 0 && (

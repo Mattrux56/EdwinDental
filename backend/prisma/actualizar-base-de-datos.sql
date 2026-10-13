@@ -1,8 +1,9 @@
 -- =====================================================================
 -- LabTrace · BASE DE DATOS COMPLETA (Supabase > SQL Editor)
--- Crea tablas , índices, llaves foráneas, el bucket de fotos y la lista
--- de precios 2026 (88 productos). Para una base NUEVA / VACÍA.
+-- Crea tablas, índices, llaves foráneas y el bucket de fotos. Para una base NUEVA / VACÍA.
+-- La lista de precios se carga después desde la opción Productos (Importar Excel).
 -- Si ya tienes las tablas, NO lo ejecutes: fallará sin cambiar nada.
+-- Para actualizar una base existente usa migrar-remisiones-electronicas.sql.
 -- =====================================================================
 BEGIN;
 
@@ -120,5 +121,15 @@ DROP POLICY IF EXISTS "casos-fotos borrar" ON storage.objects;
 CREATE POLICY "casos-fotos lectura" ON storage.objects FOR SELECT USING (bucket_id = 'casos-fotos');
 CREATE POLICY "casos-fotos subida" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'casos-fotos');
 CREATE POLICY "casos-fotos borrar" ON storage.objects FOR DELETE USING (bucket_id = 'casos-fotos');
+
+-- Seguridad: con RLS activo y sin políticas, nadie entra a las tablas por la Data API de Supabase
+-- (URL + anon key). La aplicación no se ve afectada: se conecta directo a la base con Prisma.
+ALTER TABLE "Cliente" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "Caso" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "Seguimiento" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "CasoImagen" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "Producto" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "Remision" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "RemisionItem" ENABLE ROW LEVEL SECURITY;
 
 COMMIT;

@@ -6,21 +6,21 @@ import Modal from './Modal.jsx';
 import PrintRemisionButton from './PrintRemisionButton.jsx';
 
 /** Detalle de una remisión: encabezado, líneas con cantidades y precios, total. Editar/anular solo si se pasan los callbacks. */
-export default function RemisionDetailModal({ remision, onClose, onEdit, onAnular, onReactivar, reactivando, showToast }) {
+export default function RemisionDetailModal({ remision, onClose, onEdit, onAnular, onEliminar, onReactivar, reactivando, showToast }) {
   const doctor = remision.doctorNombre ?? remision.caso?.cliente?.nombre;
   const paciente = remision.pacienteNombre ?? remision.caso?.pacienteNombre;
 
   return (
     <Modal
       title={`Remisión N° ${formatRemisionNumber(remision)}`}
-      subtitle={remision.anulada ? 'Anulada: no cuenta en las cuentas de cobro.' : undefined}
+      subtitle={remision.anulada ? 'Anulada: no cuenta en la cuenta de estado.' : undefined}
       onClose={onClose}
       className={r.wideModal}
     >
       <div className={styles.infoGrid}>
         <div><div className={styles.infoLabel}>Fecha</div><div className={styles.infoValue}>{formatEstimatedDate(remision.fecha)}</div></div>
         <div><div className={styles.infoLabel}>Orden de trabajo</div><div className={styles.infoValue}>{remision.caso?.codigo}</div></div>
-        <div><div className={styles.infoLabel}>Tipo</div><div className={styles.infoValue}>{remision.tipo === 'ELECTRONICA' ? 'Electrónica' : 'Normal'}</div></div>
+        <div><div className={styles.infoLabel}>Tipo</div><div className={styles.infoValue}>{remision.tipo === 'ELECTRONICA' ? 'Electrónica' : 'Cuenta de cobro'}</div></div>
         <div><div className={styles.infoLabel}>Doctor(a) / clínica</div><div className={styles.infoValue}>{doctor || '—'}</div></div>
         <div><div className={styles.infoLabel}>Paciente</div><div className={styles.infoValue}>{paciente || '—'}</div></div>
         <div><div className={styles.infoLabel}>No. de orden</div><div className={styles.infoValue}>{remision.noOrden || '—'}</div></div>
@@ -58,6 +58,9 @@ export default function RemisionDetailModal({ remision, onClose, onEdit, onAnula
         {onAnular && !remision.anulada && (
           <button type="button" className={styles.deleteBtn} onClick={() => onAnular(remision)}>Anular</button>
         )}
+        {onEliminar && remision.anulada && (
+          <button type="button" className={styles.deleteBtn} onClick={() => onEliminar(remision)}><Icon name="trash" size={15} /> Eliminar</button>
+        )}
         {onReactivar && remision.anulada && (
           <button type="button" className={styles.secondaryBtn} onClick={() => onReactivar(remision)} disabled={reactivando}>
             {reactivando ? 'Reactivando…' : 'Quitar anulación'}
@@ -66,7 +69,7 @@ export default function RemisionDetailModal({ remision, onClose, onEdit, onAnula
         {onEdit && !remision.anulada && (
           <button type="button" className={styles.secondaryBtn} onClick={() => onEdit(remision)}><Icon name="edit" size={15} /> Corregir</button>
         )}
-        <PrintRemisionButton remision={remision} showToast={showToast} className={styles.primaryBtn} iconSize={16} busyLabel="Guardando…" />
+        <PrintRemisionButton remision={remision} showToast={showToast} className={styles.primaryBtn} saveClassName={styles.secondaryBtn} iconSize={16} busyLabel="Guardando…" />
       </div>
     </Modal>
   );

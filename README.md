@@ -7,7 +7,7 @@ Monorepo (npm workspaces):
 | `backend/` | NestJS · Prisma · Supabase Storage (bucket `casos-fotos`) |
 | `frontend/` | React + Vite · CSS Modules |
 
-En uso normal es **un solo proceso en un solo puerto**: Nest sirve la API en `/api` y el frontend compilado en `/`.
+En uso normal es una **app de escritorio** (`desktop/`, Electron): levanta Nest en un puerto libre de `127.0.0.1` (API en `/api`, frontend compilado en `/`) y lo muestra en su propia ventana.
 
 ## 1. Configurar Supabase (una vez)
 
@@ -30,11 +30,10 @@ create policy "casos-fotos: borrar" on storage.objects
 
 | Cómo | Qué hace |
 |---|---|
-| Doble clic en **`LabTrace.bat`** (Windows) | Instala/compila si hace falta, inicia el servidor y abre el navegador en http://localhost:3000. El servidor se detiene automáticamente al cerrar la última pestaña de LabTrace (normalmente en unos 15 segundos); cerrar la ventana negra también lo detiene. |
-| `npm start` (cualquier sistema) | Lo mismo que el `.bat`. |
-| `npm run dev` | Modo desarrollo con recarga automática: API en :3000, web en http://127.0.0.1:5173 (se abre sola). |
+| **App de escritorio** (Windows) | `npm run desktop:build` genera `desktop/release/LabTrace-Setup-<versión>.exe`. Instala LabTrace con su icono y ventana propia (Electron); no requiere Node.js en el equipo. Las claves de Supabase se piden la primera vez y se guardan en `%APPDATA%\LabTrace\.env`. `npm run desktop:dev` la abre sin empaquetar. |
+| `npm run dev` | Modo desarrollo con recarga automática: API en :3000, web en http://127.0.0.1:5173 (se abre sola). Usa las claves de `backend/.env`. |
 
-Requisito: Node.js 18 o superior.
+Requisito para desarrollar o generar el instalador: Node.js 18 o superior. El equipo donde se instala la app no necesita Node.js.
 
 ### Qué hay en el menú
 
@@ -42,8 +41,8 @@ Requisito: Node.js 18 o superior.
 |---|---|
 | Resumen / Panel de casos | Casos en tarjetas; editar, archivar/restaurar, fotos, remisiones del caso. **Respaldo en Excel** en el Resumen. |
 | Alertas de entrega | Casos sin finalizar vencidos, para hoy o que vencen en 3 días (con contador en el menú). |
-| Remisiones | Crear, ver el detalle, **corregir tipo y número** y anular. |
-| Cuentas de cobro | Total del mes por cliente (sin remisiones anuladas). Al abrir un cliente se ven sus remisiones: se marca cuáles están pagadas y se guarda con «Confirmar remisiones». Hay filtros por mes, cliente y estado de pago. |
+| Remisiones | Crear, ver el detalle, **corregir tipo y número**, anular y eliminar las anuladas. **Guardar** (Excel) e **Imprimir** son botones distintos. Las cuentas de cobro y las electrónicas se ven por separado (clic en el encabezado «N°») y se ordenan con un clic en «Fecha». |
+| Cuenta de estado | Total del mes por cliente (sin remisiones anuladas). Al abrir un cliente se ven sus remisiones: se marca cuáles están pagadas y se guarda con «Confirmar remisiones». Hay filtros por mes, cliente y estado de pago. |
 | Clientes | Crear, editar, eliminar (si no tiene casos) y aviso de «posible duplicado». Un caso nuevo con el nombre de un cliente existente reutiliza ese cliente. |
 | Productos | Lista de precios con categorías, **Exportar** e **Importar** Excel (Código, Categoría, Descripción, Valor). |
 
@@ -51,7 +50,7 @@ Todas las tablas se desplazan dentro de su propio panel (el encabezado queda fij
 
 ## 3. API (prefijo `/api`)
 
-La aplicación es de un solo usuario (el dueño): no hay inicio de sesión. La consulta pública de un caso es `/api/cases/publico/:codigo`.
+La aplicación es de un solo usuario (el dueño): no hay inicio de sesión y el servidor solo escucha en `127.0.0.1`.
 
 | Método | Ruta | Descripción |
 |---|---|---|
@@ -67,8 +66,6 @@ La aplicación es de un solo usuario (el dueño): no hay inicio de sesión. La c
 | GET | `/api/cases?search=texto&archivados=1` | Busca por código, título, cliente o ID (los archivados solo con `archivados=1`) |
 | GET | `/api/cases/stats` | Totales del dashboard |
 | GET | `/api/cases/clientes` | Lista de clientes registrados para reutilizarlos en nuevos casos |
-| GET | `/api/cases/publico/:codigo` | Consulta pública de trazabilidad. El `codigo` es el **código público aleatorio** del caso (no el `CASO-2026-001`) |
-| GET | `/api/cases/:id/ticket` | Datos de caso y cliente para comprobante |
 | GET | `/api/cases/:id` | Caso con su línea de tiempo |
 | POST | `/api/cases` | `multipart/form-data`: `codigo`, `clienteId?` o `clienteNombre`, `pacienteNombre`, `doctorNombre`, `descripcion`, `fechaEntregaEstimada?`, `fotos[]?` |
 | POST | `/api/cases/:id/seguimiento` | `multipart/form-data`: `descripcion`, `tipo?`, `estado?`, `fotos[]?` |
@@ -84,10 +81,9 @@ La aplicación es de un solo usuario (el dueño): no hay inicio de sesión. La c
 | POST | `/api/remisiones` | JSON: `tipo?` (`NORMAL` o `ELECTRONICA`), `numero?`, `casoId`, `fecha?`, `noOrden?`, `items[]` (`productoId`, `cantidad`; máx. 9 productos distintos) |
 | GET | `/api/remisiones/:id/excel` | Descarga la remisión en Excel con el formato del laboratorio |
 | PATCH | `/api/remisiones/:id/anular` | Anula la remisión sin liberar su número |
+| DELETE | `/api/remisiones/:id` | Elimina una remisión ya anulada (su número queda libre) |
 
-Los casos se consultan desde el navegador en `/consulta/:codigoPublico`. Los códigos de caso nuevos tienen el formato `CASO-2026-A7K3Q` (año + 5 letras y números). La tabla `Cliente` guarda los clientes vinculados a sus casos; el formulario permite seleccionar uno previo o registrar uno nuevo. El resumen muestra los últimos tres casos y el Panel de casos ofrece búsqueda, filtro por fecha, página de 9/18/36 casos y eliminación confirmada. Aplica los cambios de esquema con `npm run db:push` desde la raíz.
-
-Al iniciar con `LabTrace.bat`, el lanzador local monitorea las pestañas abiertas mediante heartbeats. Si el navegador se cierra sin enviar el evento de cierre, el servidor espera a que venza la señal (75 segundos) y después se apaga. Si no se abre ninguna página, el lanzador se apaga después de dos minutos.
+Los códigos de caso nuevos tienen el formato `CASO-2026-A7K3Q` (año + 5 letras y números). La tabla `Cliente` guarda los clientes vinculados a sus casos; el formulario permite seleccionar uno previo o registrar uno nuevo. El resumen muestra los últimos tres casos y el Panel de casos ofrece búsqueda, filtro por fecha, página de 9/18/36 casos y eliminación confirmada. Aplica los cambios de esquema con `npm run db:push` desde la raíz.
 
 ### Remisiones
 
@@ -105,8 +101,9 @@ La opción **Remisiones** del menú lateral permite elegir un caso existente, in
 ## 4. Estructura
 
 ```
-LabTrace.bat · scripts/start.mjs   Lanzador local
-backend/src/{cases,clientes,remisiones,cuentas-cobro,productos,respaldo,prisma,supabase} API
+desktop/{main.cjs,preload.cjs,setup.html,build.mjs}   App de escritorio: levanta el servidor en un puerto libre y lo muestra en una ventana; build.mjs crea el instalador
+backend/src/{cases,clientes,remisiones,cuentas-cobro,productos,respaldo,prisma,supabase,common} API
+backend/prisma/   Esquema y SQL para crear o migrar la base · backend/templates/remision.xlsx   Formato de la remisión
 frontend/src/{services,controllers,views}   Servicio → controlador (hook) → vista
 ```
 

@@ -1,0 +1,14 @@
+{
+  "name": "labtrace-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LabTrace como aplicación de escritorio (Electron) y su instalador",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "44.4.5",
+    "electron-builder": "26.17.0"
+  }
+}

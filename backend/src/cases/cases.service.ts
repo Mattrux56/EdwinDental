@@ -4,7 +4,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { randomBytes } from 'crypto';
 import { dateOnlyToUtc, todayLocal } from '../common/date-only';
 import { PrismaService } from '../prisma/prisma.service';
 import { claveNombre } from '../clientes/nombre';
@@ -89,54 +88,6 @@ export class CasesService {
     });
   }
 
-  async findPublic(codigo: string) {
-    const caso = await this.prisma.caso.findUnique({
-      where: { codigoPublico: codigo },
-      select: {
-        codigo: true,
-        estado: true,
-        creadoEn: true,
-        fechaIngreso: true,
-        fechaEntregaEstimada: true,
-        doctorNombre: true,
-        seguimientos: {
-          orderBy: { creadoEn: 'asc' },
-          select: {
-            id: true,
-            tipo: true,
-            descripcion: true,
-            fechaEntregaEstimada: true,
-            creadoEn: true,
-            imagenes: {
-              orderBy: { subidoEn: 'asc' },
-              select: { id: true, urlImagen: true, subidoEn: true },
-            },
-          },
-        },
-      },
-    });
-    if (!caso) throw new NotFoundException(`El caso ${codigo} no existe`);
-    return this.normalizeLegacyStatus(caso);
-  }
-
-  async ticket(id: number) {
-    const caso = await this.prisma.caso.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        codigo: true,
-        codigoPublico: true,
-        doctorNombre: true,
-        estado: true,
-        creadoEn: true,
-        fechaEntregaEstimada: true,
-        cliente: { select: { nombre: true } },
-      },
-    });
-    if (!caso) throw new NotFoundException(`El caso #${id} no existe`);
-    return caso;
-  }
-
   /** Métricas para las tarjetas del dashboard (los casos archivados no cuentan) */
   async stats() {
     const [grouped, archivados, alertas] = await Promise.all([
@@ -217,7 +168,6 @@ export class CasesService {
       return await this.prisma.caso.create({
         data: {
           codigo: dto.codigo.trim(),
-          codigoPublico: randomBytes(6).toString('hex'),
           pacienteNombre: dto.pacienteNombre.trim(),
           doctorNombre: dto.doctorNombre.trim(),
           estado: 'En laboratorio',
@@ -240,6 +190,7 @@ export class CasesService {
         include: CASO_INCLUDE,
       });
     } catch (error) {
+      await this.supabase.removeByUrls(urls); // el caso no se creó: las fotos ya subidas no deben quedar sueltas
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002' &&
@@ -463,6 +414,6 @@ export class CasesService {
   }
 
   private uploadFiles(files: Express.Multer.File[], folder: string) {
-    return Promise.all(files.map((f) => this.supabase.uploadImage(f, folder)));
+    return Promise.all(files.filter((f) => f?.buffer).map((f) => this.supabase.uploadImage(f, folder)));
   }
 }

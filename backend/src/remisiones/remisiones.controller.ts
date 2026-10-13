@@ -2,6 +2,7 @@ import {
   Body,
   BadRequestException,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -10,14 +11,9 @@ import {
   Query,
   StreamableFile,
 } from '@nestjs/common';
-import { IsBoolean } from 'class-validator';
 import { CreateRemisionDto, TipoRemision } from './dto/create-remision.dto';
 import { UpdateRemisionDto } from './dto/update-remision.dto';
 import { RemisionesService } from './remisiones.service';
-
-class PagoRemisionDto {
-  @IsBoolean() pagada!: boolean;
-}
 
 const XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
@@ -48,12 +44,6 @@ export class RemisionesController {
     return this.remisiones.anular(id);
   }
 
-  /** PATCH /remisiones/:id/pago  { pagada: boolean } */
-  @Patch(':id/pago')
-  pago(@Param('id', ParseIntPipe) id: number, @Body() dto: PagoRemisionDto) {
-    return this.remisiones.marcarPago(id, dto.pagada);
-  }
-
   /** PATCH /remisiones/:id/reactivar (quita la anulación) */
   @Patch(':id/reactivar')
   reactivar(@Param('id', ParseIntPipe) id: number) {
@@ -77,6 +67,12 @@ export class RemisionesController {
   @Post()
   create(@Body() dto: CreateRemisionDto) {
     return this.remisiones.create(dto);
+  }
+
+  /** DELETE /remisiones/:id  (solo si está anulada) */
+  @Delete(':id')
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.remisiones.remove(id);
   }
 
   /** PATCH /remisiones/:id  (corrige los datos y numeración de la remisión) */

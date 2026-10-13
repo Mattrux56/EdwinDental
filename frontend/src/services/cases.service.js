@@ -106,16 +106,6 @@ export const casesService = {
     return request(`/cases/${id}`, { method: 'DELETE' });
   },
 
-  /** GET /cases/:id/ticket */
-  getTicket(id) {
-    return request(`/cases/${id}/ticket`);
-  },
-
-  /** GET /cases/publico/:codigo */
-  getPublicByCode(codigo) {
-    return request(`/cases/publico/${encodeURIComponent(codigo)}`);
-  },
-
   /** PATCH /cases/:id/seguimiento/:seguimientoId (la fecha vacía la quita; las fotos se agregan a las existentes) */
   updateFollowUp(casoId, seguimientoId, { tipo, descripcion, fechaEntregaEstimada, fotos = [] }) {
     const fd = new FormData();

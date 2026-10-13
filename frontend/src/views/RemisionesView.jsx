@@ -3,7 +3,6 @@ import styles from './dashboard.module.css';
 import r from './remisiones.module.css';
 import { Icon } from './components/Icon.jsx';
 import Modal, { ConfirmModal } from './components/Modal.jsx';
-import { PageHeader } from './components/ui.jsx';
 import NewRemisionForm from './components/NewRemisionForm.jsx';
 import RemisionesTable from './components/RemisionesTable.jsx';
 import RemisionDetailModal from './components/RemisionDetailModal.jsx';
@@ -11,11 +10,12 @@ import { formatRemisionNumber } from '../utils/format.js';
 
 /** Vista de Remisiones: lista + creación a partir de un caso existente y la lista de precios */
 export default function RemisionesView({ casos, controller, showToast }) {
-  const { remisiones, productos, loading, error, saving, anulandoId, reload, createRemision, updateRemision, anularRemision, reactivarRemision } = controller;
+  const { remisiones, productos, loading, error, saving, anulandoId, reload, createRemision, updateRemision, anularRemision, eliminarRemision, reactivarRemision } = controller;
   const [detalle, setDetalle] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [anularTarget, setAnularTarget] = useState(null);
+  const [eliminarTarget, setEliminarTarget] = useState(null);
 
   const confirmAnular = async () => {
     if (!anularTarget) return;
@@ -25,33 +25,40 @@ export default function RemisionesView({ casos, controller, showToast }) {
     }
   };
 
+  const confirmEliminar = async () => {
+    if (!eliminarTarget) return;
+    if (await eliminarRemision(eliminarTarget)) {
+      setEliminarTarget(null);
+      setDetalle(null);
+    }
+  };
+
   return (
     <>
-      <PageHeader title="Remisiones" subtitle="Genera la remisión en Excel de un caso a partir de la lista de precios.">
-        <button type="button" className={styles.primaryBtn} onClick={() => setCreateOpen(true)}>
-          <Icon name="plus" size={16} /> Nueva remisión
-        </button>
-      </PageHeader>
-
       <RemisionesTable
         remisiones={remisiones}
         loading={loading}
         error={error}
         onRetry={reload}
-        onAnular={setAnularTarget}
+        onEliminar={setEliminarTarget}
         onReactivar={reactivarRemision}
         onView={setDetalle}
-        onEdit={setEditTarget}
+        actions={(
+          <button type="button" className={styles.primaryBtn} onClick={() => setCreateOpen(true)}>
+            <Icon name="plus" size={16} /> Nueva remisión
+          </button>
+        )}
         anulandoId={anulandoId}
         showToast={showToast}
       />
 
-      {detalle && !editTarget && !anularTarget && (
+      {detalle && !editTarget && !anularTarget && !eliminarTarget && (
         <RemisionDetailModal
           remision={remisiones.find((x) => x.id === detalle.id) ?? detalle}
           onClose={() => setDetalle(null)}
           onEdit={(rem) => setEditTarget(rem)}
           onAnular={(rem) => setAnularTarget(rem)}
+          onEliminar={(rem) => setEliminarTarget(rem)}
           onReactivar={reactivarRemision}
           reactivando={anulandoId === detalle.id}
           showToast={showToast}
@@ -116,6 +123,19 @@ export default function RemisionesView({ casos, controller, showToast }) {
           onConfirm={confirmAnular}
         >
           <p>¿Anular la remisión N° {formatRemisionNumber(anularTarget)}? El número no se reutiliza. Si fue un error, podrás reactivarla.</p>
+        </ConfirmModal>
+      )}
+
+      {eliminarTarget && (
+        <ConfirmModal
+          title="Eliminar remisión"
+          confirmLabel="Eliminar remisión"
+          busyLabel="Eliminando…"
+          busy={anulandoId !== null}
+          onCancel={() => setEliminarTarget(null)}
+          onConfirm={confirmEliminar}
+        >
+          <p>¿Eliminar definitivamente la remisión anulada N° {formatRemisionNumber(eliminarTarget)}? Se borra con sus productos y su número queda libre. Esta acción no se puede deshacer.</p>
         </ConfirmModal>
       )}
     </>

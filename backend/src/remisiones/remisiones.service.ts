@@ -4,6 +4,7 @@ import { dateOnlyToUtc, todayLocal } from '../common/date-only';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateRemisionDto, TipoRemision } from './dto/create-remision.dto';
 import { UpdateRemisionDto } from './dto/update-remision.dto';
+import { totalEnLetras } from './numero-letras';
 import { generarRemisionExcel } from './remision-excel';
 
 const REMISION_INCLUDE = {
@@ -71,7 +72,7 @@ export class RemisionesService {
     if (numero === null) {
       throw new BadRequestException(
         await this.prisma.remision.count({ where: { tipo } }) === 0
-          ? `Indica el número de la primera remisión ${tipo === TipoRemision.ELECTRONICA ? 'electrónica' : 'normal'}`
+          ? `Indica el número de la primera remisión ${tipo === TipoRemision.ELECTRONICA ? 'electrónica' : 'de cuenta de cobro'}`
           : 'No hay números de remisión disponibles',
       );
     }
@@ -229,12 +230,12 @@ export class RemisionesService {
     return this.withTotal(await this.getOrFail(id));
   }
 
-  /** Marca una remisión como pagada (o pendiente) */
-  async marcarPago(id: number, pagada: boolean) {
+  /** Borra definitivamente una remisión ya anulada (con sus líneas); su número queda libre */
+  async remove(id: number) {
     const remision = await this.getOrFail(id);
-    if (remision.anulada) throw new BadRequestException('Una remisión anulada no se cobra');
-    await this.prisma.remision.update({ where: { id }, data: { pagada, pagadaEn: pagada ? new Date() : null } });
-    return this.withTotal(await this.getOrFail(id));
+    if (!remision.anulada) throw new BadRequestException('Solo se puede eliminar una remisión anulada');
+    await this.prisma.remision.delete({ where: { id } });
+    return { id, eliminada: true };
   }
 
   /** Excel con el formato del laboratorio */
@@ -266,7 +267,8 @@ export class RemisionesService {
   }
 
   private withTotal(r: RemisionConItems) {
-    return { ...r, total: r.items.reduce((acc, i) => acc + i.cantidad * i.valorUnitario, 0) };
+    const total = r.items.reduce((acc, i) => acc + i.cantidad * i.valorUnitario, 0);
+    return { ...r, total, totalEnLetras: totalEnLetras(total) };
   }
 
   private async nextNumero(tipo: TipoRemision): Promise<number | null> {

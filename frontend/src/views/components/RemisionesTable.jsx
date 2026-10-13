@@ -7,17 +7,23 @@ import PrintRemisionButton from './PrintRemisionButton.jsx';
 import { EmptyState, ErrorBanner, LoadingState, Panel, SearchField } from './ui.jsx';
 import { normalizeSearchText } from '../../utils/search.js';
 
+const TIPOS = { NORMAL: 'Cuentas de cobro', ELECTRONICA: 'Electrónicas' };
+
 const MESES = ['Todo el año', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
-export default function RemisionesTable({ remisiones, loading, error, onRetry, onAnular, onReactivar, onView, onEdit, anulandoId, showToast }) {
+export default function RemisionesTable({ remisiones, loading, error, onRetry, onEliminar, onReactivar, onView, anulandoId, showToast, actions }) {
   const [query, setQuery] = useState('');
   const hoy = new Date();
   const [mes, setMes] = useState(hoy.getMonth() + 1);
   const [anio, setAnio] = useState(String(hoy.getFullYear()));
+  // Las dos series no se mezclan: se ve una a la vez y se cambia con un clic en el encabezado «N°»
+  const [tipo, setTipo] = useState('NORMAL');
+  const [recientesPrimero, setRecientesPrimero] = useState(true);
 
   const filtered = useMemo(() => {
     const term = normalizeSearchText(query.trim());
-    return remisiones.filter((rem) => {
+    const lista = remisiones.filter((rem) => {
+      if ((rem.tipo === 'ELECTRONICA' ? 'ELECTRONICA' : 'NORMAL') !== tipo) return false;
       const fecha = String(rem.fecha).slice(0, 10);
       const periodoCoincide = !anio || fecha.startsWith(`${anio}-${mes ? String(mes).padStart(2, '0') : ''}`);
       if (!periodoCoincide) return false;
@@ -25,12 +31,14 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
         (v) => normalizeSearchText(v).includes(term),
       );
     });
-  }, [remisiones, query, mes, anio]);
+    const sentido = recientesPrimero ? -1 : 1;
+    return lista.sort((a, b) => sentido * (String(a.fecha).localeCompare(String(b.fecha)) || a.numero - b.numero));
+  }, [remisiones, query, mes, anio, tipo, recientesPrimero]);
 
   const empty = !loading && !error && filtered.length === 0;
 
   return (
-    <Panel title="Remisiones emitidas" meta={loading ? 'Cargando…' : `${filtered.length} ${filtered.length === 1 ? 'remisión' : 'remisiones'}`}>
+    <Panel title="Remisiones emitidas" actions={actions} meta={loading ? 'Cargando…' : `${filtered.length} ${filtered.length === 1 ? 'remisión' : 'remisiones'}`}>
       <div className={styles.caseToolbar}>
         <SearchField value={query} onChange={setQuery} placeholder="Buscar por número, caso, cliente o paciente" label="Buscar remisiones" />
         <div className={r.periodControl}>
@@ -64,7 +72,14 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
 
       {empty && (
         <EmptyState title={remisiones.length === 0 ? 'Aún no hay remisiones' : 'No hay remisiones para esta búsqueda'}>
-          {remisiones.length === 0 ? 'Usa “Nueva remisión” para crear la primera.' : 'Cambia el texto de búsqueda.'}
+          {remisiones.length === 0 ? 'Usa “Nueva remisión” para crear la primera.' : (
+            <>
+              Estás viendo {TIPOS[tipo].toLowerCase()}. Cambia la búsqueda, el periodo o{' '}
+              <button type="button" className={styles.linkBtn} onClick={() => setTipo(tipo === 'NORMAL' ? 'ELECTRONICA' : 'NORMAL')}>
+                ver {TIPOS[tipo === 'NORMAL' ? 'ELECTRONICA' : 'NORMAL'].toLowerCase()}
+              </button>.
+            </>
+          )}
         </EmptyState>
       )}
 
@@ -73,8 +88,26 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>N°</th>
-                <th>Fecha</th>
+                <th>
+                  <button
+                    type="button"
+                    className={r.thBtn}
+                    onClick={() => setTipo(tipo === 'NORMAL' ? 'ELECTRONICA' : 'NORMAL')}
+                    title={`Viendo ${TIPOS[tipo].toLowerCase()}. Clic para ver ${TIPOS[tipo === 'NORMAL' ? 'ELECTRONICA' : 'NORMAL'].toLowerCase()}`}
+                  >
+                    N° · {TIPOS[tipo]} <span aria-hidden="true">⇄</span>
+                  </button>
+                </th>
+                <th aria-sort={recientesPrimero ? 'descending' : 'ascending'}>
+                  <button
+                    type="button"
+                    className={r.thBtn}
+                    onClick={() => setRecientesPrimero((valor) => !valor)}
+                    title={recientesPrimero ? 'Más recientes primero. Clic para ver primero las más antiguas' : 'Más antiguas primero. Clic para ver primero las más recientes'}
+                  >
+                    Fecha <span aria-hidden="true">{recientesPrimero ? '▼' : '▲'}</span>
+                  </button>
+                </th>
                 <th>Caso</th>
                 <th>Cliente / Paciente</th>
                 <th>Productos</th>
@@ -115,11 +148,6 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
                   <td>
                     <div className={r.rowActions}>
                       <PrintRemisionButton remision={rem} showToast={showToast} className={styles.traceBtn} />
-                      {!rem.anulada && (
-                        <button type="button" className={styles.secondaryBtn} onClick={(event) => { event.stopPropagation(); onEdit(rem); }}>
-                          <Icon name="edit" size={15} /> Corregir
-                        </button>
-                      )}
                       {rem.anulada && (
                         <button
                           type="button"
@@ -131,15 +159,15 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
                           {anulandoId === rem.id ? 'Reactivando…' : 'Quitar anulación'}
                         </button>
                       )}
-                      {!rem.anulada && (
+                      {rem.anulada && (
                         <button
                           type="button"
                           className={styles.deleteBtn}
-                          onClick={(event) => { event.stopPropagation(); onAnular(rem); }}
+                          onClick={(event) => { event.stopPropagation(); onEliminar(rem); }}
                           disabled={anulandoId === rem.id}
-                          aria-label={`Anular remisión ${formatRemisionNumber(rem)}`}
+                          aria-label={`Eliminar remisión ${formatRemisionNumber(rem)}`}
                         >
-                          {anulandoId === rem.id ? 'Anulando…' : 'Anular'}
+                          <Icon name="trash" size={15} /> Eliminar
                         </button>
                       )}
                     </div>

@@ -55,16 +55,6 @@ export class CasesController {
     return this.casesService.findClients();
   }
 
-  @Get('publico/:codigo')
-  findPublic(@Param('codigo') codigo: string) {
-    return this.casesService.findPublic(codigo);
-  }
-
-  @Get(':id/ticket')
-  ticket(@Param('id', ParseIntPipe) id: number) {
-    return this.casesService.ticket(id);
-  }
-
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.casesService.findOne(id);

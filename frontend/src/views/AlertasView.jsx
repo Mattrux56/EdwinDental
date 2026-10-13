@@ -4,7 +4,7 @@ import { casesService } from '../services/cases.service.js';
 import { formatEstimatedDate } from '../utils/format.js';
 import { Icon } from './components/Icon.jsx';
 import StatusBadge from './components/StatusBadge.jsx';
-import { EmptyState, ErrorBanner, PageHeader, Panel } from './components/ui.jsx';
+import { EmptyState, ErrorBanner, Panel } from './components/ui.jsx';
 
 const NIVEL = {
   vencido: { label: (d) => `Vencido hace ${Math.abs(d)} ${Math.abs(d) === 1 ? 'día' : 'días'}`, cls: 'slaoverdue' },
@@ -39,14 +39,13 @@ export default function AlertasView({ casos, onOpen }) {
 
   return (
     <>
-      <PageHeader title="Alertas de entrega" subtitle="Casos sin finalizar que vencen en los próximos 3 días o ya están atrasados.">
-        <button type="button" className={styles.secondaryBtn} onClick={load} disabled={loading}>
-          <Icon name="refresh" size={16} /> Actualizar
-        </button>
-      </PageHeader>
-
       <Panel
-        title="Pendientes de entrega"
+        title="Alertas de entrega"
+        actions={(
+          <button type="button" className={styles.secondaryBtn} onClick={load} disabled={loading}>
+            <Icon name="refresh" size={16} /> Actualizar
+          </button>
+        )}
         meta={loading ? 'Cargando…' : `${conteo('vencido')} vencidos · ${conteo('hoy')} para hoy · ${conteo('proximo')} próximos`}
       >
         {error && <ErrorBanner onRetry={load}>{error}</ErrorBanner>}

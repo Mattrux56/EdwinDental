@@ -5,7 +5,7 @@ import { downloadListaPrecios, remisionesService } from '../services/remisiones.
 import { Icon } from './components/Icon.jsx';
 import ProductoForm from './components/ProductoForm.jsx';
 import Modal from './components/Modal.jsx';
-import { EmptyState, ErrorBanner, LoadingState, PageHeader, Panel, SearchField } from './components/ui.jsx';
+import { EmptyState, ErrorBanner, LoadingState, Panel, SearchField } from './components/ui.jsx';
 
 export default function ProductosView({ showToast }) {
   const [productos, setProductos] = useState([]);
@@ -100,8 +100,11 @@ export default function ProductosView({ showToast }) {
 
   return (
     <>
-      <PageHeader title="Productos" subtitle="Administra el catálogo y los precios usados en las remisiones.">
-        <div className={styles.headerActions}>
+      <Panel
+        title="Catálogo de productos"
+        meta={loading ? 'Cargando…' : `${filtered.length} ${filtered.length === 1 ? 'producto' : 'productos'}`}
+        actions={(
+        <>
           <input ref={archivoRef} type="file" accept=".xlsx" className={styles.hiddenInput} onChange={importar} />
           <button type="button" className={styles.secondaryBtn} onClick={exportar} title="Descarga la lista de precios actual en Excel">
             <Icon name="download" size={16} /> Exportar
@@ -112,10 +115,9 @@ export default function ProductosView({ showToast }) {
           <button type="button" className={styles.primaryBtn} onClick={() => setModal({ producto: null })}>
             <Icon name="plus" size={16} /> Nuevo producto
           </button>
-        </div>
-      </PageHeader>
-
-      <Panel title="Catálogo de productos" meta={loading ? 'Cargando…' : `${filtered.length} ${filtered.length === 1 ? 'producto' : 'productos'}`}>
+        </>
+        )}
+      >
         <div className={styles.caseToolbar}>
           <SearchField value={query} onChange={setQuery} placeholder="Buscar por código, categoría o descripción" label="Buscar productos" />
         </div>

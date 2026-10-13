@@ -50,7 +50,11 @@ export default function DashboardView({ controller, remisionesController }) {
   // Vistas con una tabla/lista grande: ocupan la pantalla y el scroll ocurre dentro de la tabla
   const fillView = activeView !== 'resumen';
   const showRemisiones = activeView === 'remisiones';
-  const pageTitle = activeView === 'resumen' ? 'Resumen de casos' : 'Panel de casos';
+  const registrarCaso = (
+    <button type="button" className={styles.primaryBtn} onClick={() => setCreateModalOpen(true)}>
+      <Icon name="plus" size={16} /> Registrar caso
+    </button>
+  );
 
   const confirmDelete = async () => {
     if (!deleteTarget) return;
@@ -88,21 +92,11 @@ export default function DashboardView({ controller, remisionesController }) {
             <CuentasCobroView showToast={showToast} />
           ) : (
             <>
-              <PageHeader
-                title={pageTitle}
-                subtitle={activeView === 'resumen'
-                  ? 'Estadísticas generales y los últimos casos registrados.'
-                  : 'Busca, filtra y administra los casos registrados.'}
-              >
-                <div className={styles.headerActions}>
-                  <button type="button" className={styles.primaryBtn} onClick={() => setCreateModalOpen(true)}>
-                    <Icon name="plus" size={16} /> Registrar caso
-                  </button>
-                </div>
-              </PageHeader>
-
               {activeView === 'resumen' ? (
                 <>
+                  <PageHeader title="Resumen de casos" subtitle="Estadísticas generales y los últimos casos registrados.">
+                    <div className={styles.headerActions}>{registrarCaso}</div>
+                  </PageHeader>
                   <MetricCards stats={stats} />
                   <CasesTable
                     casos={casos.slice(0, 3)}
@@ -126,6 +120,7 @@ export default function DashboardView({ controller, remisionesController }) {
                   verArchivados={verArchivados}
                   onToggleArchivados={() => setVerArchivados((v) => !v)}
                   archivadosCount={stats.archivados}
+                  actions={registrarCaso}
                 />
               )}
             </>

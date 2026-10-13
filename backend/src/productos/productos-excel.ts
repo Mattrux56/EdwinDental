@@ -48,6 +48,7 @@ const aTexto = (v: ExcelJS.CellValue): string => {
 };
 
 const aNumero = (v: ExcelJS.CellValue): number | null => {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null; // una celda numérica no trae separadores de miles
   const t = aTexto(v).replace(/[$\s]/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.');
   if (t === '') return null;
   const n = Number(t);
@@ -90,7 +91,7 @@ export async function leerProductos(buffer: Buffer): Promise<ResultadoLectura> {
             omitidas.push({ fila: i, motivo: 'código no válido' });
           } else if (!descripcion) {
             omitidas.push({ fila: i, motivo: 'sin descripción' });
-          } else if (valor === null || valor < 0 || !Number.isInteger(Math.round(valor)) || valor > 100_000_000) {
+          } else if (valor === null || valor < 0 || valor > 100_000_000) {
             omitidas.push({ fila: i, motivo: 'valor no válido' });
           } else {
             const activoTxt = cols.activo ? norm(aTexto(row.getCell(cols.activo).value)) : '';

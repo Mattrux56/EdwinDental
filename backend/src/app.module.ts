@@ -9,14 +9,13 @@ import { RemisionesModule } from './remisiones/remisiones.module';
 import { RespaldoModule } from './respaldo/respaldo.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { SupabaseModule } from './supabase/supabase.module';
-import { RuntimeController } from './runtime/runtime.controller';
-import { RuntimePresenceService } from './runtime/runtime-presence.service';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: join(__dirname, '..', '.env'),
+      // La app de escritorio guarda las claves fuera de la carpeta de instalación
+      envFilePath: process.env.LABTRACE_ENV_FILE || join(__dirname, '..', '.env'),
     }),
     PrismaModule,
     SupabaseModule,
@@ -27,7 +26,5 @@ import { RuntimePresenceService } from './runtime/runtime-presence.service';
     ProductosModule,
     RemisionesModule,
   ],
-  controllers: [RuntimeController],
-  providers: [RuntimePresenceService],
 })
 export class AppModule {}

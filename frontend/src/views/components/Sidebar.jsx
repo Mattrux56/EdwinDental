@@ -6,7 +6,7 @@ const MENU = [
   { id: 'casos', label: 'Panel de casos', icon: 'layers' },
   { id: 'alertas', label: 'Alertas de entrega', icon: 'bell' },
   { id: 'remisiones', label: 'Remisiones', icon: 'receipt' },
-  { id: 'cuentas', label: 'Cuentas de cobro', icon: 'wallet' },
+  { id: 'cuentas', label: 'Cuenta de estado', icon: 'wallet' },
   { id: 'clientes', label: 'Clientes', icon: 'users' },
   { id: 'productos', label: 'Productos', icon: 'box' },
 ];

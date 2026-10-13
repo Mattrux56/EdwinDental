@@ -21,7 +21,8 @@ export default function FollowUpForm({ caso, saving, onSubmit, seguimiento, onCa
   const [movimiento, setMovimiento] = useState(`${movimientoActual.tipo}|${movimientoActual.estado}`);
   const [descripcion, setDescripcion] = useState(editando ? seguimiento.descripcion : '');
   const [fechaEntregaEstimada, setFechaEntregaEstimada] = useState(
-    editando && seguimiento.fechaEntregaEstimada ? String(seguimiento.fechaEntregaEstimada).slice(0, 10) : '',
+    // Un movimiento nuevo parte de la entrega vigente del caso: si se dejara vacía, el caso la perdería y saldría de Alertas
+    String((editando ? seguimiento.fechaEntregaEstimada : caso.fechaEntregaEstimada) ?? '').slice(0, 10),
   );
   const [fotos, setFotos] = useState([]);
   const [verFoto, setVerFoto] = useState(null);
@@ -52,7 +53,7 @@ export default function FollowUpForm({ caso, saving, onSubmit, seguimiento, onCa
       const estadoNuevo = normalizeEstado(updated.estado);
       const siguiente = MOVIMIENTOS.find((m) => m.estado === estadoNuevo) ?? MOVIMIENTOS[0];
       setMovimiento(`${siguiente.tipo}|${siguiente.estado}`);
-      setFechaEntregaEstimada('');
+      setFechaEntregaEstimada(String(updated.fechaEntregaEstimada ?? '').slice(0, 10));
       setFotos([]);
     }
   };

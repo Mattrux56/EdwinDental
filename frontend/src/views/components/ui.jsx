@@ -14,13 +14,16 @@ export function PageHeader({ title, subtitle, children }) {
   );
 }
 
-/** Tarjeta con título y contador (meta) sobre el contenido de una lista */
-export function Panel({ title, meta, fill = true, children }) {
+/** Tarjeta con título, contador (meta) y acciones (botones a la derecha) sobre el contenido de una lista */
+export function Panel({ title, meta, actions, fill = true, children }) {
   return (
     <section className={`${styles.panel} ${fill ? styles.panelFill : ''}`}>
       <div className={styles.panelHeader}>
         <h2 className={styles.panelTitle}>{title}</h2>
-        <span className={styles.panelMeta}>{meta}</span>
+        <div className={styles.headerActions}>
+          <span className={styles.panelMeta}>{meta}</span>
+          {actions}
+        </div>
       </div>
       {children}
     </section>

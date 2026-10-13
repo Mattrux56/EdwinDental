@@ -1,11 +1,17 @@
 import { Controller, Get, StreamableFile } from '@nestjs/common';
 import ExcelJS from 'exceljs';
+import { todayLocal } from '../common/date-only';
 import { PrismaService } from '../prisma/prisma.service';
 
 const XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 const fecha = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : '');
-const fechaHora = (d: Date | null | undefined) => (d ? d.toISOString().replace('T', ' ').slice(0, 16) : '');
+/** Fecha y hora en la hora local del equipo (toISOString() usa UTC y adelanta 5 horas en Colombia) */
+const fechaHora = (d: Date | null | undefined) => {
+  if (!d) return '';
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+};
 
 function hoja(wb: ExcelJS.Workbook, nombre: string, columnas: { header: string; key: string; width: number }[], filas: object[]) {
   const ws = wb.addWorksheet(nombre);
@@ -61,7 +67,6 @@ export class RespaldoController {
       { header: 'Descripción', key: 'descripcion', width: 70 },
       { header: 'Entrega estimada', key: 'entrega', width: 16 },
       { header: 'Fotos', key: 'fotos', width: 8 },
-      { header: 'Registrado por', key: 'por', width: 18 },
     ], seguimientos.map((s) => ({
       caso: s.caso.codigo, fecha: fechaHora(s.creadoEn), tipo: s.tipo, descripcion: s.descripcion,
       entrega: fecha(s.fechaEntregaEstimada), fotos: s._count.imagenes,
@@ -78,10 +83,9 @@ export class RespaldoController {
       { header: 'Total', key: 'total', width: 14 },
       { header: 'Anulada', key: 'anulada', width: 9 },
       { header: 'Pagada', key: 'pagada', width: 9 },
-      { header: 'Creada por', key: 'por', width: 18 },
     ], remisiones.map((r) => ({
       numero: r.tipo === 'ELECTRONICA' ? `FE-${r.numero}` : r.numero,
-      tipo: r.tipo === 'ELECTRONICA' ? 'Electrónica' : 'Normal',
+      tipo: r.tipo === 'ELECTRONICA' ? 'Electrónica' : 'Cuenta de cobro',
       fecha: fecha(r.fecha), caso: r.caso.codigo, doctor: r.doctorNombre ?? r.caso.cliente.nombre,
       paciente: r.pacienteNombre ?? r.caso.pacienteNombre ?? '', orden: r.noOrden ?? '',
       total: r.items.reduce((a, i) => a + i.cantidad * i.valorUnitario, 0), anulada: r.anulada ? 'Sí' : 'No', pagada: r.pagada ? 'Sí' : 'No',
@@ -111,7 +115,7 @@ export class RespaldoController {
       { header: 'Activo', key: 'activo', width: 9 },
     ], productos.map((p) => ({ ...p, activo: p.activo ? 'Sí' : 'No' })));
 
-    const hoy = new Date().toISOString().slice(0, 10);
+    const hoy = todayLocal();
     return new StreamableFile(Buffer.from(await wb.xlsx.writeBuffer()), {
       type: XLSX,
       disposition: `attachment; filename="respaldo_labtrace_${hoy}.xlsx"`,

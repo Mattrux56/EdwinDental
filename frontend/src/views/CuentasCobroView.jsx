@@ -5,14 +5,14 @@ import { cuentasService } from '../services/cuentas.service.js';
 import { formatMoney } from '../utils/format.js';
 import { Icon } from './components/Icon.jsx';
 import CuentaCobroModal from './components/CuentaCobroModal.jsx';
-import { EmptyState, ErrorBanner, PageHeader, Panel, SearchField } from './components/ui.jsx';
+import { EmptyState, ErrorBanner, Panel, SearchField } from './components/ui.jsx';
 import { normalizeSearchText } from '../utils/search.js';
 
 const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 const ESTADOS_PAGO = ['Todos', 'Pendiente', 'Pago parcial', 'Pagada'];
 
 const estadoDe = (c) => (c.pagada ? 'Pagada' : c.pagadas > 0 ? 'Pago parcial' : 'Pendiente');
-/** Cuenta de cobro = remisiones (no anuladas) de cada cliente en el mes. Al abrir un cliente se marca cuáles están pagadas. */
+/** Cuenta de estado = remisiones (no anuladas) de cada cliente en el mes. Al abrir un cliente se marca cuáles están pagadas. */
 export default function CuentasCobroView({ showToast }) {
   const hoy = new Date();
   const [anio, setAnio] = useState(hoy.getFullYear());
@@ -87,11 +87,6 @@ export default function CuentasCobroView({ showToast }) {
 
   return (
     <>
-      <PageHeader
-        title="Cuentas de cobro"
-        subtitle="Total mensual por cliente según sus remisiones. Abre un cliente para marcar cuáles están pagadas. Las anuladas no se cuentan."
-      />
-
       <div className={r.kpis}>
         <div className={r.kpi}><span>Total de remisiones en {MESES[mes - 1].toLowerCase()}</span><strong>{formatMoney(resumen.total)}</strong></div>
         <div className={r.kpi}><span>Pagado</span><strong>{formatMoney(resumen.pagado)}</strong></div>
@@ -99,7 +94,7 @@ export default function CuentasCobroView({ showToast }) {
       </div>
 
       <Panel
-        title={`${MESES[mes - 1]} ${anio}`}
+        title={`Cuenta de estado · ${MESES[mes - 1]} ${anio}`}
         meta={loading ? 'Cargando…' : `${visibles.length} ${visibles.length === 1 ? 'cliente' : 'clientes'}`}
       >
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { imprimirRemision, remisionesService } from '../services/remisiones.service.js';
+import { guardarRemisionExcel, remisionesService } from '../services/remisiones.service.js';
 import { formatRemisionNumber } from '../utils/format.js';
 
 export function useRemisionesController({ showToast }) {
@@ -34,7 +34,7 @@ export function useRemisionesController({ showToast }) {
 
   /** Abre «Guardar como» con el Excel de la remisión recién emitida o corregida */
   const guardarCopia = useCallback(
-    (remision) => imprimirRemision(remision.id, remision.numero, remision.tipo).catch((e) => showToast('error', e.message)),
+    (remision) => guardarRemisionExcel(remision.id, remision.numero, remision.tipo).catch((e) => showToast('error', e.message)),
     [showToast],
   );
 
@@ -96,6 +96,25 @@ export function useRemisionesController({ showToast }) {
     [load, showToast],
   );
 
+  /** Borra definitivamente una remisión anulada (su número queda libre) */
+  const eliminarRemision = useCallback(
+    async (remision) => {
+      setAnulandoId(remision.id);
+      try {
+        await remisionesService.eliminar(remision.id);
+        showToast('success', `Remisión N° ${formatRemisionNumber(remision)} eliminada`);
+        await load();
+        return true;
+      } catch (e) {
+        showToast('error', e.message);
+        return false;
+      } finally {
+        setAnulandoId(null);
+      }
+    },
+    [load, showToast],
+  );
+
   const reactivarRemision = useCallback(
     async (remision) => {
       setAnulandoId(remision.id);
@@ -126,6 +145,7 @@ export function useRemisionesController({ showToast }) {
     createRemision,
     updateRemision,
     anularRemision,
+    eliminarRemision,
     reactivarRemision,
   };
 }

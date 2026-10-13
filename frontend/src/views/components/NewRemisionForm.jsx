@@ -267,7 +267,7 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
               setNumeroConsultado(false);
             }
           }}>
-            <option value="NORMAL">Normal</option>
+            <option value="NORMAL">Cuenta de cobro</option>
             <option value="ELECTRONICA">Electrónica (FE-)</option>
           </select>
         </div>

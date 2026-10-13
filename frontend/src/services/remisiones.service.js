@@ -65,18 +65,14 @@ export const remisionesService = {
     });
   },
 
-  /** PATCH /remisiones/:id/pago  { pagada } */
-  marcarPago(id, pagada) {
-    return request(`/remisiones/${id}/pago`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pagada }),
-    });
-  },
-
   /** PATCH /remisiones/:id/reactivar */
   reactivar(id) {
     return request(`/remisiones/${id}/reactivar`, { method: 'PATCH' });
+  },
+
+  /** DELETE /remisiones/:id (solo una remisión anulada) */
+  eliminar(id) {
+    return request(`/remisiones/${id}`, { method: 'DELETE' });
   },
 
   /** PATCH /remisiones/:id/anular */
@@ -86,8 +82,8 @@ export const remisionesService = {
 
 };
 
-/** Imprimir una remisión: guarda su archivo de Excel donde elija la persona («Guardar como») */
-export function imprimirRemision(id, numero, tipo = 'NORMAL') {
+/** Guarda el archivo de Excel de una remisión donde elija la persona («Guardar como») */
+export function guardarRemisionExcel(id, numero, tipo = 'NORMAL') {
   const etiqueta = tipo === 'ELECTRONICA' ? `FE-${numero ?? id}` : `No_${numero ?? id}`;
   return downloadFile(`/remisiones/${id}/excel`, `REMISION_${etiqueta}.xlsx`);
 }

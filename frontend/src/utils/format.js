@@ -21,7 +21,7 @@ export function deliverySla(fecha) {
   const currentDay = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
   const daysLeft = Math.round((due - currentDay) / 86400000);
   if (daysLeft < 0) return { label: 'Vencido', status: 'overdue' };
-  if (daysLeft <= 2) return { label: 'Por vencer', status: 'dueSoon' };
+  if (daysLeft <= 3) return { label: 'Por vencer', status: 'dueSoon' };
   return { label: 'A tiempo', status: 'onTime' };
 }
 

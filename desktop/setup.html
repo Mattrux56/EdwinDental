@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'" />
+    <title>LabTrace · Configurar conexión</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; padding: 28px 32px; font: 14px/1.45 "Segoe UI", system-ui, sans-serif; color: #1c2430; background: #f5f7fa; }
+      h1 { margin: 0 0 6px; font-size: 20px; font-weight: 600; }
+      p { margin: 0 0 18px; color: #556070; }
+      label { display: block; margin-bottom: 14px; font-weight: 600; }
+      label small { display: block; font-weight: 400; color: #6b7686; }
+      input { width: 100%; margin-top: 5px; padding: 8px 10px; font: 13px Consolas, monospace; color: inherit; background: #fff; border: 1px solid #c9d1dc; border-radius: 6px; }
+      input:focus { outline: 2px solid #2f6fed; outline-offset: -1px; }
+      .actions { display: flex; gap: 10px; justify-content: space-between; margin-top: 22px; }
+      button { padding: 9px 16px; font: inherit; font-weight: 600; border-radius: 6px; border: 1px solid #c9d1dc; background: #fff; color: inherit; cursor: pointer; }
+      button.primary { background: #2f6fed; border-color: #2f6fed; color: #fff; }
+      button:disabled { opacity: 0.6; cursor: default; }
+      #error { margin: 14px 0 0; padding: 10px 12px; color: #9b1c1c; background: #fdecec; border: 1px solid #f3bcbc; border-radius: 6px; white-space: pre-wrap; max-height: 120px; overflow: auto; }
+    </style>
+  </head>
+  <body>
+    <h1>Conectar LabTrace con Supabase</h1>
+    <p>Pega las claves del proyecto de Supabase o importa el archivo <b>.env</b> de una instalación anterior. Se guardan solo en este equipo.</p>
+
+    <form id="form">
+      <label>DATABASE_URL
+        <small>Project Settings › Database › Transaction pooler (puerto 6543)</small>
+        <input name="DATABASE_URL" required spellcheck="false" autocomplete="off" placeholder="postgresql://postgres.[REF]:[PASSWORD]@…:6543/postgres?pgbouncer=true&connection_limit=1" />
+      </label>
+      <label>DIRECT_URL
+        <small>Project Settings › Database › conexión directa (puerto 5432)</small>
+        <input name="DIRECT_URL" required spellcheck="false" autocomplete="off" placeholder="postgresql://postgres.[REF]:[PASSWORD]@…:5432/postgres" />
+      </label>
+      <label>SUPABASE_URL
+        <small>Project Settings › API › Project URL</small>
+        <input name="SUPABASE_URL" required spellcheck="false" autocomplete="off" placeholder="https://[REF].supabase.co" />
+      </label>
+      <label>SUPABASE_ANON_KEY
+        <small>Project Settings › API › anon public</small>
+        <input name="SUPABASE_ANON_KEY" required spellcheck="false" autocomplete="off" />
+      </label>
+
+      <div class="actions">
+        <button type="button" id="importar">Importar archivo .env…</button>
+        <button type="submit" class="primary" id="guardar">Guardar y abrir LabTrace</button>
+      </div>
+      <div id="error" hidden></div>
+    </form>
+
+    <script>
+      const form = document.getElementById('form');
+      const error = document.getElementById('error');
+      const guardar = document.getElementById('guardar');
+      const importar = document.getElementById('importar');
+
+      const llenar = (valores) => {
+        for (const [clave, valor] of Object.entries(valores ?? {})) {
+          if (form.elements[clave] && valor) form.elements[clave].value = valor;
+        }
+      };
+
+      window.labtrace.leer().then(llenar);
+
+      importar.addEventListener('click', async () => {
+        const valores = await window.labtrace.importar();
+        if (!valores) return;
+        llenar(valores);
+        error.hidden = !Object.values(valores).some((valor) => !valor);
+        error.textContent = 'El archivo no trae todas las claves: completa las que faltan.';
+      });
+
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        error.hidden = true;
+        guardar.disabled = importar.disabled = true;
+        guardar.textContent = 'Conectando…';
+        const resultado = await window.labtrace.guardar(Object.fromEntries(new FormData(form)));
+        if (resultado.ok) return; // la ventana se cierra sola
+        guardar.disabled = importar.disabled = false;
+        guardar.textContent = 'Guardar y abrir LabTrace';
+        error.textContent = resultado.message;
+        error.hidden = false;
+      });
+    </script>
+  </body>
+</html>

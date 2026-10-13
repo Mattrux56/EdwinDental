@@ -1,16 +1,29 @@
 import { useState } from 'react';
-import { imprimirRemision } from '../../services/remisiones.service.js';
+import { guardarRemisionExcel } from '../../services/remisiones.service.js';
+import { imprimirRemision } from '../../utils/printRemision.js';
 import { Icon } from './Icon.jsx';
 
-/** Botón «Imprimir» de una remisión: abre «Guardar como» para elegir dónde guardar el archivo */
-export default function PrintRemisionButton({ remision, showToast, className, iconSize = 15, busyLabel = '…' }) {
+/**
+ * Botones de una remisión: «Imprimir» abre la ventana de impresión del navegador y
+ * «Guardar» abre «Guardar como» para elegir dónde dejar el archivo de Excel.
+ */
+export default function PrintRemisionButton({ remision, showToast, className, saveClassName = className, iconSize = 15, busyLabel = '…' }) {
   const [busy, setBusy] = useState(false);
 
-  const imprimir = async (event) => {
+  const imprimir = (event) => {
+    event.stopPropagation();
+    try {
+      imprimirRemision(remision);
+    } catch (reason) {
+      showToast?.('error', reason.message);
+    }
+  };
+
+  const guardar = async (event) => {
     event.stopPropagation();
     setBusy(true);
     try {
-      await imprimirRemision(remision.id, remision.numero, remision.tipo);
+      await guardarRemisionExcel(remision.id, remision.numero, remision.tipo);
     } catch (reason) {
       showToast?.('error', reason.message);
     } finally {
@@ -19,8 +32,13 @@ export default function PrintRemisionButton({ remision, showToast, className, ic
   };
 
   return (
-    <button type="button" className={className} onClick={imprimir} disabled={busy}>
-      <Icon name="printer" size={iconSize} /> {busy ? busyLabel : 'Imprimir'}
-    </button>
+    <>
+      <button type="button" className={saveClassName} onClick={guardar} disabled={busy}>
+        <Icon name="download" size={iconSize} /> {busy ? busyLabel : 'Guardar'}
+      </button>
+      <button type="button" className={className} onClick={imprimir}>
+        <Icon name="printer" size={iconSize} /> Imprimir
+      </button>
+    </>
   );
 }

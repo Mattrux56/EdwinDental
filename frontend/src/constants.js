@@ -1,12 +1,5 @@
 export const ESTADOS = ['En laboratorio', 'En prueba', 'Finalizado', 'arreglo'];
 
-export const TIPOS_SEGUIMIENTO = [
-  'prueba',
-  'reingreso',
-  'entrega',
-  'arreglo',
-];
-
 export const MOVIMIENTOS = [
   { tipo: 'reingreso', estado: 'En laboratorio', label: 'Reingreso · En laboratorio' },
   { tipo: 'prueba', estado: 'En prueba', label: 'Prueba · En prueba' },

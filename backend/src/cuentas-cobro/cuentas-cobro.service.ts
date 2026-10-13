@@ -75,7 +75,7 @@ export class CuentasCobroService {
     if (vigentes.length === 0) throw new BadRequestException('Ese cliente no tiene remisiones vigentes en el periodo');
     const validas = new Set(vigentes.map((r) => r.id));
     if (pagadas.some((id) => !validas.has(id))) {
-      throw new BadRequestException('Hay remisiones que no pertenecen a esta cuenta de cobro');
+      throw new BadRequestException('Hay remisiones que no pertenecen a esta cuenta de estado');
     }
     const marcar = new Set(pagadas);
     const aPagar = vigentes.filter((r) => marcar.has(r.id) && !r.pagada).map((r) => r.id);
