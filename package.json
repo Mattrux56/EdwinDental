@@ -1,6 +1,6 @@
 {
   "name": "lab-trazabilidad",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "description": "LabTrace: seguimiento y trazabilidad de casos de laboratorio (NestJS + Prisma + Supabase + React/Vite)",
   "engines": {
