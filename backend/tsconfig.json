@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
+    "module": "node16",
     "declaration": true,
     "removeComments": true,
     "emitDecoratorMetadata": true,
@@ -9,14 +9,15 @@
     "target": "es2020",
     "sourceMap": true,
     "outDir": "./dist",
-    "baseUrl": "./",
+    "rootDir": "./src",
     "incremental": true,
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
     "skipLibCheck": true,
     "strict": true,
     "strictNullChecks": true,
     "noImplicitAny": false,
     "esModuleInterop": true,
-    "moduleResolution": "node",
+    "moduleResolution": "node16",
     "resolveJsonModule": true,
     "types": ["node", "express", "multer"]
   },
