@@ -533,3 +533,11 @@
 .thBtn:hover {
   color: var(--ink);
 }
+
+.thBtn[aria-pressed='true'] {
+  color: var(--reagent);
+}
+
+.actionsTh {
+  text-align: right;
+}

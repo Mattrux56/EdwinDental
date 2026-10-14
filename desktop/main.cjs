@@ -40,11 +40,15 @@ function guardarClaves(valores) {
   writeFileSync(ENV_FILE, `${CLAVES.map((clave) => `${clave}="${valores[clave]}"`).join('\n')}\n`, 'utf8');
 }
 
-const puertoLibre = () =>
+// Puerto fijo: la interfaz queda siempre en el mismo origen, así el navegador conserva lo que recuerda
+// (p. ej. la cámara elegida). Si está ocupado se usa uno libre cualquiera.
+const PUERTO_PREFERIDO = 47318;
+
+const puertoLibre = (preferido = 0) =>
   new Promise((resolve, reject) => {
     const probe = createServer();
-    probe.once('error', reject);
-    probe.listen(0, '127.0.0.1', () => {
+    probe.once('error', (error) => (preferido ? puertoLibre().then(resolve, reject) : reject(error)));
+    probe.listen(preferido, '127.0.0.1', () => {
       const { port } = probe.address();
       probe.close(() => resolve(port));
     });
@@ -69,7 +73,7 @@ function detenerServidor() {
 /** Levanta el servidor y devuelve su puerto cuando ya responde */
 async function iniciarServidor() {
   if (!existsSync(SERVER_ENTRY)) throw new Error(`No se encontró el servidor en ${SERVER_ENTRY}.`);
-  const port = await puertoLibre();
+  const port = await puertoLibre(PUERTO_PREFERIDO);
   mkdirSync(dirname(LOG_FILE), { recursive: true });
   const log = createWriteStream(LOG_FILE, { flags: 'w' });
   ultimasLineas = [];

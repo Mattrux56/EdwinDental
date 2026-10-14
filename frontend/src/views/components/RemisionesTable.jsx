@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import styles from '../dashboard.module.css';
 import r from '../remisiones.module.css';
 import { formatEstimatedDate, formatMoney, formatRemisionNumber } from '../../utils/format.js';
-import { Icon } from './Icon.jsx';
 import PrintRemisionButton from './PrintRemisionButton.jsx';
 import { EmptyState, ErrorBanner, LoadingState, Panel, SearchField } from './ui.jsx';
 import { normalizeSearchText } from '../../utils/search.js';
@@ -11,7 +10,7 @@ const TIPOS = { NORMAL: 'Cuentas de cobro', ELECTRONICA: 'Electrónicas' };
 
 const MESES = ['Todo el año', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
-export default function RemisionesTable({ remisiones, loading, error, onRetry, onEliminar, onReactivar, onView, anulandoId, showToast, actions }) {
+export default function RemisionesTable({ remisiones, loading, error, onRetry, onView, showToast, actions }) {
   const [query, setQuery] = useState('');
   const hoy = new Date();
   const [mes, setMes] = useState(hoy.getMonth() + 1);
@@ -19,10 +18,12 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
   // Las dos series no se mezclan: se ve una a la vez y se cambia con un clic en el encabezado «N°»
   const [tipo, setTipo] = useState('NORMAL');
   const [recientesPrimero, setRecientesPrimero] = useState(true);
+  // Las anuladas se ven aparte, con el botón «Anuladas» del encabezado
+  const [verAnuladas, setVerAnuladas] = useState(false);
 
-  const filtered = useMemo(() => {
+  const { filtered, totalAnuladas } = useMemo(() => {
     const term = normalizeSearchText(query.trim());
-    const lista = remisiones.filter((rem) => {
+    const coincide = (rem) => {
       if ((rem.tipo === 'ELECTRONICA' ? 'ELECTRONICA' : 'NORMAL') !== tipo) return false;
       const fecha = String(rem.fecha).slice(0, 10);
       const periodoCoincide = !anio || fecha.startsWith(`${anio}-${mes ? String(mes).padStart(2, '0') : ''}`);
@@ -30,15 +31,21 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
       return !term || [formatRemisionNumber(rem), rem.noOrden, rem.caso?.codigo, rem.caso?.cliente?.nombre, rem.caso?.pacienteNombre].some(
         (v) => normalizeSearchText(v).includes(term),
       );
-    });
+    };
+    const coincidentes = remisiones.filter(coincide);
+    const lista = coincidentes.filter((rem) => Boolean(rem.anulada) === verAnuladas);
     const sentido = recientesPrimero ? -1 : 1;
-    return lista.sort((a, b) => sentido * (String(a.fecha).localeCompare(String(b.fecha)) || a.numero - b.numero));
-  }, [remisiones, query, mes, anio, tipo, recientesPrimero]);
+    lista.sort((a, b) => sentido * (String(a.fecha).localeCompare(String(b.fecha)) || a.numero - b.numero));
+    return { filtered: lista, totalAnuladas: coincidentes.filter((rem) => rem.anulada).length };
+  }, [remisiones, query, mes, anio, tipo, recientesPrimero, verAnuladas]);
 
   const empty = !loading && !error && filtered.length === 0;
+  const contador = verAnuladas
+    ? `${filtered.length} ${filtered.length === 1 ? 'anulada' : 'anuladas'}`
+    : `${filtered.length} ${filtered.length === 1 ? 'remisión' : 'remisiones'}`;
 
   return (
-    <Panel title="Remisiones emitidas" actions={actions} meta={loading ? 'Cargando…' : `${filtered.length} ${filtered.length === 1 ? 'remisión' : 'remisiones'}`}>
+    <Panel title={verAnuladas ? 'Remisiones anuladas' : 'Remisiones emitidas'} actions={actions} meta={loading ? 'Cargando…' : contador}>
       <div className={styles.caseToolbar}>
         <SearchField value={query} onChange={setQuery} placeholder="Buscar por número, caso, cliente o paciente" label="Buscar remisiones" />
         <div className={r.periodControl}>
@@ -71,13 +78,30 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
       {loading && remisiones.length === 0 && !error && <LoadingState>Cargando remisiones…</LoadingState>}
 
       {empty && (
-        <EmptyState title={remisiones.length === 0 ? 'Aún no hay remisiones' : 'No hay remisiones para esta búsqueda'}>
-          {remisiones.length === 0 ? 'Usa “Nueva remisión” para crear la primera.' : (
+        <EmptyState
+          title={remisiones.length === 0 ? 'Aún no hay remisiones' : verAnuladas ? 'No hay remisiones anuladas para esta búsqueda' : 'No hay remisiones para esta búsqueda'}
+        >
+          {remisiones.length === 0 ? 'Usa “Nueva remisión” para crear la primera.' : verAnuladas ? (
+            <>
+              Estás viendo {TIPOS[tipo].toLowerCase()} anuladas. Cambia la búsqueda o el periodo, o{' '}
+              <button type="button" className={styles.linkBtn} onClick={() => setVerAnuladas(false)}>
+                vuelve a las vigentes
+              </button>.
+            </>
+          ) : (
             <>
               Estás viendo {TIPOS[tipo].toLowerCase()}. Cambia la búsqueda, el periodo o{' '}
               <button type="button" className={styles.linkBtn} onClick={() => setTipo(tipo === 'NORMAL' ? 'ELECTRONICA' : 'NORMAL')}>
                 ver {TIPOS[tipo === 'NORMAL' ? 'ELECTRONICA' : 'NORMAL'].toLowerCase()}
-              </button>.
+              </button>
+              {totalAnuladas > 0 && (
+                <>
+                  {' '}o{' '}
+                  <button type="button" className={styles.linkBtn} onClick={() => setVerAnuladas(true)}>
+                    ver las anuladas ({totalAnuladas})
+                  </button>
+                </>
+              )}.
             </>
           )}
         </EmptyState>
@@ -112,7 +136,17 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
                 <th>Cliente / Paciente</th>
                 <th>Productos</th>
                 <th style={{ textAlign: 'right' }}>Total</th>
-                <th aria-label="Acciones" />
+                <th className={r.actionsTh}>
+                  <button
+                    type="button"
+                    className={r.thBtn}
+                    onClick={() => setVerAnuladas((valor) => !valor)}
+                    aria-pressed={verAnuladas}
+                    title={verAnuladas ? 'Volver a las remisiones vigentes' : 'Ver las remisiones anuladas'}
+                  >
+                    {verAnuladas ? '← Vigentes' : `Anuladas (${totalAnuladas})`}
+                  </button>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -148,28 +182,6 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
                   <td>
                     <div className={r.rowActions}>
                       <PrintRemisionButton remision={rem} showToast={showToast} className={styles.traceBtn} />
-                      {rem.anulada && (
-                        <button
-                          type="button"
-                          className={styles.secondaryBtn}
-                          onClick={(event) => { event.stopPropagation(); onReactivar(rem); }}
-                          disabled={anulandoId === rem.id}
-                          aria-label={`Reactivar remisión ${formatRemisionNumber(rem)}`}
-                        >
-                          {anulandoId === rem.id ? 'Reactivando…' : 'Quitar anulación'}
-                        </button>
-                      )}
-                      {rem.anulada && (
-                        <button
-                          type="button"
-                          className={styles.deleteBtn}
-                          onClick={(event) => { event.stopPropagation(); onEliminar(rem); }}
-                          disabled={anulandoId === rem.id}
-                          aria-label={`Eliminar remisión ${formatRemisionNumber(rem)}`}
-                        >
-                          <Icon name="trash" size={15} /> Eliminar
-                        </button>
-                      )}
                     </div>
                   </td>
                 </tr>

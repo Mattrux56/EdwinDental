@@ -959,6 +959,49 @@
   display: none;
 }
 
+/* Cámara en vivo */
+.cameraPanel {
+  width: min(760px, 100%);
+}
+
+.cameraStage {
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #000;
+}
+
+.cameraVideo {
+  display: block;
+  width: 100%;
+  max-height: 60vh;
+  aspect-ratio: 4 / 3;
+  object-fit: contain;
+}
+
+.cameraFlash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+  animation: cameraFlash 0.35s ease-out;
+}
+
+@keyframes cameraFlash {
+  from {
+    opacity: 0.8;
+  }
+}
+
+.cameraActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 14px;
+}
+
 /* ===================================================== Drawer de trazabilidad */
 
 .detailOverlay,
