@@ -49,7 +49,7 @@ cpSync(join(ROOT, 'backend', 'dist'), join(STAGE, 'backend', 'dist'), { recursiv
 cpSync(join(ROOT, 'backend', 'templates'), join(STAGE, 'backend', 'templates'), { recursive: true });
 cpSync(join(ROOT, 'backend', 'prisma', 'schema.prisma'), join(STAGE, 'backend', 'prisma', 'schema.prisma'));
 cpSync(join(ROOT, 'frontend', 'dist'), join(STAGE, 'frontend', 'dist'), { recursive: true });
-for (const file of ['main.cjs', 'updater.cjs', 'preload.cjs', 'setup.html', 'update.html', 'LabTrace.ico']) {
+for (const file of ['main.cjs', 'updater.cjs', 'preload.cjs', 'preload-app.cjs', 'setup.html', 'update.html', 'LabTrace.ico']) {
   cpSync(join(DESKTOP, file), join(STAGE, 'electron', file));
 }
 

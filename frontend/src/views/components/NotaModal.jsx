@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import styles from '../dashboard.module.css';
 import { generarNota, guardarNota, imprimirNota } from '../../utils/printNota.js';
+import { PAGINAS } from '../../utils/imprimirImagen.js';
+import HojaPreview from './HojaPreview.jsx';
 import { Icon } from './Icon.jsx';
 import Modal from './Modal.jsx';
 
@@ -51,9 +53,7 @@ export default function NotaModal({ caso, seguimiento, onClose, showToast }) {
 
   return (
     <Modal title="Nota" subtitle={seguimiento.tipo} onClose={onClose} busy={busy}>
-      <div className={styles.notaPreview}>
-        {imagen ? <img src={imagen} alt="Nota del seguimiento" /> : <span className={styles.mutedText}>Generando nota…</span>}
-      </div>
+      <HojaPreview imagen={imagen} pagina={PAGINAS.nota} alt="Nota del seguimiento" cargando="Generando nota…" />
 
       <div className={styles.formActions}>
         <button type="button" className={styles.secondaryBtn} onClick={guardar} disabled={busy || !imagen}>

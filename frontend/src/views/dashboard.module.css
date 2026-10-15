@@ -1322,19 +1322,42 @@
   background: var(--reagent-soft);
 }
 
-.notaPreview {
+.hojaMarco {
   display: grid;
   place-items: center;
-  min-height: 240px;
+  padding: 16px;
+  border-radius: 8px;
+  background: var(--surface);
 }
 
-.notaPreview img {
+/* La hoja impresa a escala: mismos márgenes y tamaño de imagen que al imprimir */
+.hojaPreview {
+  box-sizing: border-box;
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  width: min(100%, 640px);
+  background: #fff;
+  border: 1px solid var(--line);
+  box-shadow: 0 2px 12px rgb(0 0 0 / 0.12);
+}
+
+.hojaPreview .mutedText {
+  align-self: center;
+  margin-top: 30%;
+}
+
+.hojaImagenReal {
+  display: block;
+  height: auto;
+}
+
+.hojaImagenAjustada {
   display: block;
   width: 100%;
-  height: auto;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  box-shadow: 0 2px 10px rgb(0 0 0 / 0.08);
+  height: 100%;
+  object-fit: contain;
+  object-position: top center;
 }
 
 .timelineText {

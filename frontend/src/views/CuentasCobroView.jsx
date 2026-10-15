@@ -141,6 +141,8 @@ export default function CuentasCobroView({ showToast }) {
                 <tr>
                   <th>Cliente</th>
                   <th style={{ textAlign: 'right' }}>Remisiones</th>
+                  <th style={{ textAlign: 'right' }}>Pendiente</th>
+                  <th style={{ textAlign: 'right' }}>Pagado</th>
                   <th style={{ textAlign: 'right' }}>Total</th>
                   <th>Pagadas</th>
                   <th>Estado</th>
@@ -160,6 +162,8 @@ export default function CuentasCobroView({ showToast }) {
                       </button>
                     </td>
                     <td style={{ textAlign: 'right' }}>{c.remisiones.length}</td>
+                    <td className={r.moneyCell}>{formatMoney(c.total - c.totalPagado)}</td>
+                    <td className={r.moneyCell}>{formatMoney(c.totalPagado)}</td>
                     <td className={r.moneyCell}>{formatMoney(c.total)}</td>
                     <td>{c.pagadas} de {c.remisiones.length}</td>
                     <td>

@@ -1,5 +1,7 @@
 import plantillaUrl from '../assets/nota-plantilla.jpg';
 import firmaUrl from '../assets/nota-firma.png';
+import { cacheImagenes, renglones } from './canvasTexto.js';
+import { imprimirImagen, PAGINAS } from './imprimirImagen.js';
 
 /**
  * La nota es la plantilla del laboratorio (assets/nota-plantilla.jpg, 2000 × 1414 px, horizontal) con los datos escritos encima.
@@ -21,22 +23,7 @@ const FIRMA = { x: 250, base: 1380, alto: 150, anchoMax: 700 };
 const COLOR_TEXTO = '#14212e';
 const FUENTE = 'Arial, Helvetica, sans-serif';
 
-const cargarImagen = (url) =>
-  new Promise((resolve, reject) => {
-    const imagen = new Image();
-    imagen.onload = () => resolve(imagen);
-    imagen.onerror = () => reject(new Error('No se pudo cargar la plantilla de la nota.'));
-    imagen.src = url;
-  });
-
-let imagenes = null;
-const cargarImagenes = () => {
-  imagenes ??= Promise.all([cargarImagen(plantillaUrl), cargarImagen(firmaUrl)]).catch((error) => {
-    imagenes = null;
-    throw error;
-  });
-  return imagenes;
-};
+const cargarImagenes = cacheImagenes([plantillaUrl, firmaUrl]);
 
 /** «2026-10-14T…» → «14/10/2026» en la hora local */
 const fechaCorta = (iso) =>
@@ -49,34 +36,6 @@ function escribirLinea(ctx, texto, { x, y, ancho }, tamano = 36) {
     ctx.font = `bold ${t}px ${FUENTE}`;
   } while (ctx.measureText(texto).width > ancho && --t > 16);
   ctx.fillText(texto, x, y, ancho);
-}
-
-/** Parte el texto en renglones que caben en `ancho` (respeta los saltos de línea y corta palabras muy largas) */
-function renglones(ctx, texto, ancho) {
-  const salida = [];
-  for (const parrafo of texto.split('\n')) {
-    let actual = '';
-    for (const palabra of parrafo.split(/\s+/).filter(Boolean)) {
-      let resto = palabra;
-      while (ctx.measureText(resto).width > ancho) {
-        let corte = resto.length - 1;
-        while (corte > 1 && ctx.measureText(resto.slice(0, corte)).width > ancho) corte--;
-        if (actual) salida.push(actual);
-        salida.push(resto.slice(0, corte));
-        actual = '';
-        resto = resto.slice(corte);
-      }
-      const prueba = actual ? `${actual} ${resto}` : resto;
-      if (ctx.measureText(prueba).width <= ancho) {
-        actual = prueba;
-      } else {
-        salida.push(actual);
-        actual = resto;
-      }
-    }
-    salida.push(actual);
-  }
-  return salida;
 }
 
 /** La observación en grande; baja el tamaño de letra hasta que quepa en el recuadro */
@@ -123,26 +82,8 @@ export async function generarNota(nota) {
   return canvas.toDataURL('image/jpeg', 0.92);
 }
 
-/** Abre la ventana de impresión con la nota ya generada (una página) */
-export async function imprimirNota(imagenUrl) {
-  const frame = document.createElement('iframe');
-  frame.setAttribute('aria-hidden', 'true');
-  frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
-  document.body.appendChild(frame);
-  const doc = frame.contentDocument;
-  doc.open();
-  doc.write(`<!doctype html><html lang="es"><head><meta charset="utf-8" /><title>Nota</title>
-<style>
-  @page { size: landscape; margin: 10mm; }
-  html, body { margin: 0; height: 100%; }
-  img { display: block; width: 100%; height: 100%; object-fit: contain; object-position: top center; }
-</style></head><body><img src="${imagenUrl}" alt="Nota" /></body></html>`);
-  doc.close();
-  await Promise.all([...doc.images].map((img) => img.decode().catch(() => {})));
-  frame.contentWindow.addEventListener('afterprint', () => frame.remove(), { once: true });
-  frame.contentWindow.focus();
-  frame.contentWindow.print();
-}
+/** Abre la ventana de impresión con la nota ya generada (una página horizontal) */
+export const imprimirNota = (imagenUrl) => imprimirImagen(imagenUrl, { titulo: 'Nota', pagina: PAGINAS.nota });
 
 /** data URL → Blob sin esperas (así «Guardar como» se abre justo después del clic) */
 function aBlob(dataUrl) {

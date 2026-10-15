@@ -1,7 +1,8 @@
 // Proceso principal de LabTrace de escritorio:
 //   lee las claves de Supabase -> levanta el servidor (backend/dist/main.js) en un puerto libre -> muestra la interfaz en una ventana.
 const { app, BrowserWindow, Menu, dialog, ipcMain, shell, utilityProcess } = require('electron');
-const { createWriteStream, existsSync, mkdirSync, readFileSync, writeFileSync } = require('node:fs');
+const { createWriteStream, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } = require('node:fs');
+const { tmpdir } = require('node:os');
 const { createServer } = require('node:net');
 const { dirname, join } = require('node:path');
 const { buscarActualizacion } = require('./updater.cjs');
@@ -138,8 +139,12 @@ function abrirPrincipal(port) {
     show: false,
     icon: ICON,
     backgroundColor: '#ffffff',
-    autoHideMenuBar: true, // el menú (Archivo, Ver) queda oculto; aparece al pulsar Alt
-    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      preload: join(__dirname, 'preload-app.cjs'),
+    },
   });
   mainWin.once('ready-to-show', () => {
     mainWin.maximize();
@@ -155,6 +160,19 @@ function abrirPrincipal(port) {
       event.preventDefault();
       if (/^https?:/i.test(destino)) shell.openExternal(destino);
     }
+  });
+  // La app no tiene menú (así Alt no muestra nada); estas teclas hacen lo que hacía el menú «Ver»
+  mainWin.webContents.on('before-input-event', (event, input) => {
+    if (input.type !== 'keyDown') return;
+    const contents = mainWin.webContents;
+    const ctrl = input.control || input.meta;
+    if (input.key === 'F5' || (ctrl && input.key.toLowerCase() === 'r')) contents.reload();
+    else if (ctrl && (input.key === '+' || input.key === '=')) contents.setZoomLevel(contents.getZoomLevel() + 0.5);
+    else if (ctrl && input.key === '-') contents.setZoomLevel(contents.getZoomLevel() - 0.5);
+    else if (ctrl && input.key === '0') contents.setZoomLevel(0);
+    else if (input.key === 'F11') mainWin.setFullScreen(!mainWin.isFullScreen());
+    else return;
+    event.preventDefault();
   });
   mainWin.on('closed', () => {
     mainWin = null;
@@ -232,32 +250,62 @@ async function iniciar() {
   }
 }
 
-function crearMenu() {
-  Menu.setApplicationMenu(Menu.buildFromTemplate([
-    {
-      label: 'Archivo',
-      submenu: [
-        { label: 'Configurar conexión…', click: abrirConfiguracion },
-        { label: 'Abrir carpeta de registros', click: () => shell.openPath(dirname(LOG_FILE)) },
-        { type: 'separator' },
-        { label: 'Salir', role: 'quit' },
-      ],
-    },
-    {
-      label: 'Ver',
-      submenu: [
-        { label: 'Recargar', role: 'reload' },
-        { type: 'separator' },
-        { label: 'Acercar', role: 'zoomIn' },
-        { label: 'Alejar', role: 'zoomOut' },
-        { label: 'Tamaño normal', role: 'resetZoom' },
-        { type: 'separator' },
-        { label: 'Pantalla completa', role: 'togglefullscreen' },
-      ],
-    },
-  ]));
+/**
+ * Vista previa de impresión: el diálogo de Windows no muestra la hoja (Electron no le entrega la vista previa),
+ * así que el documento se convierte en PDF y se abre en el visor de PDF; su botón de imprimir abre el diálogo de Windows.
+ */
+async function abrirVistaImpresion(html, titulo) {
+  const carpeta = mkdtempSync(join(tmpdir(), 'labtrace-impresion-'));
+  const htmlFile = join(carpeta, 'documento.html');
+  const pdfFile = join(carpeta, 'documento.pdf');
+  writeFileSync(htmlFile, html, 'utf8');
+
+  const oculta = new BrowserWindow({ show: false, webPreferences: { sandbox: true, javascript: false } });
+  try {
+    await oculta.loadFile(htmlFile);
+    // El tamaño de hoja y los márgenes los pone el propio documento (@page y relleno del body)
+    const pdf = await oculta.webContents.printToPDF({
+      preferCSSPageSize: true,
+      printBackground: true,
+      margins: { top: 0, bottom: 0, left: 0, right: 0 },
+    });
+    writeFileSync(pdfFile, pdf);
+  } finally {
+    oculta.destroy();
+  }
+
+  const vista = new BrowserWindow({
+    width: 1000,
+    height: 860,
+    parent: mainWin ?? undefined,
+    icon: ICON,
+    title: `Vista previa · ${titulo}`,
+    backgroundColor: '#525659',
+    webPreferences: { sandbox: true, plugins: true }, // plugins: el visor de PDF de Chromium
+  });
+  vista.on('page-title-updated', (event) => event.preventDefault()); // conserva el título de la ventana
+  vista.on('closed', () => {
+    try {
+      rmSync(carpeta, { recursive: true, force: true });
+    } catch {
+      // si Windows aún tiene el archivo abierto, queda en la carpeta temporal
+    }
+  });
+  await vista.loadFile(pdfFile);
 }
 
+ipcMain.handle('impresion:vista', async (event, datos) => {
+  if (!mainWin || event.sender !== mainWin.webContents) return { ok: false, message: 'Origen no permitido.' };
+  const html = String(datos?.html ?? '');
+  const titulo = String(datos?.titulo ?? 'Documento').slice(0, 120);
+  if (!html) return { ok: false, message: 'No hay nada que imprimir.' };
+  try {
+    await abrirVistaImpresion(html, titulo);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, message: `No se pudo abrir la vista previa: ${error.message}` };
+  }
+});
 ipcMain.handle('config:leer', () => leerClaves());
 ipcMain.handle('config:importar', async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog(setupWin, {
@@ -294,7 +342,7 @@ if (!app.requestSingleInstanceLock()) {
     server?.kill();
   });
   app.whenReady().then(() => {
-    crearMenu();
+    Menu.setApplicationMenu(null);
     iniciar();
   });
 }
