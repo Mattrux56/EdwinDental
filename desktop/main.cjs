@@ -250,9 +250,40 @@ async function iniciar() {
   }
 }
 
+/** Documento (HTML en la carpeta temporal) que imprime cada ventana de vista previa, por id de su webContents */
+const documentosEnVista = new Map();
+
+/** Barra con el botón de imprimir y el PDF debajo, sin la barra del visor (su botón no deja elegir el papel) */
+const paginaVista = (titulo) => `<!doctype html><html lang="es"><head><meta charset="utf-8" />
+<title>${titulo.replace(/[<&]/g, '')}</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #525659; font-family: 'Segoe UI', Arial, sans-serif; }
+  body { display: flex; flex-direction: column; }
+  header { display: flex; align-items: center; gap: 12px; padding: 8px 16px; background: #323639; color: #f1f1f1; font-size: 14px; }
+  header span { flex: 1; }
+  button { padding: 7px 22px; border: 0; border-radius: 6px; background: #1a73e8; color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+  button:disabled { opacity: .6; cursor: default; }
+  embed { flex: 1; width: 100%; border: 0; }
+</style></head><body>
+<header><span>Papel carta</span><button id="imprimir" type="button">Imprimir</button></header>
+<embed src="documento.pdf#toolbar=0&navpanes=0" type="application/pdf" />
+<script>
+  const boton = document.getElementById('imprimir');
+  boton.addEventListener('click', async () => {
+    boton.disabled = true;
+    try {
+      const resultado = await window.labtraceVista.imprimir();
+      if (!resultado.ok) alert(resultado.message);
+    } finally {
+      boton.disabled = false;
+    }
+  });
+</script></body></html>`;
+
 /**
  * Vista previa de impresión: el diálogo de Windows no muestra la hoja (Electron no le entrega la vista previa),
- * así que el documento se convierte en PDF y se abre en el visor de PDF; su botón de imprimir abre el diálogo de Windows.
+ * así que el documento se convierte en PDF y se muestra en una ventana con su propio botón de imprimir,
+ * que abre el diálogo de Windows con el papel carta ya elegido.
  */
 async function abrirVistaImpresion(html, titulo) {
   const carpeta = mkdtempSync(join(tmpdir(), 'labtrace-impresion-'));
@@ -281,18 +312,78 @@ async function abrirVistaImpresion(html, titulo) {
     icon: ICON,
     title: `Vista previa · ${titulo}`,
     backgroundColor: '#525659',
-    webPreferences: { sandbox: true, plugins: true }, // plugins: el visor de PDF de Chromium
+    webPreferences: {
+      sandbox: true,
+      plugins: true, // el visor de PDF de Chromium
+      preload: join(__dirname, 'preload-vista.cjs'),
+    },
   });
+  const vistaId = vista.webContents.id;
+  documentosEnVista.set(vistaId, htmlFile);
   vista.on('page-title-updated', (event) => event.preventDefault()); // conserva el título de la ventana
   vista.on('closed', () => {
+    documentosEnVista.delete(vistaId);
     try {
       rmSync(carpeta, { recursive: true, force: true });
     } catch {
       // si Windows aún tiene el archivo abierto, queda en la carpeta temporal
     }
   });
-  await vista.loadFile(pdfFile);
+  const vistaFile = join(carpeta, 'vista.html');
+  writeFileSync(vistaFile, paginaVista(titulo), 'utf8');
+  await vista.loadFile(vistaFile);
 }
+
+/** Abre el diálogo de impresión de Windows con el documento en papel carta vertical y sin márgenes de la impresora */
+async function imprimirEnCarta(htmlFile) {
+  const oculta = new BrowserWindow({ show: false, webPreferences: { sandbox: true, javascript: false } });
+  try {
+    await oculta.loadFile(htmlFile);
+    return await new Promise((resolve) => {
+      oculta.webContents.print(
+        {
+          silent: false,
+          pageSize: 'Letter',
+          landscape: false,
+          margins: { marginType: 'none' }, // los márgenes los pone el propio documento
+          printBackground: true,
+        },
+        (ok, motivo) => resolve(ok || motivo === 'Print job canceled'
+          ? { ok: true }
+          : { ok: false, message: `No se pudo imprimir: ${motivo}` }),
+      );
+    });
+  } finally {
+    oculta.destroy();
+  }
+}
+
+ipcMain.handle('impresion:imprimir', async (event) => {
+  const htmlFile = documentosEnVista.get(event.sender.id);
+  if (!htmlFile) return { ok: false, message: 'Origen no permitido.' };
+  try {
+    return await imprimirEnCarta(htmlFile);
+  } catch (error) {
+    return { ok: false, message: `No se pudo imprimir: ${error.message}` };
+  }
+});
+
+// Sin vista previa (la nota): directo al diálogo de Windows en papel carta
+ipcMain.handle('impresion:directa', async (event, datos) => {
+  if (!mainWin || event.sender !== mainWin.webContents) return { ok: false, message: 'Origen no permitido.' };
+  const html = String(datos?.html ?? '');
+  if (!html) return { ok: false, message: 'No hay nada que imprimir.' };
+  const carpeta = mkdtempSync(join(tmpdir(), 'labtrace-impresion-'));
+  try {
+    const htmlFile = join(carpeta, 'documento.html');
+    writeFileSync(htmlFile, html, 'utf8');
+    return await imprimirEnCarta(htmlFile);
+  } catch (error) {
+    return { ok: false, message: `No se pudo imprimir: ${error.message}` };
+  } finally {
+    rmSync(carpeta, { recursive: true, force: true });
+  }
+});
 
 ipcMain.handle('impresion:vista', async (event, datos) => {
   if (!mainWin || event.sender !== mainWin.webContents) return { ok: false, message: 'Origen no permitido.' };

@@ -18,7 +18,8 @@ const LINEAS = {
   clinica: { x: 1220, y: 509, ancho: 700 },
 };
 const OBSERVACIONES = { x: 90, y: 640, ancho: 1820, alto: 600 };
-const FIRMA = { x: 250, base: 1380, alto: 150, anchoMax: 700 };
+// La raya de la firma está en y = 1362; el nombre escrito en nota-firma.png se apoya al 62 % de su alto
+const FIRMA = { x: 240, linea: 1362, renglon: 0.62, alto: 185, anchoMax: 720 };
 
 const COLOR_TEXTO = '#14212e';
 const FUENTE = 'Arial, Helvetica, sans-serif';
@@ -41,11 +42,11 @@ function escribirLinea(ctx, texto, { x, y, ancho }, tamano = 36) {
 /** La observación en grande; baja el tamaño de letra hasta que quepa en el recuadro */
 function escribirObservacion(ctx, texto) {
   const { x, y, ancho, alto } = OBSERVACIONES;
-  for (let t = 64; t >= 24; t--) {
+  for (let t = 44; t >= 20; t--) {
     ctx.font = `${t}px ${FUENTE}`;
     const interlineado = t * 1.35;
     const lineas = renglones(ctx, texto, ancho);
-    if (lineas.length * interlineado <= alto || t === 24) {
+    if (lineas.length * interlineado <= alto || t === 20) {
       // Con la letra mínima, lo que no quepa se corta para no salirse del recuadro
       const caben = Math.floor(alto / interlineado);
       lineas.slice(0, caben).forEach((linea, i) => ctx.fillText(linea, x, y + t + i * interlineado));
@@ -76,14 +77,15 @@ export async function generarNota(nota) {
   const ancho = Math.min(FIRMA.anchoMax, FIRMA.alto * proporcion);
   const alto = ancho / proporcion;
   ctx.globalCompositeOperation = 'multiply';
-  ctx.drawImage(firma, FIRMA.x, FIRMA.base - alto, ancho, alto);
+  ctx.drawImage(firma, FIRMA.x, FIRMA.linea - alto * FIRMA.renglon, ancho, alto);
   ctx.globalCompositeOperation = 'source-over';
 
   return canvas.toDataURL('image/jpeg', 0.92);
 }
 
-/** Abre la ventana de impresión con la nota ya generada (una página horizontal) */
-export const imprimirNota = (imagenUrl) => imprimirImagen(imagenUrl, { titulo: 'Nota', pagina: PAGINAS.nota });
+/** Imprime la nota ya generada sin vista previa (carta vertical, con las medidas de la remisión) */
+export const imprimirNota = (imagenUrl) =>
+  imprimirImagen(imagenUrl, { titulo: 'Nota', pagina: PAGINAS.nota, vistaPrevia: false });
 
 /** data URL → Blob sin esperas (así «Guardar como» se abre justo después del clic) */
 function aBlob(dataUrl) {
