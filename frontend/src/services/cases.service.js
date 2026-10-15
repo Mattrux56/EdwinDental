@@ -116,6 +116,11 @@ export const casesService = {
     return request(`/cases/${casoId}/seguimiento/${seguimientoId}`, { method: 'PATCH', body: fd });
   },
 
+  /** DELETE /cases/:id/seguimiento/:seguimientoId (devuelve el caso actualizado) */
+  removeFollowUp(casoId, seguimientoId) {
+    return request(`/cases/${casoId}/seguimiento/${seguimientoId}`, { method: 'DELETE' });
+  },
+
   /** POST /cases/:id/seguimiento */
   addFollowUp(id, { tipo, descripcion, estado, fechaEntregaEstimada, fotos }) {
     return request(`/cases/${id}/seguimiento`, {

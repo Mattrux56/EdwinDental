@@ -7,6 +7,7 @@ const EMPTY_STATS = {
   enPrueba: 0,
   finalizados: 0,
   arreglos: 0,
+  devoluciones: 0,
   archivados: 0,
   alertas: 0,
 };
@@ -225,6 +226,26 @@ export function useCasesController() {
     [refresh, showToast],
   );
 
+  /** Elimina un seguimiento del historial (y sus fotos) */
+  const deleteFollowUp = useCallback(
+    async (casoId, seguimientoId) => {
+      setSaving(true);
+      try {
+        const updated = await casesService.removeFollowUp(casoId, seguimientoId);
+        setSelectedCase(updated);
+        showToast('success', 'Seguimiento eliminado');
+        await refresh();
+        return updated;
+      } catch (e) {
+        showToast('error', e.message);
+        return null;
+      } finally {
+        setSaving(false);
+      }
+    },
+    [refresh, showToast],
+  );
+
   return {
     // estado
     casos,
@@ -250,6 +271,7 @@ export function useCasesController() {
     deleteCase,
     addFollowUp,
     updateFollowUp,
+    deleteFollowUp,
     dismissToast,
     showToast,
   };

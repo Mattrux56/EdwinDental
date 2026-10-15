@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import styles from '../dashboard.module.css';
 import { MOVIMIENTOS, normalizeEstado } from '../../constants.js';
 import PhotoPicker from './PhotoPicker.jsx';
@@ -7,6 +7,12 @@ import { ConfirmModal } from './Modal.jsx';
 import { Icon } from './Icon.jsx';
 
 const esIngreso = (seg) => seg?.tipo?.toLocaleLowerCase('es') === 'ingreso inicial';
+
+/** Entrega que hereda un movimiento nuevo: la del último seguimiento que tenga una (al inicio, la del ingreso) */
+function fechaHeredada(caso) {
+  const conFecha = [...(caso.seguimientos ?? [])].reverse().find((s) => s.fechaEntregaEstimada);
+  return String(conFecha?.fechaEntregaEstimada ?? caso.fechaEntregaEstimada ?? '').slice(0, 10);
+}
 
 /**
  * Formulario de movimiento. Sin `seguimiento` registra uno nuevo; con `seguimiento` edita ese mismo
@@ -20,10 +26,14 @@ export default function FollowUpForm({ caso, saving, onSubmit, seguimiento, onCa
     : MOVIMIENTOS.find((m) => m.estado === estadoActual) ?? MOVIMIENTOS[0];
   const [movimiento, setMovimiento] = useState(`${movimientoActual.tipo}|${movimientoActual.estado}`);
   const [descripcion, setDescripcion] = useState(editando ? seguimiento.descripcion : '');
-  const [fechaEntregaEstimada, setFechaEntregaEstimada] = useState(
-    // Un movimiento nuevo parte de la entrega vigente del caso: si se dejara vacía, el caso la perdería y saldría de Alertas
-    String((editando ? seguimiento.fechaEntregaEstimada : caso.fechaEntregaEstimada) ?? '').slice(0, 10),
-  );
+  // Un movimiento nuevo hereda la entrega del ingreso inicial (o la última fijada) hasta que se cambie a mano
+  const fechaPorDefecto = editando ? String(seguimiento.fechaEntregaEstimada ?? '').slice(0, 10) : fechaHeredada(caso);
+  const [fechaEntregaEstimada, setFechaEntregaEstimada] = useState(fechaPorDefecto);
+  const [fechaTocada, setFechaTocada] = useState(false);
+  // Si la fecha heredada cambia (p. ej. se edita el ingreso en el historial) y no se ha tocado, se actualiza
+  useEffect(() => {
+    if (!editando && !fechaTocada) setFechaEntregaEstimada(fechaPorDefecto);
+  }, [editando, fechaTocada, fechaPorDefecto]);
   const [fotos, setFotos] = useState([]);
   const [verFoto, setVerFoto] = useState(null);
   const [fotoABorrar, setFotoABorrar] = useState(null);
@@ -53,7 +63,8 @@ export default function FollowUpForm({ caso, saving, onSubmit, seguimiento, onCa
       const estadoNuevo = normalizeEstado(updated.estado);
       const siguiente = MOVIMIENTOS.find((m) => m.estado === estadoNuevo) ?? MOVIMIENTOS[0];
       setMovimiento(`${siguiente.tipo}|${siguiente.estado}`);
-      setFechaEntregaEstimada(String(updated.fechaEntregaEstimada ?? '').slice(0, 10));
+      setFechaEntregaEstimada(fechaHeredada(updated));
+      setFechaTocada(false);
       setFotos([]);
     }
   };
@@ -95,7 +106,10 @@ export default function FollowUpForm({ caso, saving, onSubmit, seguimiento, onCa
             className={styles.input}
             type="date"
             value={fechaEntregaEstimada}
-            onChange={(e) => setFechaEntregaEstimada(e.target.value)}
+            onChange={(e) => {
+              setFechaEntregaEstimada(e.target.value);
+              setFechaTocada(true);
+            }}
           />
         </div>
 
@@ -110,7 +124,7 @@ export default function FollowUpForm({ caso, saving, onSubmit, seguimiento, onCa
             onChange={(e) => setDescripcion(e.target.value)}
             required
             maxLength={5000}
-            placeholder="Describe la prueba, el reingreso, la entrega o el arreglo"
+            placeholder="Describe la prueba, el reingreso, la entrega, el arreglo o la devolución"
           />
         </div>
 

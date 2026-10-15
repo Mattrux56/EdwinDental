@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import styles from '../dashboard.module.css';
-import { formatDateTime, formatEstimatedDate } from '../../utils/format.js';
+import { formatDateTime } from '../../utils/format.js';
 import { Icon } from './Icon.jsx';
 
 function dotFor(tipo = '') {
@@ -8,11 +8,12 @@ function dotFor(tipo = '') {
   if (t.includes('ingreso inicial')) return { cls: styles.dotIngreso, icon: 'arrowIn' };
   if (t.includes('reingreso')) return { cls: styles.dotReingreso, icon: 'refresh' };
   if (t.includes('entrega')) return { cls: styles.dotEntrega, icon: 'check' };
+  if (t.includes('devoluci')) return { cls: styles.dotDevolucion, icon: 'undo' };
   if (t.includes('arreglo')) return { cls: styles.dotReingreso, icon: 'refresh' };
   return { cls: styles.dotResultado, icon: 'flask' };
 }
 
-export default function Timeline({ seguimientos, onOpenImage, onEdit, editDisabled = false }) {
+export default function Timeline({ seguimientos, onOpenImage, onEdit, onNota, editDisabled = false }) {
   const [newestFirst, setNewestFirst] = useState(false);
   const items = newestFirst ? [...seguimientos].reverse() : seguimientos;
 
@@ -45,14 +46,16 @@ export default function Timeline({ seguimientos, onOpenImage, onEdit, editDisabl
               <div className={styles.timelineCard}>
                 <div className={styles.timelineHead}>
                   <span className={styles.timelineTipo}>{seg.tipo}</span>
-                  <time className={styles.timelineDate} dateTime={seg.creadoEn}>
-                    {formatDateTime(seg.creadoEn)}
-                  </time>
-                  {seg.fechaEntregaEstimada && (
-                    <span className={styles.timelineDelivery}>
-                      Entrega estimada: {formatEstimatedDate(seg.fechaEntregaEstimada)}
-                    </span>
-                  )}
+                  <span className={styles.timelineMeta}>
+                    <time className={styles.timelineDate} dateTime={seg.creadoEn}>
+                      {formatDateTime(seg.creadoEn)}
+                    </time>
+                    {onNota && (
+                      <button type="button" className={styles.notaBtn} onClick={() => onNota(seg)}>
+                        <Icon name="printer" size={13} /> Nota
+                      </button>
+                    )}
+                  </span>
                 </div>
                 <p className={styles.timelineText}>{seg.descripcion}</p>
 

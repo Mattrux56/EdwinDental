@@ -1,4 +1,5 @@
 export const ESTADOS_CASO = [
+  'Devolución',
   'En laboratorio',
   'En prueba',
   'Finalizado',
@@ -6,6 +7,7 @@ export const ESTADOS_CASO = [
 ] as const;
 
 export const TIPOS_SEGUIMIENTO = [
+  'devolucion',
   'prueba',
   'reingreso',
   'entrega',
@@ -13,6 +15,7 @@ export const TIPOS_SEGUIMIENTO = [
 ] as const;
 
 export const ESTADO_POR_MOVIMIENTO: Record<(typeof TIPOS_SEGUIMIENTO)[number], (typeof ESTADOS_CASO)[number]> = {
+  devolucion: 'Devolución',
   reingreso: 'En laboratorio',
   prueba: 'En prueba',
   entrega: 'Finalizado',

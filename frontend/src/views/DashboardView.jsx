@@ -42,6 +42,7 @@ export default function DashboardView({ controller, remisionesController }) {
     deleteCase,
     addFollowUp,
     updateFollowUp,
+    deleteFollowUp,
     dismissToast,
   } = controller;
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -164,6 +165,7 @@ export default function DashboardView({ controller, remisionesController }) {
           onClose={closeCase}
           onAddFollowUp={addFollowUp}
           onUpdateFollowUp={updateFollowUp}
+          onDeleteFollowUp={deleteFollowUp}
           onEdit={setEditTarget}
           onArchive={archiveCase}
           onDeleteImage={removePhoto}

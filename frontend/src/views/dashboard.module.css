@@ -273,6 +273,11 @@
   color: var(--lab);
 }
 
+.metricReturn {
+  background: var(--return-soft);
+  color: var(--return);
+}
+
 .metricDone {
   background: var(--done-soft);
   color: var(--done);
@@ -780,6 +785,11 @@
   color: var(--danger);
 }
 
+.badgeReturn {
+  background: var(--return-soft);
+  color: var(--return);
+}
+
 .badgeDefault {
   background: var(--paper);
   color: var(--ink-soft);
@@ -1251,6 +1261,12 @@
   background: var(--proc-soft);
 }
 
+.dotDevolucion {
+  border-color: var(--return);
+  color: var(--return);
+  background: var(--return-soft);
+}
+
 .dotEntrega {
   border-color: var(--done);
   color: var(--done);
@@ -1283,13 +1299,42 @@
   color: var(--ink-faint);
 }
 
-.timelineDelivery {
+.timelineMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.notaBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--reagent-dark);
+  font-size: 12.5px;
+  font-weight: 500;
   padding: 3px 8px;
   border-radius: 6px;
-  background: var(--lab-soft);
-  color: var(--lab);
-  font-size: 12px;
-  font-weight: 600;
+}
+
+.notaBtn:hover {
+  background: var(--reagent-soft);
+}
+
+.notaPreview {
+  display: grid;
+  place-items: center;
+  min-height: 240px;
+}
+
+.notaPreview img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.08);
 }
 
 .timelineText {
@@ -1852,6 +1897,41 @@ input[type='checkbox'] {
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.editListRow {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.editListRow > .editListItem {
+  flex: 1;
+  min-width: 0;
+}
+
+.editListDelete {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  color: var(--danger);
+  cursor: pointer;
+}
+
+.editListDelete:hover:not(:disabled),
+.editListDelete:focus-visible {
+  border-color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.editListDelete:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .editListItem {

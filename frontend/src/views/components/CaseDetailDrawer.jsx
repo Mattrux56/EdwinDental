@@ -10,6 +10,7 @@ import Timeline from './Timeline.jsx';
 import FollowUpForm from './FollowUpForm.jsx';
 import EditHistorialModal from './EditHistorialModal.jsx';
 import ImageViewer from './ImageViewer.jsx';
+import NotaModal from './NotaModal.jsx';
 
 export default function CaseDetailDrawer({
   caso,
@@ -17,6 +18,7 @@ export default function CaseDetailDrawer({
   onClose,
   onAddFollowUp,
   onUpdateFollowUp,
+  onDeleteFollowUp,
   onEdit,
   onArchive,
   onDeleteImage,
@@ -27,7 +29,8 @@ export default function CaseDetailDrawer({
   const [remisiones, setRemisiones] = useState([]);
   const [remisionAbierta, setRemisionAbierta] = useState(null);
   const [editandoHistorial, setEditandoHistorial] = useState(false);
-  const subModalAbierto = Boolean(remisionAbierta || editandoHistorial);
+  const [notaDe, setNotaDe] = useState(null);
+  const subModalAbierto = Boolean(remisionAbierta || editandoHistorial || notaDe);
 
   // Escape cierra el panel solo si no hay otra ventana encima
   useEscape(() => {
@@ -89,6 +92,12 @@ export default function CaseDetailDrawer({
                 {caso.fechaIngreso ? formatEstimatedDate(caso.fechaIngreso) : formatDate(caso.creadoEn)}
               </div>
             </div>
+            <div>
+              <div className={styles.infoLabel}>Entrega estimada</div>
+              <div className={styles.infoValue}>
+                {caso.fechaEntregaEstimada ? formatEstimatedDate(caso.fechaEntregaEstimada) : '—'}
+              </div>
+            </div>
           </div>
 
           {remisiones.length > 0 && (
@@ -114,6 +123,7 @@ export default function CaseDetailDrawer({
             onEdit={onUpdateFollowUp ? () => setEditandoHistorial(true) : undefined}
             editDisabled={saving}
             onOpenImage={setLightbox}
+            onNota={setNotaDe}
           />
 
           <FollowUpForm key={caso.id} caso={caso} saving={saving} onSubmit={onAddFollowUp} />
@@ -126,6 +136,7 @@ export default function CaseDetailDrawer({
           saving={saving}
           onClose={() => setEditandoHistorial(false)}
           onSave={onUpdateFollowUp}
+          onDelete={onDeleteFollowUp}
           onDeleteImage={onDeleteImage}
         />
       )}
@@ -133,6 +144,8 @@ export default function CaseDetailDrawer({
       {remisionAbierta && (
         <RemisionDetailModal remision={remisionAbierta} onClose={() => setRemisionAbierta(null)} showToast={showToast} />
       )}
+
+      {notaDe && <NotaModal caso={caso} seguimiento={notaDe} onClose={() => setNotaDe(null)} showToast={showToast} />}
 
       {lightbox && <ImageViewer src={lightbox} onClose={() => setLightbox(null)} />}
 

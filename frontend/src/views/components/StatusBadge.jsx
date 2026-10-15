@@ -6,6 +6,7 @@ const TONES = {
   'En prueba': styles.badgeProc,
   Finalizado: styles.badgeDone,
   arreglo: styles.badgeRepair,
+  Devolución: styles.badgeReturn,
 };
 
 export default function StatusBadge({ estado }) {

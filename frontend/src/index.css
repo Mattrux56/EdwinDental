@@ -29,6 +29,8 @@
   --done-soft: #dcf2e4;
   --danger: #b3261e;
   --danger-soft: #fbe3e1;
+  --return: #6b3fa0;
+  --return-soft: #ece3f7;
 
   --font: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;

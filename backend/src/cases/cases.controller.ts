@@ -114,4 +114,12 @@ export class CasesController {
   ) {
     return this.casesService.updateSeguimiento(id, seguimientoId, dto, files);
   }
+
+  @Delete(':id/seguimiento/:seguimientoId')
+  removeSeguimiento(
+    @Param('id', ParseIntPipe) id: number,
+    @Param('seguimientoId', ParseIntPipe) seguimientoId: number,
+  ) {
+    return this.casesService.removeSeguimiento(id, seguimientoId);
+  }
 }

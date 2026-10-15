@@ -8,6 +8,7 @@ export default function MetricCards({ stats }) {
     { label: 'En prueba', value: stats.enPrueba, icon: 'vial', tone: styles.metricTest },
     { label: 'Finalizados', value: stats.finalizados, icon: 'check', tone: styles.metricDone },
     { label: 'En arreglo', value: stats.arreglos, icon: 'refresh', tone: styles.metricTotal },
+    { label: 'En devolución', value: stats.devoluciones, icon: 'undo', tone: styles.metricReturn },
   ];
 
   return (
