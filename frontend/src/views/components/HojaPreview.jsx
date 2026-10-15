@@ -1,4 +1,4 @@
-import styles from '../dashboard.module.css';
+import styles from '../../styles/app.module.css';
 
 /**
  * Vista previa de impresión: la hoja con sus márgenes y la imagen ubicada como saldrá impresa.

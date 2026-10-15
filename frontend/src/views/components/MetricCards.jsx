@@ -1,4 +1,4 @@
-import styles from '../dashboard.module.css';
+import styles from '../../styles/app.module.css';
 import { Icon } from './Icon.jsx';
 
 export default function MetricCards({ stats }) {

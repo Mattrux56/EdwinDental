@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import styles from '../dashboard.module.css';
+import styles from '../../styles/app.module.css';
 import { formatDate, formatEstimatedDate, formatMoney, formatRemisionNumber } from '../../utils/format.js';
 import { remisionesService } from '../../services/remisiones.service.js';
 import RemisionDetailModal from './RemisionDetailModal.jsx';
@@ -11,6 +11,7 @@ import FollowUpForm from './FollowUpForm.jsx';
 import EditHistorialModal from './EditHistorialModal.jsx';
 import ImageViewer from './ImageViewer.jsx';
 import NotaModal from './NotaModal.jsx';
+import { Badge } from './ui.jsx';
 
 export default function CaseDetailDrawer({
   caso,
@@ -111,7 +112,7 @@ export default function CaseDetailDrawer({
                     </button>
                     <span className={styles.mutedText}>{formatEstimatedDate(rem.fecha)}</span>
                     <span>{formatMoney(rem.total)}</span>
-                    {rem.anulada && <span className={`${styles.badge} ${styles.badgeDefault}`}>Anulada</span>}
+                    {rem.anulada && <Badge>Anulada</Badge>}
                   </li>
                 ))}
               </ul>

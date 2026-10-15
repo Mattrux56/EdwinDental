@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import styles from './dashboard.module.css';
-import r from './remisiones.module.css';
+import styles from '../styles/app.module.css';
 import { Icon } from './components/Icon.jsx';
 import Modal, { ConfirmModal } from './components/Modal.jsx';
 import NewRemisionForm from './components/NewRemisionForm.jsx';
@@ -68,7 +67,7 @@ export default function RemisionesView({ casos, controller, showToast }) {
           subtitle="Puedes cambiar tipo, número, fecha, orden, nombres impresos, productos y cantidades."
           onClose={() => setEditTarget(null)}
           busy={saving}
-          className={r.wideModal}
+          className={styles.wideModal}
         >
           <NewRemisionForm
             remision={editTarget}
@@ -94,7 +93,7 @@ export default function RemisionesView({ casos, controller, showToast }) {
           subtitle="Elige el caso y la cantidad de cada producto."
           onClose={() => setCreateOpen(false)}
           busy={saving}
-          className={r.wideModal}
+          className={styles.wideModal}
         >
           <NewRemisionForm
             casos={casos}

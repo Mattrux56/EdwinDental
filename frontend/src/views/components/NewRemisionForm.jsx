@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import styles from '../dashboard.module.css';
-import r from '../remisiones.module.css';
+import styles from '../../styles/app.module.css';
 import { formatMoney } from '../../utils/format.js';
 import { Icon } from './Icon.jsx';
 import StatusBadge from './StatusBadge.jsx';
-import { SearchField } from './ui.jsx';
-import { normalizeSearchText } from '../../utils/search.js';
+import { DateFilter, SearchField } from './filters.jsx';
+import { matchesSearch, normalizeSearchText } from '../../utils/search.js';
 import { remisionesService } from '../../services/remisiones.service.js';
 
 const MAX_LINEAS = 9; // lo que cabe en el formato de remisión del laboratorio
@@ -22,23 +21,22 @@ function CasePicker({ casos, selected, onSelect, locked = false }) {
   const [hasta, setHasta] = useState('');
 
   const matches = useMemo(() => {
-    const term = normalizeSearchText(query.trim());
     const list = casos.filter((c) => {
       const fecha = String(c.fechaIngreso ?? c.creadoEn ?? '').slice(0, 10);
       return (!desde || fecha >= desde) && (!hasta || fecha <= hasta) &&
-        (!term || [c.codigo, c.doctorNombre, c.cliente?.nombre, c.pacienteNombre].some((v) => normalizeSearchText(v).includes(term)));
+        matchesSearch(query, [c.codigo, c.doctorNombre, c.cliente?.nombre, c.pacienteNombre]);
     });
     return list.slice(0, 50);
   }, [casos, desde, hasta, query]);
 
   if (selected) {
     return (
-      <div className={r.selectedCase}>
-        <div className={r.pickerItemMain}>
-          <div className={r.pickerItemTitle}>
-            <span className={r.code}>Orden {selected.codigo}</span>
+      <div className={styles.selectedCase}>
+        <div className={styles.pickerItemMain}>
+          <div className={styles.pickerItemTitle}>
+            <span className={styles.code}>Orden {selected.codigo}</span>
           </div>
-          <div className={r.pickerItemMeta}>
+          <div className={styles.pickerItemMeta}>
             {selected.cliente?.nombre} · Paciente: {selected.pacienteNombre || '—'}
           </div>
         </div>
@@ -52,39 +50,33 @@ function CasePicker({ casos, selected, onSelect, locked = false }) {
   }
 
   return (
-    <div className={r.pickerBox}>
+    <div className={styles.pickerBox}>
       <SearchField
-        className={r.pickerSearch}
+        className={styles.pickerSearch}
         value={query}
         onChange={setQuery}
         placeholder="Buscar por orden, doctor, cliente o paciente"
         label="Buscar caso"
         autoFocus
       />
-      <div className={r.pickerFilters}>
-        <label>
-          <span>Desde</span>
-          <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} aria-label="Filtrar casos desde" />
-        </label>
-        <label>
-          <span>Hasta</span>
-          <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} aria-label="Filtrar casos hasta" />
-        </label>
+      <div className={styles.pickerFilters}>
+        <DateFilter label="Desde" value={desde} onChange={setDesde} ariaLabel="Filtrar casos desde" className="" />
+        <DateFilter label="Hasta" value={hasta} onChange={setHasta} ariaLabel="Filtrar casos hasta" className="" />
       </div>
       {matches.length === 0 ? (
-        <div className={r.pickerEmpty}>
+        <div className={styles.pickerEmpty}>
           {casos.length === 0 ? 'Aún no hay casos registrados.' : 'Ningún caso coincide con los filtros.'}
         </div>
       ) : (
-        <ul className={r.pickerList}>
+        <ul className={styles.pickerList}>
           {matches.map((caso) => (
             <li key={caso.id}>
-              <button type="button" className={r.pickerItem} onClick={() => onSelect(caso)}>
-                <div className={r.pickerItemMain}>
-                  <div className={r.pickerItemTitle}>
-                    <span className={r.code}>Orden {caso.codigo}</span>
+              <button type="button" className={styles.pickerItem} onClick={() => onSelect(caso)}>
+                <div className={styles.pickerItemMain}>
+                  <div className={styles.pickerItemTitle}>
+                    <span className={styles.code}>Orden {caso.codigo}</span>
                   </div>
-                  <div className={r.pickerItemMeta}>
+                  <div className={styles.pickerItemMeta}>
                     {caso.cliente?.nombre} · Paciente: {caso.pacienteNombre || '—'}
                   </div>
                 </div>
@@ -100,7 +92,7 @@ function CasePicker({ casos, selected, onSelect, locked = false }) {
 
 function QuantityControl({ value, onChange, disabled, label }) {
   return (
-    <div className={r.qty}>
+    <div className={styles.qty}>
       <button type="button" onClick={() => onChange(value - 1)} disabled={disabled || value <= 0} aria-label={`Quitar uno: ${label}`}>
         −
       </button>
@@ -289,11 +281,11 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
               setNumero(e.target.value);
             }}
           />
-          {editando && <small className={r.numberHelp}>El número debe ser único dentro de la serie elegida.</small>}
+          {editando && <small className={styles.numberHelp}>El número debe ser único dentro de la serie elegida.</small>}
           {!numero && numeroConsultado && primeraRemision && (
-            <small className={r.numberHelp}>Escribe el número de la primera remisión; las siguientes continuarán desde ahí</small>
+            <small className={styles.numberHelp}>Escribe el número de la primera remisión; las siguientes continuarán desde ahí</small>
           )}
-          {numeroError && <small className={r.numberError} role="alert">{numeroError}</small>}
+          {numeroError && <small className={styles.numberError} role="alert">{numeroError}</small>}
         </div>
         <div className={`${styles.field} ${styles.fieldFull}`}>
           <span className={styles.label}>
@@ -340,21 +332,21 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
         <div className={`${styles.field} ${styles.fieldFull}`}>
           <span className={styles.label}>
             Productos <span className={styles.required}>*</span>{' '}
-            <span className={r.lineCounter}>
+            <span className={styles.lineCounter}>
               · escribe la cantidad de cada uno ({lineas.length}/{MAX_LINEAS} productos)
             </span>
           </span>
-          <div className={r.pickerBox}>
-            <div className={r.pickerBar}>
+          <div className={styles.pickerBox}>
+            <div className={styles.pickerBar}>
               <SearchField
-                className={r.pickerSearch}
+                className={styles.pickerSearch}
                 value={query}
                 onChange={setQuery}
                 placeholder="Buscar por código o descripción"
                 label="Buscar producto por código o descripción"
               />
               <select
-                className={`${styles.select} ${r.pickerCategory}`}
+                className={`${styles.select} ${styles.pickerCategory}`}
                 value={categoria}
                 onChange={(e) => setCategoria(e.target.value)}
                 aria-label="Filtrar por categoría"
@@ -363,18 +355,18 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
                 {categorias.map((opcion) => <option key={opcion} value={opcion}>{opcion}</option>)}
               </select>
             </div>
-            <div className={r.productList}>
+            <div className={styles.productList}>
               {productos.length === 0 && (
-                <div className={r.pickerEmpty}>
+                <div className={styles.pickerEmpty}>
                   No hay productos activos. Agrega o activa productos desde la opción <strong>Productos</strong>.
                 </div>
               )}
               {productos.length > 0 && grupos.length === 0 && (
-                <div className={r.pickerEmpty}>Ningún producto coincide con la búsqueda.</div>
+                <div className={styles.pickerEmpty}>Ningún producto coincide con la búsqueda.</div>
               )}
               {grupos.map(([categoria, items]) => (
                 <div key={categoria}>
-                  <div className={r.categoryHead}>{categoria}</div>
+                  <div className={styles.categoryHead}>{categoria}</div>
                   {items.map((p) => {
                     const cantidad = cantidadDe(p.id);
                     const sinPrecio = p.valor <= 0;
@@ -382,12 +374,12 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
                     return (
                       <div
                         key={p.id}
-                        className={`${r.productRow} ${cantidad > 0 ? r.productRowActive : ''} ${sinPrecio ? r.productRowDisabled : ''}`}
+                        className={`${styles.productRow} ${cantidad > 0 ? styles.productRowActive : ''} ${sinPrecio ? styles.productRowDisabled : ''}`}
                         title={!sinPrecio && bloqueado ? `Máximo ${MAX_LINEAS} productos por remisión` : undefined}
                       >
-                        <span className={r.code}>{p.codigo}</span>
-                        <span className={r.productName}>{p.descripcion}</span>
-                        <span className={`${r.price} ${sinPrecio ? r.noPrice : ''}`}>
+                        <span className={styles.code}>{p.codigo}</span>
+                        <span className={styles.productName}>{p.descripcion}</span>
+                        <span className={`${styles.price} ${sinPrecio ? styles.noPrice : ''}`}>
                           {sinPrecio ? 'Sin precio en la lista' : formatMoney(precioOriginal.get(p.id) ?? p.valor)}
                         </span>
                         <QuantityControl value={cantidad} onChange={(n) => setCantidad(p.id, n)} disabled={bloqueado} label={p.descripcion} />
@@ -403,18 +395,18 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
         {detalle.length > 0 && (
           <div className={`${styles.field} ${styles.fieldFull}`}>
             <span className={styles.label}>Resumen de la remisión</span>
-            <div className={r.summary}>
+            <div className={styles.summary}>
               {detalle.map((l) => (
-                <div key={l.productoId} className={r.summaryRow}>
+                <div key={l.productoId} className={styles.summaryRow}>
                   <strong>{l.cantidad}×</strong>
-                  <span className={r.productName}>{l.descripcion}</span>
-                  <span className={r.price}>{formatMoney(l.subtotal)}</span>
-                  <button type="button" className={r.removeBtn} onClick={() => setCantidad(l.productoId, 0)}>
+                  <span className={styles.productName}>{l.descripcion}</span>
+                  <span className={styles.price}>{formatMoney(l.subtotal)}</span>
+                  <button type="button" className={styles.removeBtn} onClick={() => setCantidad(l.productoId, 0)}>
                     Quitar
                   </button>
                 </div>
               ))}
-              <div className={r.summaryTotal}>
+              <div className={styles.summaryTotal}>
                 <span>Total</span>
                 <span>{formatMoney(total)}</span>
               </div>

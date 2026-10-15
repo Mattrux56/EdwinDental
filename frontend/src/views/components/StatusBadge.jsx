@@ -1,15 +1,16 @@
-import styles from '../dashboard.module.css';
 import { normalizeEstado } from '../../constants.js';
+import { Badge } from './ui.jsx';
 
 const TONES = {
-  'En laboratorio': styles.badgeLab,
-  'En prueba': styles.badgeProc,
-  Finalizado: styles.badgeDone,
-  arreglo: styles.badgeRepair,
-  Devolución: styles.badgeReturn,
+  'En laboratorio': 'lab',
+  'En prueba': 'proc',
+  Finalizado: 'done',
+  arreglo: 'repair',
+  Devolución: 'return',
 };
 
+/** Estado de un caso con su color */
 export default function StatusBadge({ estado }) {
   const estadoVisible = normalizeEstado(estado);
-  return <span className={`${styles.badge} ${TONES[estadoVisible] ?? styles.badgeDefault}`}>{estadoVisible}</span>;
+  return <Badge tone={TONES[estadoVisible]}>{estadoVisible}</Badge>;
 }

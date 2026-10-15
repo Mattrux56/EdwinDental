@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import styles from '../dashboard.module.css';
+import styles from '../../styles/app.module.css';
 import { MOVIMIENTOS, normalizeEstado } from '../../constants.js';
 import PhotoPicker from './PhotoPicker.jsx';
 import ImageViewer from './ImageViewer.jsx';

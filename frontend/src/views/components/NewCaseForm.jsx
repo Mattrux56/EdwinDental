@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import styles from '../dashboard.module.css';
+import styles from '../../styles/app.module.css';
 import PhotoPicker from './PhotoPicker.jsx';
 import { casesService } from '../../services/cases.service.js';
 import { clientesParecidos } from '../../utils/clientes.js';

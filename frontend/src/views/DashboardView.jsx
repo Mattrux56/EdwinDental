@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import styles from './dashboard.module.css';
+import styles from '../styles/app.module.css';
 import Sidebar from './components/Sidebar.jsx';
 import MetricCards from './components/MetricCards.jsx';
 import CasesTable from './components/CasesTable.jsx';

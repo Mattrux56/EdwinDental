@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import styles from '../dashboard.module.css';
+import styles from '../../styles/app.module.css';
 import { deliverySla, formatDateTime, formatEstimatedDate, lastMovement } from '../../utils/format.js';
-import { Icon } from './Icon.jsx';
-import { EmptyState, ErrorBanner, LoadingState, Panel, SearchField } from './ui.jsx';
-import StatusBadge from './StatusBadge.jsx';
 import { ESTADOS, normalizeEstado } from '../../constants.js';
-import { normalizeSearchText } from '../../utils/search.js';
+import { matchesSearch } from '../../utils/search.js';
+import { ChipGroup, DateFilter, FilterBar, SearchField } from './filters.jsx';
+import { Icon } from './Icon.jsx';
+import StatusBadge from './StatusBadge.jsx';
+import { contar, EmptyState, ErrorBanner, LoadingState, Pagination, Panel } from './ui.jsx';
 
 const FILTERS = ['Todos', ...ESTADOS];
 const PAGE_SIZES = [9, 18, 36];
@@ -45,21 +46,23 @@ export default function CasesTable({
   const [page, setPage] = useState(0);
 
   const filtered = useMemo(() => {
-    const term = normalizeSearchText(query.trim());
-    return casos.filter((caso) => {
-      if (filter !== 'Todos' && normalizeEstado(caso.estado) !== filter) return false;
-      const fecha = ingresoDate(caso);
-      if (desde && fecha < desde) return false;
-      if (!term) return true;
-      return [caso.codigo, caso.doctorNombre, caso.cliente?.nombre, caso.pacienteNombre]
-        .some((valor) => normalizeSearchText(valor).includes(term));
-    });
+    return casos.filter((caso) =>
+      (filter === 'Todos' || normalizeEstado(caso.estado) === filter) &&
+      (!desde || ingresoDate(caso) >= desde) &&
+      matchesSearch(query, [caso.codigo, caso.doctorNombre, caso.cliente?.nombre, caso.pacienteNombre]),
+    );
   }, [casos, desde, filter, query]);
 
   const pageCount = Math.ceil(filtered.length / pageSize);
   const currentPage = Math.min(page, Math.max(0, pageCount - 1));
   const shown = compact ? casos.slice(0, 3) : filtered.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
   const empty = !loading && !error && shown.length === 0;
+
+  // Cualquier cambio de filtro vuelve a la primera página
+  const conPagina = (setter) => (value) => {
+    setter(value);
+    setPage(0);
+  };
 
   const remove = (event, caso) => {
     event.stopPropagation();
@@ -69,7 +72,7 @@ export default function CasesTable({
   return (
     <Panel
       title={compact ? 'Últimos casos registrados' : verArchivados ? 'Casos archivados' : 'Casos registrados'}
-      meta={loading ? 'Cargando…' : `${compact ? shown.length : filtered.length} ${(compact ? shown.length : filtered.length) === 1 ? 'caso' : 'casos'}`}
+      meta={contar(compact ? shown.length : filtered.length, 'caso', 'casos', loading)}
       fill={!compact}
       actions={actions}
     >
@@ -77,13 +80,10 @@ export default function CasesTable({
       <div className={styles.caseBody}>
       {!compact && (
         <>
-          <div className={styles.caseToolbar}>
+          <FilterBar>
             <SearchField
               value={query}
-              onChange={(value) => {
-                setQuery(value);
-                setPage(0);
-              }}
+              onChange={conPagina(setQuery)}
               placeholder="Buscar código, caso, cliente o paciente"
               label="Buscar casos"
             />
@@ -92,35 +92,9 @@ export default function CasesTable({
                 <Icon name="archive" size={15} /> {verArchivados ? 'Volver a los casos activos' : `Ver archivados (${archivadosCount})`}
               </button>
             )}
-            <label className={styles.dateFilter}>
-              <span>Desde</span>
-              <input
-                type="date"
-                value={desde}
-                onChange={(event) => {
-                  setDesde(event.target.value);
-                  setPage(0);
-                }}
-                aria-label="Filtrar desde fecha"
-              />
-            </label>
-          </div>
-          <div className={styles.tableFilters} role="group" aria-label="Filtrar casos por estado">
-            {FILTERS.map((item) => (
-              <button
-                key={item}
-                type="button"
-                className={`${styles.filterBtn} ${filter === item ? styles.filterBtnActive : ''}`}
-                onClick={() => {
-                  setFilter(item);
-                  setPage(0);
-                }}
-                aria-pressed={filter === item}
-              >
-                {item}
-              </button>
-            ))}
-          </div>
+            <DateFilter label="Desde" value={desde} onChange={conPagina(setDesde)} ariaLabel="Filtrar desde fecha" />
+          </FilterBar>
+          <ChipGroup options={FILTERS} value={filter} onChange={conPagina(setFilter)} label="Filtrar casos por estado" />
         </>
       )}
 
@@ -214,44 +188,15 @@ export default function CasesTable({
       </div>
 
       {!compact && filtered.length > 0 && (
-        <div className={styles.pagination}>
-          <label className={styles.pageSizeControl}>
-            Mostrar
-            <select
-              className={styles.select}
-              value={pageSize}
-              onChange={(event) => {
-                setPageSize(Number(event.target.value));
-                setPage(0);
-              }}
-              aria-label="Cantidad de casos por página"
-            >
-              {PAGE_SIZES.map((size) => <option key={size} value={size}>{size}</option>)}
-            </select>
-            por página
-          </label>
-          <span className={styles.panelMeta}>
-            Página {currentPage + 1} de {pageCount}
-          </span>
-          <div className={styles.paginationButtons}>
-            <button
-              type="button"
-              className={styles.secondaryBtn}
-              onClick={() => setPage(Math.max(0, currentPage - 1))}
-              disabled={currentPage === 0}
-            >
-              Anterior
-            </button>
-            <button
-              type="button"
-              className={styles.secondaryBtn}
-              onClick={() => setPage(Math.min(pageCount - 1, currentPage + 1))}
-              disabled={currentPage >= pageCount - 1}
-            >
-              Siguiente
-            </button>
-          </div>
-        </div>
+        <Pagination
+          page={currentPage}
+          pageCount={pageCount}
+          pageSize={pageSize}
+          pageSizes={PAGE_SIZES}
+          onPage={setPage}
+          onPageSize={conPagina(setPageSize)}
+          label="Cantidad de casos por página"
+        />
       )}
     </Panel>
   );

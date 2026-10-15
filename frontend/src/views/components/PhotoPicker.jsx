@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import styles from '../dashboard.module.css';
+import styles from '../../styles/app.module.css';
 import { Icon } from './Icon.jsx';
 import { comprimirImagen } from '../../utils/image.js';
 import CameraCapture from './CameraCapture.jsx';

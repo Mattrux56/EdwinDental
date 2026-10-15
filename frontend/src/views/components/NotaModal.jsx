@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import styles from '../dashboard.module.css';
+import styles from '../../styles/app.module.css';
 import { generarNota, guardarNota, imprimirNota } from '../../utils/printNota.js';
 import { PAGINAS } from '../../utils/imprimirImagen.js';
 import HojaPreview from './HojaPreview.jsx';

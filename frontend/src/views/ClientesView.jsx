@@ -1,11 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import styles from './dashboard.module.css';
+import { useMemo, useState } from 'react';
+import styles from '../styles/app.module.css';
+import { useResource } from '../hooks/useResource.js';
 import { clientesService } from '../services/clientes.service.js';
 import { clientesParecidos, idsDuplicados } from '../utils/clientes.js';
+import { matchesSearch } from '../utils/search.js';
+import DataTable from './components/DataTable.jsx';
+import { Chip, FilterBar, SearchField } from './components/filters.jsx';
 import { Icon } from './components/Icon.jsx';
 import Modal, { ConfirmModal } from './components/Modal.jsx';
-import { EmptyState, ErrorBanner, LoadingState, Panel, SearchField } from './components/ui.jsx';
-import { normalizeSearchText } from '../utils/search.js';
+import { Badge, contar, Panel } from './components/ui.jsx';
 
 function ClienteForm({ cliente, clientes, saving, onSubmit, onCancel }) {
   const [nombre, setNombre] = useState(cliente?.nombre ?? '');
@@ -36,41 +39,54 @@ function ClienteForm({ cliente, clientes, saving, onSubmit, onCancel }) {
 }
 
 export default function ClientesView({ showToast, onChanged }) {
-  const [clientes, setClientes] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { data: clientes, loading, error, reload: load } = useResource(() => clientesService.list());
   const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState('');
   const [soloDuplicados, setSoloDuplicados] = useState(false);
   const [modal, setModal] = useState(null); // { tipo: 'form'|'eliminar', cliente }
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      setClientes(await clientesService.list());
-    } catch (reason) {
-      setError(reason.message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
   const duplicados = useMemo(() => idsDuplicados(clientes), [clientes]);
   // Si ya no quedan duplicados el filtro se ignora (si no, la lista quedaba vacía y sin botón para quitarlo)
   const filtrarDuplicados = soloDuplicados && duplicados.size > 0;
 
-  const filtered = useMemo(() => {
-    const term = normalizeSearchText(query.trim());
-    return clientes.filter((c) =>
-      (!filtrarDuplicados || duplicados.has(c.id)) &&
-      (!term || normalizeSearchText(c.nombre).includes(term)),
-    );
-  }, [clientes, duplicados, query, filtrarDuplicados]);
+  const filtered = useMemo(
+    () => clientes.filter((c) => (!filtrarDuplicados || duplicados.has(c.id)) && matchesSearch(query, [c.nombre])),
+    [clientes, duplicados, query, filtrarDuplicados],
+  );
+
+  const columnas = [
+    {
+      key: 'nombre',
+      header: 'Nombre',
+      render: (c) => (
+        <>
+          <span className={styles.clientName}>{c.nombre}</span>{' '}
+          {duplicados.has(c.id) && <Badge tone="lab">Posible duplicado</Badge>}
+        </>
+      ),
+    },
+    { key: 'casos', header: 'Casos', align: 'right', render: (c) => c._count.casos },
+    { key: 'remisiones', header: 'Remisiones', align: 'right', headerProps: { title: 'Remisiones vigentes (sin las anuladas)' }, render: (c) => c.remisiones },
+    {
+      key: 'acciones',
+      header: '',
+      headerProps: { 'aria-label': 'Acciones' },
+      render: (c) => (
+        <div className={styles.productActions}>
+          <button type="button" className={styles.secondaryBtn} onClick={() => setModal({ tipo: 'form', cliente: c })} disabled={saving}>Editar</button>
+          <button
+            type="button"
+            className={styles.deleteBtn}
+            onClick={() => setModal({ tipo: 'eliminar', cliente: c })}
+            disabled={saving || c._count.casos > 0}
+            title={c._count.casos > 0 ? 'Tiene casos: no se puede eliminar' : undefined}
+          >
+            Eliminar
+          </button>
+        </div>
+      ),
+    },
+  ];
 
   const run = async (action, okMessage) => {
     setSaving(true);
@@ -98,75 +114,33 @@ export default function ClientesView({ showToast, onChanged }) {
     <>
       <Panel
         title="Clientes"
-        meta={loading ? 'Cargando…' : `${filtered.length} ${filtered.length === 1 ? 'cliente' : 'clientes'}`}
+        meta={contar(filtered.length, 'cliente', 'clientes', loading)}
         actions={(
           <button type="button" className={styles.primaryBtn} onClick={() => setModal({ tipo: 'form', cliente: null })}>
             <Icon name="plus" size={16} /> Nuevo cliente
           </button>
         )}
       >
-        <div className={styles.caseToolbar}>
+        <FilterBar>
           <SearchField value={query} onChange={setQuery} placeholder="Buscar por nombre" label="Buscar clientes" />
           {duplicados.size > 0 && (
-            <button
-              type="button"
-              className={`${styles.filterBtn} ${filtrarDuplicados ? styles.filterBtnActive : ''}`}
-              onClick={() => setSoloDuplicados((v) => !v)}
-              aria-pressed={filtrarDuplicados}
-            >
+            <Chip active={filtrarDuplicados} onClick={() => setSoloDuplicados((v) => !v)}>
               Posibles duplicados ({duplicados.size})
-            </button>
+            </Chip>
           )}
-        </div>
+        </FilterBar>
 
-        {error && <ErrorBanner onRetry={load}>{error}</ErrorBanner>}
-        {loading && clientes.length === 0 && !error && <LoadingState>Cargando clientes…</LoadingState>}
-        {!loading && !error && filtered.length === 0 && (
-          <EmptyState title={clientes.length ? 'No hay coincidencias' : 'Aún no hay clientes'}>
-            {clientes.length ? 'Prueba otra búsqueda.' : 'Se crean al registrar un caso o con “Nuevo cliente”.'}
-          </EmptyState>
-        )}
-
-        {filtered.length > 0 && (
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Nombre</th>
-                  <th style={{ textAlign: 'right' }}>Casos</th>
-                  <th style={{ textAlign: 'right' }} title="Remisiones vigentes (sin las anuladas)">Remisiones</th>
-                  <th aria-label="Acciones" />
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((c) => (
-                  <tr key={c.id}>
-                    <td>
-                      <span className={styles.clientName}>{c.nombre}</span>{' '}
-                      {duplicados.has(c.id) && <span className={`${styles.badge} ${styles.badgeLab}`}>Posible duplicado</span>}
-                    </td>
-                    <td style={{ textAlign: 'right' }}>{c._count.casos}</td>
-                    <td style={{ textAlign: 'right' }}>{c.remisiones}</td>
-                    <td>
-                      <div className={styles.productActions}>
-                        <button type="button" className={styles.secondaryBtn} onClick={() => setModal({ tipo: 'form', cliente: c })} disabled={saving}>Editar</button>
-                        <button
-                          type="button"
-                          className={styles.deleteBtn}
-                          onClick={() => setModal({ tipo: 'eliminar', cliente: c })}
-                          disabled={saving || c._count.casos > 0}
-                          title={c._count.casos > 0 ? 'Tiene casos: no se puede eliminar' : undefined}
-                        >
-                          Eliminar
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <DataTable
+          columns={columnas}
+          rows={filtered}
+          loading={loading}
+          loadingText="Cargando clientes…"
+          error={error}
+          onRetry={load}
+          empty={clientes.length
+            ? { title: 'No hay coincidencias', children: 'Prueba otra búsqueda.' }
+            : { title: 'Aún no hay clientes', children: 'Se crean al registrar un caso o con “Nuevo cliente”.' }}
+        />
       </Panel>
 
       {modal?.tipo === 'form' && (

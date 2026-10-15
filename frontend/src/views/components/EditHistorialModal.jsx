@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import styles from '../dashboard.module.css';
+import styles from '../../styles/app.module.css';
 import { formatDateTime, formatEstimatedDate } from '../../utils/format.js';
 import Modal, { ConfirmModal } from './Modal.jsx';
 import FollowUpForm from './FollowUpForm.jsx';

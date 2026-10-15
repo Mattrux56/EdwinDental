@@ -1,11 +1,18 @@
-import styles from '../dashboard.module.css';
-import r from '../remisiones.module.css';
+import styles from '../../styles/app.module.css';
 import { formatDateTime, formatEstimatedDate, formatMoney, formatRemisionNumber } from '../../utils/format.js';
 import { Icon } from './Icon.jsx';
+import DataTable from './DataTable.jsx';
 import Modal from './Modal.jsx';
 import PrintRemisionButton from './PrintRemisionButton.jsx';
 
 /** Detalle de una remisión: encabezado, líneas con cantidades y precios, total. Editar/anular solo si se pasan los callbacks. */
+const COLUMNAS = [
+  { key: 'cantidad', header: 'Cant.', render: (item) => item.cantidad },
+  { key: 'descripcion', header: 'Descripción', render: (item) => item.descripcion },
+  { key: 'unitario', header: 'Valor unitario', align: 'right', render: (item) => formatMoney(item.valorUnitario) },
+  { key: 'subtotal', header: 'Subtotal', align: 'right', render: (item) => formatMoney(item.cantidad * item.valorUnitario) },
+];
+
 export default function RemisionDetailModal({ remision, onClose, onEdit, onAnular, onEliminar, onReactivar, reactivando, showToast }) {
   const doctor = remision.doctorNombre ?? remision.caso?.cliente?.nombre;
   const paciente = remision.pacienteNombre ?? remision.caso?.pacienteNombre;
@@ -15,7 +22,7 @@ export default function RemisionDetailModal({ remision, onClose, onEdit, onAnula
       title={`Remisión N° ${formatRemisionNumber(remision)}`}
       subtitle={remision.anulada ? 'Anulada: no cuenta en la cuenta de estado.' : undefined}
       onClose={onClose}
-      className={r.wideModal}
+      className={styles.wideModal}
     >
       <div className={styles.infoGrid}>
         <div><div className={styles.infoLabel}>Fecha</div><div className={styles.infoValue}>{formatEstimatedDate(remision.fecha)}</div></div>
@@ -33,26 +40,14 @@ export default function RemisionDetailModal({ remision, onClose, onEdit, onAnula
         </div>
       </div>
 
-      <div className={r.detailTableWrap}>
-        <table className={r.miniTable}>
-          <thead>
-            <tr><th>Cant.</th><th>Descripción</th><th style={{ textAlign: 'right' }}>Valor unitario</th><th style={{ textAlign: 'right' }}>Subtotal</th></tr>
-          </thead>
-          <tbody>
-            {remision.items.map((item) => (
-              <tr key={item.id}>
-                <td>{item.cantidad}</td>
-                <td>{item.descripcion}</td>
-                <td style={{ textAlign: 'right' }}>{formatMoney(item.valorUnitario)}</td>
-                <td style={{ textAlign: 'right' }}>{formatMoney(item.cantidad * item.valorUnitario)}</td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr><td colSpan={3} style={{ textAlign: 'right' }}><strong>Total</strong></td><td style={{ textAlign: 'right' }}><strong>{formatMoney(remision.total)}</strong></td></tr>
-          </tfoot>
-        </table>
-      </div>
+      <DataTable
+        variant="mini"
+        columns={COLUMNAS}
+        rows={remision.items}
+        footer={(
+          <tr><td colSpan={3} style={{ textAlign: 'right' }}><strong>Total</strong></td><td style={{ textAlign: 'right' }}><strong>{formatMoney(remision.total)}</strong></td></tr>
+        )}
+      />
 
       <div className={styles.formActions}>
         {onAnular && !remision.anulada && (

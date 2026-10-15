@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import styles from '../dashboard.module.css';
+import styles from '../../styles/app.module.css';
 
 const EMPTY = { codigo: '', categoria: '', descripcion: '', valor: '' };
 

@@ -1,46 +1,28 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import styles from './dashboard.module.css';
-import { formatMoney } from '../utils/format.js';
+import { useMemo, useRef, useState } from 'react';
+import styles from '../styles/app.module.css';
+import { useResource } from '../hooks/useResource.js';
 import { downloadListaPrecios, remisionesService } from '../services/remisiones.service.js';
+import { formatMoney } from '../utils/format.js';
+import { matchesSearch } from '../utils/search.js';
+import DataTable from './components/DataTable.jsx';
+import { FilterBar, SearchField } from './components/filters.jsx';
 import { Icon } from './components/Icon.jsx';
-import ProductoForm from './components/ProductoForm.jsx';
 import Modal from './components/Modal.jsx';
-import { EmptyState, ErrorBanner, LoadingState, Panel, SearchField } from './components/ui.jsx';
+import ProductoForm from './components/ProductoForm.jsx';
+import { Badge, contar, Panel } from './components/ui.jsx';
 
 export default function ProductosView({ showToast }) {
-  const [productos, setProductos] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { data: productos, loading, error, reload: load } = useResource(() => remisionesService.productosAdmin());
   const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState('');
   const [modal, setModal] = useState(null);
   const [importando, setImportando] = useState(false);
   const archivoRef = useRef(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      setProductos(await remisionesService.productosAdmin());
-    } catch (reason) {
-      setError(reason.message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  const filtered = useMemo(() => {
-    const term = query.trim().toLocaleLowerCase('es');
-    if (!term) return productos;
-    return productos.filter((producto) =>
-      [producto.codigo, producto.categoria, producto.descripcion, producto.valor]
-        .some((value) => String(value).toLocaleLowerCase('es').includes(term)),
-    );
-  }, [productos, query]);
+  const filtered = useMemo(
+    () => productos.filter((p) => matchesSearch(query, [p.codigo, p.categoria, p.descripcion, p.valor])),
+    [productos, query],
+  );
 
   const save = async (payload) => {
     setSaving(true);
@@ -98,11 +80,32 @@ export default function ProductosView({ showToast }) {
 
   const exportar = () => downloadListaPrecios().catch((reason) => showToast('error', reason.message));
 
+  const columnas = [
+    { key: 'codigo', header: 'Código', className: styles.codeCell, render: (p) => p.codigo },
+    { key: 'categoria', header: 'Categoría', render: (p) => p.categoria },
+    { key: 'descripcion', header: 'Descripción', render: (p) => p.descripcion },
+    { key: 'valor', header: 'Valor', render: (p) => formatMoney(p.valor) },
+    { key: 'estado', header: 'Estado', render: (p) => <Badge tone={p.activo ? 'lab' : 'default'}>{p.activo ? 'Activo' : 'Inactivo'}</Badge> },
+    {
+      key: 'acciones',
+      header: '',
+      headerProps: { 'aria-label': 'Acciones' },
+      render: (p) => (
+        <div className={styles.productActions}>
+          <button type="button" className={styles.secondaryBtn} onClick={() => setModal({ producto: p })} disabled={saving}>Editar</button>
+          <button type="button" className={styles.secondaryBtn} onClick={() => toggleActive(p)} disabled={saving}>
+            {p.activo ? 'Desactivar' : 'Activar'}
+          </button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <>
       <Panel
         title="Catálogo de productos"
-        meta={loading ? 'Cargando…' : `${filtered.length} ${filtered.length === 1 ? 'producto' : 'productos'}`}
+        meta={contar(filtered.length, 'producto', 'productos', loading)}
         actions={(
         <>
           <input ref={archivoRef} type="file" accept=".xlsx" className={styles.hiddenInput} onChange={importar} />
@@ -118,71 +121,21 @@ export default function ProductosView({ showToast }) {
         </>
         )}
       >
-        <div className={styles.caseToolbar}>
+        <FilterBar>
           <SearchField value={query} onChange={setQuery} placeholder="Buscar por código, categoría o descripción" label="Buscar productos" />
-        </div>
+        </FilterBar>
 
-        {error && <ErrorBanner onRetry={load}>{error}</ErrorBanner>}
-
-        {loading && productos.length === 0 && !error && <LoadingState>Cargando productos…</LoadingState>}
-
-        {!loading && !error && filtered.length === 0 && (
-          <EmptyState title={productos.length ? 'No hay coincidencias' : 'El catálogo está vacío'}>
-            {productos.length ? 'Prueba otra búsqueda.' : 'Agrega productos para poder seleccionarlos en las remisiones.'}
-          </EmptyState>
-        )}
-
-        {filtered.length > 0 && (
-          <div className={styles.tableWrap}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Código</th>
-                  <th>Categoría</th>
-                  <th>Descripción</th>
-                  <th>Valor</th>
-                  <th>Estado</th>
-                  <th aria-label="Acciones" />
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((producto) => (
-                  <tr key={producto.id}>
-                    <td className={styles.codeCell}>{producto.codigo}</td>
-                    <td>{producto.categoria}</td>
-                    <td>{producto.descripcion}</td>
-                    <td>{formatMoney(producto.valor)}</td>
-                    <td>
-                      <span className={`${styles.badge} ${producto.activo ? styles.badgeLab : styles.badgeDefault}`}>
-                        {producto.activo ? 'Activo' : 'Inactivo'}
-                      </span>
-                    </td>
-                    <td>
-                      <div className={styles.productActions}>
-                        <button
-                          type="button"
-                          className={styles.secondaryBtn}
-                          onClick={() => setModal({ producto })}
-                          disabled={saving}
-                        >
-                          Editar
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.secondaryBtn}
-                          onClick={() => toggleActive(producto)}
-                          disabled={saving}
-                        >
-                          {producto.activo ? 'Desactivar' : 'Activar'}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <DataTable
+          columns={columnas}
+          rows={filtered}
+          loading={loading}
+          loadingText="Cargando productos…"
+          error={error}
+          onRetry={load}
+          empty={productos.length
+            ? { title: 'No hay coincidencias', children: 'Prueba otra búsqueda.' }
+            : { title: 'El catálogo está vacío', children: 'Agrega productos para poder seleccionarlos en las remisiones.' }}
+        />
       </Panel>
 
       {modal && (

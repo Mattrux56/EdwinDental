@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import styles from '../dashboard.module.css';
-import r from '../remisiones.module.css';
+import styles from '../../styles/app.module.css';
 import { formatEstimatedDate, formatMoney, formatRemisionNumber } from '../../utils/format.js';
+import DataTable from './DataTable.jsx';
 import Modal from './Modal.jsx';
+import { Badge } from './ui.jsx';
 
 /** Remisiones de un cliente en el mes: se marca cuáles están pagadas y se guarda con «Confirmar remisiones» */
 export default function CuentaCobroModal({ cuenta, periodo, saving, onClose, onConfirm }) {
@@ -22,69 +23,55 @@ export default function CuentaCobroModal({ cuenta, periodo, saving, onClose, onC
     });
   };
 
+  const columnas = [
+    {
+      key: 'marca',
+      header: (
+        <input
+          type="checkbox"
+          className={styles.checkPago}
+          checked={todas}
+          onChange={(e) => setPagadas(e.target.checked ? new Set(cuenta.remisiones.map((x) => x.id)) : new Set())}
+          disabled={saving}
+          aria-label="Marcar todas las remisiones como pagadas"
+          title="Marcar todas"
+        />
+      ),
+      render: (x) => (
+        <input
+          type="checkbox"
+          className={styles.checkPago}
+          checked={pagadas.has(x.id)}
+          onChange={(e) => alternar(x.id, e.target.checked)}
+          disabled={saving}
+          aria-label={`Remisión ${formatRemisionNumber(x)} pagada`}
+        />
+      ),
+    },
+    {
+      key: 'pagada',
+      header: 'Pagada',
+      render: (x) => <Badge tone={pagadas.has(x.id) ? 'done' : 'lab'}>{pagadas.has(x.id) ? 'Pagada' : 'Pendiente'}</Badge>,
+    },
+    { key: 'remision', header: 'Remisión', render: (x) => formatRemisionNumber(x) },
+    { key: 'fecha', header: 'Fecha', render: (x) => formatEstimatedDate(x.fecha) },
+    { key: 'doctor', header: 'Doctor', render: (x) => x.doctor || '—' },
+    { key: 'paciente', header: 'Paciente', render: (x) => x.paciente || '—' },
+    { key: 'orden', header: 'Orden de trabajo', render: (x) => x.ordenTrabajo || x.noOrden || '—' },
+    { key: 'valor', header: 'Valor', align: 'right', className: styles.moneyCell, render: (x) => formatMoney(x.total) },
+  ];
+
   return (
     <Modal
       title={cuenta.cliente}
       subtitle={`Remisiones de ${periodo}. Marca las que ya están pagadas y confirma.`}
       onClose={onClose}
       busy={saving}
-      className={r.wideModal}
+      className={styles.wideModal}
     >
-      <div className={r.detailTableWrap}>
-        <table className={r.miniTable}>
-          <thead>
-            <tr>
-              <th>
-                <input
-                  type="checkbox"
-                  className={r.checkPago}
-                  checked={todas}
-                  onChange={(e) => setPagadas(e.target.checked ? new Set(cuenta.remisiones.map((x) => x.id)) : new Set())}
-                  disabled={saving}
-                  aria-label="Marcar todas las remisiones como pagadas"
-                  title="Marcar todas"
-                />
-              </th>
-              <th>Pagada</th>
-              <th>Remisión</th>
-              <th>Fecha</th>
-              <th>Doctor</th>
-              <th>Paciente</th>
-              <th>Orden de trabajo</th>
-              <th style={{ textAlign: 'right' }}>Valor</th>
-            </tr>
-          </thead>
-          <tbody>
-            {cuenta.remisiones.map((x) => (
-              <tr key={x.id}>
-                <td>
-                  <input
-                    type="checkbox"
-                    className={r.checkPago}
-                    checked={pagadas.has(x.id)}
-                    onChange={(e) => alternar(x.id, e.target.checked)}
-                    disabled={saving}
-                    aria-label={`Remisión ${formatRemisionNumber(x)} pagada`}
-                  />
-                </td>
-                <td>
-                  <span className={`${styles.badge} ${pagadas.has(x.id) ? styles.badgeDone : styles.badgeLab}`}>
-                    {pagadas.has(x.id) ? 'Pagada' : 'Pendiente'}
-                  </span>
-                </td>
-                <td>{formatRemisionNumber(x)}</td>
-                <td>{formatEstimatedDate(x.fecha)}</td>
-                <td>{x.doctor || '—'}</td>
-                <td>{x.paciente || '—'}</td>
-                <td>{x.ordenTrabajo || x.noOrden || '—'}</td>
-                <td className={r.moneyCell}>{formatMoney(x.total)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <DataTable variant="mini" columns={columnas} rows={cuenta.remisiones} />
 
-      <div className={r.cuentaFooter}>
+      <div className={styles.cuentaFooter}>
         <span>
           Pagado <strong>{formatMoney(totalPagado)}</strong> de <strong>{formatMoney(cuenta.total)}</strong>
           {' · '}{pagadas.size} de {cuenta.remisiones.length} {cuenta.remisiones.length === 1 ? 'remisión' : 'remisiones'}
