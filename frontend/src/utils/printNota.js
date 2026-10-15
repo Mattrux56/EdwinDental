@@ -1,10 +1,10 @@
-import plantillaUrl from '../assets/nota-plantilla.jpg';
+import plantillaUrl from '../assets/nota-plantilla.png';
 import firmaUrl from '../assets/nota-firma.png';
 import { cacheImagenes, renglones } from './canvasTexto.js';
 import { imprimirImagen, PAGINAS } from './imprimirImagen.js';
 
 /**
- * La nota es la plantilla del laboratorio (assets/nota-plantilla.jpg, 2000 × 1414 px, horizontal) con los datos escritos encima.
+ * La nota es la plantilla del laboratorio (assets/nota-plantilla.png, 2000 × 1414 px, horizontal) con los datos escritos encima.
  * Las posiciones están en píxeles de la plantilla; si cambia la imagen, ajusta estas constantes.
  */
 const ANCHO_PLANTILLA = 2000;
@@ -17,9 +17,9 @@ const LINEAS = {
   doctor: { x: 250, y: 509, ancho: 730 },
   clinica: { x: 1220, y: 509, ancho: 700 },
 };
-const OBSERVACIONES = { x: 90, y: 640, ancho: 1820, alto: 600 };
-// La raya de la firma está en y = 1362; el nombre escrito en nota-firma.png se apoya al 62 % de su alto
-const FIRMA = { x: 240, linea: 1362, renglon: 0.62, alto: 185, anchoMax: 720 };
+const OBSERVACIONES = { x: 90, y: 640, ancho: 1820, alto: 400 };
+// La raya de la firma está en y = 1147; el nombre escrito en nota-firma.png se apoya al 62 % de su alto
+const FIRMA = { x: 240, linea: 1147, renglon: 0.62, alto: 185, anchoMax: 720 };
 
 const COLOR_TEXTO = '#14212e';
 const FUENTE = 'Arial, Helvetica, sans-serif';
