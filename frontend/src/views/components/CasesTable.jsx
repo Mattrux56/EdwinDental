@@ -41,17 +41,17 @@ export default function CasesTable({
 }) {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState('Todos');
-  const [desde, setDesde] = useState('');
+  const [fecha, setFecha] = useState('');
   const [pageSize, setPageSize] = useState(9);
   const [page, setPage] = useState(0);
 
   const filtered = useMemo(() => {
     return casos.filter((caso) =>
       (filter === 'Todos' || normalizeEstado(caso.estado) === filter) &&
-      (!desde || ingresoDate(caso) >= desde) &&
+      (!fecha || ingresoDate(caso) === fecha) &&
       matchesSearch(query, [caso.codigo, caso.doctorNombre, caso.cliente?.nombre, caso.pacienteNombre]),
     );
-  }, [casos, desde, filter, query]);
+  }, [casos, fecha, filter, query]);
 
   const pageCount = Math.ceil(filtered.length / pageSize);
   const currentPage = Math.min(page, Math.max(0, pageCount - 1));
@@ -92,7 +92,7 @@ export default function CasesTable({
                 <Icon name="archive" size={15} /> {verArchivados ? 'Volver a los casos activos' : `Ver archivados (${archivadosCount})`}
               </button>
             )}
-            <DateFilter label="Desde" value={desde} onChange={conPagina(setDesde)} ariaLabel="Filtrar desde fecha" />
+            <DateFilter label="Fecha de ingreso" value={fecha} onChange={conPagina(setFecha)} ariaLabel="Filtrar por fecha de ingreso" />
           </FilterBar>
           <ChipGroup options={FILTERS} value={filter} onChange={conPagina(setFilter)} label="Filtrar casos por estado" />
         </>
@@ -108,7 +108,7 @@ export default function CasesTable({
         >
           {casos.length === 0
             ? 'Usa “Registrar caso” para ingresar el primero.'
-            : 'Cambia la búsqueda, el estado o el rango de fechas.'}
+            : 'Cambia la búsqueda, el estado o la fecha.'}
         </EmptyState>
       )}
 

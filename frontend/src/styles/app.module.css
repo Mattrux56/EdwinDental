@@ -2051,6 +2051,16 @@ input[type='checkbox'] {
   border-bottom: 0;
 }
 
+/* Mismo alto y letra que el select de categorías que tiene al lado */
+.pickerBar .pickerAdd {
+  flex: 0 0 auto;
+  min-height: 34px;
+  margin-left: 8px;
+  padding-top: 0;
+  padding-bottom: 0;
+  font-size: 13px;
+}
+
 .pickerBar .pickerCategory {
   flex: 0 0 auto;
   width: 190px;
@@ -2080,24 +2090,25 @@ input[type='checkbox'] {
   color: var(--ink);
 }
 
-.pickerFilters {
+/* Fecha de ingreso en la misma barra del buscador de casos */
+.pickerDate {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  padding: 9px 12px;
-  border-bottom: 1px solid var(--line);
-}
-
-.pickerFilters label {
-  display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 6px;
+  margin: 0 8px;
   color: var(--ink-soft);
   font-size: 12px;
+  white-space: nowrap;
 }
 
-.pickerFilters input {
+@media (max-width: 560px) {
+  .pickerBar .pickerDate {
+    margin: 0 8px 8px;
+  }
+}
+
+.pickerDate input {
   min-width: 0;
   min-height: 34px;
   padding: 4px 8px;

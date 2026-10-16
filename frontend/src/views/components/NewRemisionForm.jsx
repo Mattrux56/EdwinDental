@@ -17,17 +17,16 @@ const today = () => {
 
 function CasePicker({ casos, selected, onSelect, locked = false }) {
   const [query, setQuery] = useState('');
-  const [desde, setDesde] = useState('');
-  const [hasta, setHasta] = useState('');
+  const [fechaIngreso, setFechaIngreso] = useState('');
 
   const matches = useMemo(() => {
     const list = casos.filter((c) => {
       const fecha = String(c.fechaIngreso ?? c.creadoEn ?? '').slice(0, 10);
-      return (!desde || fecha >= desde) && (!hasta || fecha <= hasta) &&
+      return (!fechaIngreso || fecha === fechaIngreso) &&
         matchesSearch(query, [c.codigo, c.doctorNombre, c.cliente?.nombre, c.pacienteNombre]);
     });
     return list.slice(0, 50);
-  }, [casos, desde, hasta, query]);
+  }, [casos, fechaIngreso, query]);
 
   if (selected) {
     return (
@@ -51,17 +50,22 @@ function CasePicker({ casos, selected, onSelect, locked = false }) {
 
   return (
     <div className={styles.pickerBox}>
-      <SearchField
-        className={styles.pickerSearch}
-        value={query}
-        onChange={setQuery}
-        placeholder="Buscar por orden, doctor, cliente o paciente"
-        label="Buscar caso"
-        autoFocus
-      />
-      <div className={styles.pickerFilters}>
-        <DateFilter label="Desde" value={desde} onChange={setDesde} ariaLabel="Filtrar casos desde" className="" />
-        <DateFilter label="Hasta" value={hasta} onChange={setHasta} ariaLabel="Filtrar casos hasta" className="" />
+      <div className={styles.pickerBar}>
+        <SearchField
+          className={styles.pickerSearch}
+          value={query}
+          onChange={setQuery}
+          placeholder="Buscar por orden, doctor, cliente o paciente"
+          label="Buscar caso"
+          autoFocus
+        />
+        <DateFilter
+          label="Fecha de ingreso"
+          value={fechaIngreso}
+          onChange={setFechaIngreso}
+          ariaLabel="Filtrar casos por fecha de ingreso"
+          className={styles.pickerDate}
+        />
       </div>
       {matches.length === 0 ? (
         <div className={styles.pickerEmpty}>
@@ -118,7 +122,7 @@ function QuantityControl({ value, onChange, disabled, label }) {
  * Crea una remisión nueva o, si se pasa `remision`, permite corregir sus datos y numeración,
  * los productos que ya estaban conservan su precio y los nuevos toman el precio vigente.
  */
-export default function NewRemisionForm({ casos, productos: productosActivos, saving, onSubmit, onCancel, remision }) {
+export default function NewRemisionForm({ casos, productos: productosActivos, saving, onSubmit, onCancel, remision, onNuevoProducto }) {
   const editando = Boolean(remision);
   const [caso, setCaso] = useState(remision?.caso ?? null);
   const [fecha, setFecha] = useState(remision ? String(remision.fecha).slice(0, 10) : today);
@@ -345,6 +349,17 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
                 placeholder="Buscar por código o descripción"
                 label="Buscar producto por código o descripción"
               />
+              {onNuevoProducto && (
+                <button
+                  type="button"
+                  className={`${styles.primaryBtn} ${styles.pickerAdd}`}
+                  onClick={onNuevoProducto}
+                  disabled={saving}
+                  title="Crear un producto nuevo en la lista de precios"
+                >
+                  <Icon name="plus" size={14} /> Nuevo producto
+                </button>
+              )}
               <select
                 className={`${styles.select} ${styles.pickerCategory}`}
                 value={categoria}
@@ -358,7 +373,7 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
             <div className={styles.productList}>
               {productos.length === 0 && (
                 <div className={styles.pickerEmpty}>
-                  No hay productos activos. Agrega o activa productos desde la opción <strong>Productos</strong>.
+                  No hay productos activos. Agrégalos con el botón <strong>Nuevo producto</strong> o actívalos desde la opción <strong>Productos</strong>.
                 </div>
               )}
               {productos.length > 0 && grupos.length === 0 && (

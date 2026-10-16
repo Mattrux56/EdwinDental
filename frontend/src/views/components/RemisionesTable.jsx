@@ -150,7 +150,7 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
     <Panel title={verAnuladas ? 'Remisiones anuladas' : 'Remisiones emitidas'} actions={actions} meta={contador}>
       <FilterBar>
         <SearchField value={query} onChange={setQuery} placeholder="Buscar por número, caso, cliente o paciente" label="Buscar remisiones" />
-        <PeriodFilter anio={anio} mes={mes} onChange={(a, m) => setPeriodo({ anio: a, mes: m })} todoElAnio />
+        <PeriodFilter anio={anio} mes={mes} onChange={(a, m) => setPeriodo({ anio: a, mes: m })} todoElAnio flechas />
       </FilterBar>
 
       <DataTable

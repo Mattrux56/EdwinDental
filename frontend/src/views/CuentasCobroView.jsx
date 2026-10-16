@@ -90,8 +90,8 @@ export default function CuentasCobroView({ showToast }) {
 
       <Panel title={`Cuenta de estado · ${MESES[mes - 1]} ${anio}`} meta={contar(visibles.length, 'cliente', 'clientes', loading)}>
         <FilterBar>
-          <PeriodFilter anio={anio} mes={mes} onChange={cambiarPeriodo} flechas />
           <SearchField value={busqueda} onChange={setBusqueda} placeholder="Buscar cliente" label="Buscar cliente" />
+          <PeriodFilter anio={anio} mes={mes} onChange={cambiarPeriodo} flechas />
           <SelectFilter
             value={estadoPago}
             onChange={setEstadoPago}

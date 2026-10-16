@@ -3,18 +3,38 @@ import styles from '../styles/app.module.css';
 import { Icon } from './components/Icon.jsx';
 import Modal, { ConfirmModal } from './components/Modal.jsx';
 import NewRemisionForm from './components/NewRemisionForm.jsx';
+import ProductoForm from './components/ProductoForm.jsx';
 import RemisionesTable from './components/RemisionesTable.jsx';
 import RemisionDetailModal from './components/RemisionDetailModal.jsx';
+import { remisionesService } from '../services/remisiones.service.js';
 import { formatRemisionNumber } from '../utils/format.js';
 
 /** Vista de Remisiones: lista + creación a partir de un caso existente y la lista de precios */
 export default function RemisionesView({ casos, controller, showToast }) {
-  const { remisiones, productos, loading, error, saving, anulandoId, reload, createRemision, updateRemision, anularRemision, eliminarRemision, reactivarRemision } = controller;
+  const { remisiones, productos, loading, error, saving, anulandoId, reload, reloadProductos, createRemision, updateRemision, anularRemision, eliminarRemision, reactivarRemision } = controller;
   const [detalle, setDetalle] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [anularTarget, setAnularTarget] = useState(null);
   const [eliminarTarget, setEliminarTarget] = useState(null);
+  // Producto nuevo creado desde el formulario de la remisión (se abre encima, sin perder lo ya escrito)
+  const [productoOpen, setProductoOpen] = useState(false);
+  const [guardandoProducto, setGuardandoProducto] = useState(false);
+
+  const guardarProducto = async (payload) => {
+    setGuardandoProducto(true);
+    try {
+      await remisionesService.createProducto(payload);
+      showToast('success', 'Producto creado');
+      await reloadProductos();
+      return true;
+    } catch (reason) {
+      showToast('error', reason.message);
+      return false;
+    } finally {
+      setGuardandoProducto(false);
+    }
+  };
 
   const confirmAnular = async () => {
     if (!anularTarget) return;
@@ -75,6 +95,7 @@ export default function RemisionesView({ casos, controller, showToast }) {
             productos={productos}
             saving={saving}
             onCancel={() => setEditTarget(null)}
+            onNuevoProducto={() => setProductoOpen(true)}
             onSubmit={async (payload) => {
               const updated = await updateRemision(editTarget.id, payload);
               if (updated) {
@@ -100,11 +121,28 @@ export default function RemisionesView({ casos, controller, showToast }) {
             productos={productos}
             saving={saving}
             onCancel={() => setCreateOpen(false)}
+            onNuevoProducto={() => setProductoOpen(true)}
             onSubmit={async (payload) => {
               const created = await createRemision(payload);
               if (created) setCreateOpen(false);
               return created;
             }}
+          />
+        </Modal>
+      )}
+
+      {productoOpen && (createOpen || editTarget) && (
+        <Modal
+          title="Nuevo producto"
+          subtitle="Se agrega a la lista de precios y queda disponible en esta remisión."
+          onClose={() => setProductoOpen(false)}
+          busy={guardandoProducto}
+        >
+          <ProductoForm
+            categorias={[...new Set(productos.map((p) => p.categoria))]}
+            saving={guardandoProducto}
+            onSubmit={guardarProducto}
+            onCancel={() => setProductoOpen(false)}
           />
         </Modal>
       )}
