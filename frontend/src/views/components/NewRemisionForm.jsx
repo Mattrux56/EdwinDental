@@ -7,7 +7,7 @@ import { DateFilter, SearchField } from './filters.jsx';
 import { matchesSearch, normalizeSearchText } from '../../utils/search.js';
 import { remisionesService } from '../../services/remisiones.service.js';
 
-const MAX_LINEAS = 9; // lo que cabe en el formato de remisión del laboratorio
+const MAX_LINEAS = 8; // lo que cabe en el formato de remisión del laboratorio
 const MAX_CANTIDAD = 999;
 
 const today = () => {
@@ -128,7 +128,7 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
   const [fecha, setFecha] = useState(remision ? String(remision.fecha).slice(0, 10) : today);
   const [noOrden, setNoOrden] = useState(remision?.noOrden ?? '');
   const [tipo, setTipo] = useState(remision?.tipo ?? 'NORMAL');
-  const [doctorNombre, setDoctorNombre] = useState(remision?.doctorNombre ?? remision?.caso?.cliente?.nombre ?? '');
+  const [doctorNombre, setDoctorNombre] = useState(remision?.doctorNombre ?? remision?.caso?.doctorNombre ?? '');
   const [pacienteNombre, setPacienteNombre] = useState(remision?.pacienteNombre ?? remision?.caso?.pacienteNombre ?? '');
   const [lineas, setLineas] = useState(
     () => remision?.items.filter((i) => i.productoId !== null).map((i) => ({ productoId: i.productoId, cantidad: i.cantidad })) ?? [],
@@ -323,7 +323,7 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
         {editando && (
           <>
             <div className={styles.field}>
-              <label className={styles.label} htmlFor="rem-doctor">Doctor(a) / clínica (como sale impreso)</label>
+              <label className={styles.label} htmlFor="rem-doctor">Doctor(a) (como sale impreso)</label>
               <input id="rem-doctor" className={styles.input} value={doctorNombre} onChange={(e) => setDoctorNombre(e.target.value)} maxLength={150} />
             </div>
             <div className={styles.field}>

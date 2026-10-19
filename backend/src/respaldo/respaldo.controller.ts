@@ -35,7 +35,7 @@ export class RespaldoController {
         orderBy: { id: 'asc' },
       }),
       this.prisma.remision.findMany({
-        include: { items: true, caso: { select: { codigo: true, pacienteNombre: true, cliente: { select: { nombre: true } } } } },
+        include: { items: true, caso: { select: { codigo: true, pacienteNombre: true, doctorNombre: true, cliente: { select: { nombre: true } } } } },
         orderBy: { numero: 'asc' },
       }),
       this.prisma.cliente.findMany({ include: { _count: { select: { casos: true } } }, orderBy: { nombre: 'asc' } }),
@@ -77,7 +77,8 @@ export class RespaldoController {
       { header: 'Tipo', key: 'tipo', width: 14 },
       { header: 'Fecha', key: 'fecha', width: 12 },
       { header: 'Caso', key: 'caso', width: 16 },
-      { header: 'Doctor / clínica', key: 'doctor', width: 30 },
+      { header: 'Clínica', key: 'clinica', width: 30 },
+      { header: 'Doctor(a)', key: 'doctor', width: 30 },
       { header: 'Paciente', key: 'paciente', width: 30 },
       { header: 'No. orden', key: 'orden', width: 16 },
       { header: 'Total', key: 'total', width: 14 },
@@ -86,7 +87,8 @@ export class RespaldoController {
     ], remisiones.map((r) => ({
       numero: r.tipo === 'ELECTRONICA' ? `FE-${r.numero}` : r.numero,
       tipo: r.tipo === 'ELECTRONICA' ? 'Electrónica' : 'Cuenta de cobro',
-      fecha: fecha(r.fecha), caso: r.caso.codigo, doctor: r.doctorNombre ?? r.caso.cliente.nombre,
+      fecha: fecha(r.fecha), caso: r.caso.codigo,
+      clinica: r.caso.cliente.nombre, doctor: r.doctorNombre ?? r.caso.doctorNombre ?? '',
       paciente: r.pacienteNombre ?? r.caso.pacienteNombre ?? '', orden: r.noOrden ?? '',
       total: r.items.reduce((a, i) => a + i.cantidad * i.valorUnitario, 0), anulada: r.anulada ? 'Sí' : 'No', pagada: r.pagada ? 'Sí' : 'No',
     })));

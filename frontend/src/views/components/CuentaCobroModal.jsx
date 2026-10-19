@@ -1,12 +1,16 @@
 import { useMemo, useState } from 'react';
 import styles from '../../styles/app.module.css';
 import { formatEstimatedDate, formatMoney, formatRemisionNumber } from '../../utils/format.js';
+import { remisionesService } from '../../services/remisiones.service.js';
 import DataTable from './DataTable.jsx';
 import Modal from './Modal.jsx';
+import RemisionDetailModal from './RemisionDetailModal.jsx';
 import { Badge } from './ui.jsx';
 
 /** Remisiones de un cliente en el mes: se marca cuáles están pagadas y se guarda con «Confirmar remisiones» */
-export default function CuentaCobroModal({ cuenta, periodo, saving, onClose, onConfirm }) {
+export default function CuentaCobroModal({ cuenta, periodo, saving, onClose, onConfirm, showToast }) {
+  const [remisionAbierta, setRemisionAbierta] = useState(null);
+  const [cargandoId, setCargandoId] = useState(null);
   const original = useMemo(() => new Set(cuenta.remisiones.filter((x) => x.pagada).map((x) => x.id)), [cuenta]);
   const [pagadas, setPagadas] = useState(() => new Set(original));
 
@@ -21,6 +25,19 @@ export default function CuentaCobroModal({ cuenta, periodo, saving, onClose, onC
       else siguiente.delete(id);
       return siguiente;
     });
+  };
+
+  /** La cuenta solo trae el resumen de cada remisión: el detalle completo se pide al abrirla */
+  const verRemision = async (id) => {
+    if (cargandoId !== null) return;
+    setCargandoId(id);
+    try {
+      setRemisionAbierta(await remisionesService.get(id));
+    } catch (reason) {
+      showToast?.('error', reason.message);
+    } finally {
+      setCargandoId(null);
+    }
   };
 
   const columnas = [
@@ -43,6 +60,7 @@ export default function CuentaCobroModal({ cuenta, periodo, saving, onClose, onC
           className={styles.checkPago}
           checked={pagadas.has(x.id)}
           onChange={(e) => alternar(x.id, e.target.checked)}
+          onClick={(e) => e.stopPropagation()} // marcar como pagada no abre la remisión
           disabled={saving}
           aria-label={`Remisión ${formatRemisionNumber(x)} pagada`}
         />
@@ -53,7 +71,7 @@ export default function CuentaCobroModal({ cuenta, periodo, saving, onClose, onC
       header: 'Pagada',
       render: (x) => <Badge tone={pagadas.has(x.id) ? 'done' : 'lab'}>{pagadas.has(x.id) ? 'Pagada' : 'Pendiente'}</Badge>,
     },
-    { key: 'remision', header: 'Remisión', render: (x) => formatRemisionNumber(x) },
+    { key: 'remision', header: 'Remisión', render: (x) => (cargandoId === x.id ? 'Abriendo…' : formatRemisionNumber(x)) },
     { key: 'fecha', header: 'Fecha', render: (x) => formatEstimatedDate(x.fecha) },
     { key: 'doctor', header: 'Doctor', render: (x) => x.doctor || '—' },
     { key: 'paciente', header: 'Paciente', render: (x) => x.paciente || '—' },
@@ -69,7 +87,13 @@ export default function CuentaCobroModal({ cuenta, periodo, saving, onClose, onC
       busy={saving}
       className={styles.wideModal}
     >
-      <DataTable variant="mini" columns={columnas} rows={cuenta.remisiones} />
+      <DataTable
+        variant="mini"
+        columns={columnas}
+        rows={cuenta.remisiones}
+        onRowClick={(x) => verRemision(x.id)}
+        rowLabel={(x) => `Ver remisión ${formatRemisionNumber(x)}`}
+      />
 
       <div className={styles.cuentaFooter}>
         <span>
@@ -83,6 +107,10 @@ export default function CuentaCobroModal({ cuenta, periodo, saving, onClose, onC
           </button>
         </div>
       </div>
+
+      {remisionAbierta && (
+        <RemisionDetailModal remision={remisionAbierta} onClose={() => setRemisionAbierta(null)} showToast={showToast} />
+      )}
     </Modal>
   );
 }

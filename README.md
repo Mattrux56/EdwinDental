@@ -79,7 +79,7 @@ La aplicación es de un solo usuario (el dueño): no hay inicio de sesión y el 
 | GET | `/api/remisiones` | Remisiones emitidas, con caso, cliente, líneas y total |
 | GET | `/api/remisiones/siguiente-numero?tipo=NORMAL` | Sugiere el número siguiente de la serie solicitada (`NORMAL` o `ELECTRONICA`), o `null` para iniciar esa serie |
 | GET | `/api/remisiones/:id` | Una remisión |
-| POST | `/api/remisiones` | JSON: `tipo?` (`NORMAL` o `ELECTRONICA`), `numero?`, `casoId`, `fecha?`, `noOrden?`, `items[]` (`productoId`, `cantidad`; máx. 9 productos distintos) |
+| POST | `/api/remisiones` | JSON: `tipo?` (`NORMAL` o `ELECTRONICA`), `numero?`, `casoId`, `fecha?`, `noOrden?`, `items[]` (`productoId`, `cantidad`; máx. 8 productos distintos) |
 | GET | `/api/remisiones/:id/excel` | Descarga la remisión en Excel con el formato del laboratorio |
 | PATCH | `/api/remisiones/:id/anular` | Anula la remisión sin liberar su número |
 | DELETE | `/api/remisiones/:id` | Elimina una remisión ya anulada (su número queda libre) |
@@ -91,7 +91,7 @@ Los códigos de caso nuevos tienen el formato `CASO-2026-A7K3Q` (año + 5 letras
 La opción **Remisiones** del menú lateral permite elegir un caso existente, indicar la cantidad de cada producto de la lista de precios y generar la remisión en Excel (`backend/templates/remision.xlsx`: logos, firma y formato del laboratorio). El precio de cada línea se toma de la lista y queda guardado en la remisión, por lo que cambios posteriores de precios no alteran las ya emitidas.
 
 - Hay dos series independientes: **Normal** conserva la secuencia existente y **Electrónica** usa el formato `FE-<número>`. En cada serie, la primera remisión requiere un número manual; las siguientes sugieren el máximo de esa serie más uno. Los números son únicos dentro de cada serie y las remisiones anuladas conservan su número.
-- Una remisión admite hasta 9 productos distintos (las filas del formato).
+- Una remisión admite hasta 8 productos distintos (las filas del formato).
 - «No. de orden» es opcional; si se deja vacío se usa el código del caso.
 - El valor en letras se calcula en el servidor (`backend/src/remisiones/numero-letras.ts`).
 - Un caso asociado a remisiones, incluidas las anuladas, no se puede eliminar.

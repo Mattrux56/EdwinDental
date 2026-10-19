@@ -11,7 +11,7 @@ import { contar, EmptyState, ErrorBanner, LoadingState, Pagination, Panel } from
 const FILTERS = ['Todos', ...ESTADOS];
 const PAGE_SIZES = [9, 18, 36];
 
-function coverImage(caso) {
+export function coverImage(caso) {
   return caso.seguimientos?.flatMap((movimiento) => movimiento.imagenes ?? [])[0]?.urlImagen;
 }
 

@@ -7,6 +7,11 @@ export const remisionesService = {
     return request(casoId ? `/remisiones?casoId=${casoId}` : '/remisiones');
   },
 
+  /** GET /remisiones/:id (con sus líneas y el caso) */
+  get(id) {
+    return request(`/remisiones/${id}`);
+  },
+
   /** PATCH /remisiones/:id  { fecha?, noOrden?, doctorNombre?, pacienteNombre?, items? } */
   update(id, payload) {
     return request(`/remisiones/${id}`, {

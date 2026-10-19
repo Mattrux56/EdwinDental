@@ -14,7 +14,7 @@ const COLUMNAS = [
 ];
 
 export default function RemisionDetailModal({ remision, onClose, onEdit, onAnular, onEliminar, onReactivar, reactivando, showToast }) {
-  const doctor = remision.doctorNombre ?? remision.caso?.cliente?.nombre;
+  const doctor = remision.doctorNombre ?? remision.caso?.doctorNombre;
   const paciente = remision.pacienteNombre ?? remision.caso?.pacienteNombre;
 
   return (
@@ -28,7 +28,8 @@ export default function RemisionDetailModal({ remision, onClose, onEdit, onAnula
         <div><div className={styles.infoLabel}>Fecha</div><div className={styles.infoValue}>{formatEstimatedDate(remision.fecha)}</div></div>
         <div><div className={styles.infoLabel}>Orden de trabajo</div><div className={styles.infoValue}>{remision.caso?.codigo}</div></div>
         <div><div className={styles.infoLabel}>Tipo</div><div className={styles.infoValue}>{remision.tipo === 'ELECTRONICA' ? 'Electrónica' : 'Cuenta de cobro'}</div></div>
-        <div><div className={styles.infoLabel}>Doctor(a) / clínica</div><div className={styles.infoValue}>{doctor || '—'}</div></div>
+        <div><div className={styles.infoLabel}>Clínica</div><div className={styles.infoValue}>{remision.caso?.cliente?.nombre || '—'}</div></div>
+        <div><div className={styles.infoLabel}>Doctor(a)</div><div className={styles.infoValue}>{doctor || '—'}</div></div>
         <div><div className={styles.infoLabel}>Paciente</div><div className={styles.infoValue}>{paciente || '—'}</div></div>
         <div><div className={styles.infoLabel}>No. de orden</div><div className={styles.infoValue}>{remision.noOrden || '—'}</div></div>
         <div>

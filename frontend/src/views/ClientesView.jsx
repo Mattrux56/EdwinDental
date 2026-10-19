@@ -4,6 +4,7 @@ import { useResource } from '../hooks/useResource.js';
 import { clientesService } from '../services/clientes.service.js';
 import { clientesParecidos, idsDuplicados } from '../utils/clientes.js';
 import { matchesSearch } from '../utils/search.js';
+import ClienteDetalle from './components/ClienteDetalle.jsx';
 import DataTable from './components/DataTable.jsx';
 import { Chip, FilterBar, SearchField } from './components/filters.jsx';
 import { Icon } from './components/Icon.jsx';
@@ -38,12 +39,13 @@ function ClienteForm({ cliente, clientes, saving, onSubmit, onCancel }) {
   );
 }
 
-export default function ClientesView({ showToast, onChanged }) {
+export default function ClientesView({ showToast, onChanged, onOpenCase, casosVersion }) {
   const { data: clientes, loading, error, reload: load } = useResource(() => clientesService.list());
   const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState('');
   const [soloDuplicados, setSoloDuplicados] = useState(false);
   const [modal, setModal] = useState(null); // { tipo: 'form'|'eliminar', cliente }
+  const [clienteAbierto, setClienteAbierto] = useState(null);
 
   const duplicados = useMemo(() => idsDuplicados(clientes), [clientes]);
   // Si ya no quedan duplicados el filtro se ignora (si no, la lista quedaba vacía y sin botón para quitarlo)
@@ -73,11 +75,14 @@ export default function ClientesView({ showToast, onChanged }) {
       headerProps: { 'aria-label': 'Acciones' },
       render: (c) => (
         <div className={styles.productActions}>
-          <button type="button" className={styles.secondaryBtn} onClick={() => setModal({ tipo: 'form', cliente: c })} disabled={saving}>Editar</button>
+          <button type="button" className={styles.secondaryBtn} onClick={(e) => { e.stopPropagation(); setModal({ tipo: 'form', cliente: c }); }} disabled={saving}>Editar</button>
           <button
             type="button"
             className={styles.deleteBtn}
-            onClick={() => setModal({ tipo: 'eliminar', cliente: c })}
+            onClick={(e) => {
+              e.stopPropagation();
+              setModal({ tipo: 'eliminar', cliente: c });
+            }}
             disabled={saving || c._count.casos > 0}
             title={c._count.casos > 0 ? 'Tiene casos: no se puede eliminar' : undefined}
           >
@@ -110,6 +115,18 @@ export default function ClientesView({ showToast, onChanged }) {
       modal.cliente ? 'Cliente actualizado' : 'Cliente creado',
     );
 
+  if (clienteAbierto) {
+    return (
+      <ClienteDetalle
+        cliente={clienteAbierto}
+        onBack={() => setClienteAbierto(null)}
+        onOpenCase={onOpenCase}
+        showToast={showToast}
+        version={casosVersion}
+      />
+    );
+  }
+
   return (
     <>
       <Panel
@@ -137,6 +154,8 @@ export default function ClientesView({ showToast, onChanged }) {
           loadingText="Cargando clientes…"
           error={error}
           onRetry={load}
+          onRowClick={setClienteAbierto}
+          rowLabel={(c) => `Ver los casos de ${c.nombre}`}
           empty={clientes.length
             ? { title: 'No hay coincidencias', children: 'Prueba otra búsqueda.' }
             : { title: 'Aún no hay clientes', children: 'Se crean al registrar un caso o con “Nuevo cliente”.' }}

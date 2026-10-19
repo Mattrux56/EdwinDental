@@ -6,23 +6,25 @@ import { totalEnLetras } from './numero-letras';
  * Plantilla: backend/templates/remision.xlsx (la remisión del laboratorio, con logos y firma).
  * El generador solo escribe en las celdas de abajo; si cambia el diseño de la plantilla, ajusta estas constantes.
  *
- *   C7 número · C8 fecha · C9 doctor(a)/clínica · C10 paciente · C11 no. de orden
- *   B13 valor en letras · filas 15-23: B cantidad, C descripción, D valor unitario, E total (fórmula) · E24 total
+ *   C7 número · C8 fecha · C9 clínica · C10 doctor(a) · C11 paciente · C12 no. de orden
+ *   B14 valor en letras · filas 16-23: B cantidad, C descripción, D valor unitario, E total (fórmula) · E24 total
  */
 const PLANTILLA = join(__dirname, '..', '..', 'templates', 'remision.xlsx');
 const HOJA = 'REMISION';
-const PRIMERA_LINEA = 15;
-export const MAX_LINEAS_REMISION = 9; // filas 15 a 23 de la plantilla
+const PRIMERA_LINEA = 16;
+export const MAX_LINEAS_REMISION = 8; // filas 16 a 23 de la plantilla
 
 const ALTO_FILA = 14.25; // alto de las filas de la plantilla
 const CARACTERES_POR_RENGLON = 42; // descripción en negrita y mayúsculas dentro de la columna C
-const CARACTERES_EN_LETRAS = 80; // el valor en letras ocupa B13:E13
+const CARACTERES_EN_LETRAS = 80; // el valor en letras ocupa B14:E14
 
 export interface RemisionExcelData {
   numero: number | string;
   /** Fecha sin hora: medianoche UTC del día (así la devuelve Prisma para columnas @db.Date) */
   fecha: Date;
-  /** Doctor(a) o clínica (cliente del caso) */
+  /** Clínica (cliente del caso) */
+  clinica: string;
+  /** Doctor(a) que envía el caso */
   doctor: string;
   paciente: string;
   noOrden: string;
@@ -49,15 +51,18 @@ export async function generarRemisionExcel(data: RemisionExcelData): Promise<Buf
   const fecha = ws.getCell('C8');
   fecha.value = data.fecha;
   fecha.numFmt = 'dd/mm/yyyy';
-  ws.getCell('C9').value = mayus(data.doctor);
-  ws.getCell('C10').value = mayus(data.paciente);
+  // En la plantilla la celda de la clínica no viene combinada como las de doctor y paciente
+  if (!ws.getCell('C9').isMerged) ws.mergeCells('C9:E9');
+  ws.getCell('C9').value = mayus(data.clinica);
+  ws.getCell('C10').value = mayus(data.doctor);
+  ws.getCell('C11').value = mayus(data.paciente);
   // Un número de orden puramente numérico se guarda como número (igual que la remisión original)
-  ws.getCell('C11').value = /^[1-9]\d{0,14}$/.test(data.noOrden.trim())
+  ws.getCell('C12').value = /^[1-9]\d{0,14}$/.test(data.noOrden.trim())
     ? Number(data.noOrden.trim())
     : mayus(data.noOrden);
 
   // Nombres largos: el texto salta de renglón en vez de cortarse en el borde de la celda
-  for (const [celda, fila, texto] of [['C9', 9, data.doctor], ['C10', 10, data.paciente]] as const) {
+  for (const [celda, fila, texto] of [['C9', 9, data.clinica], ['C10', 10, data.doctor], ['C11', 11, data.paciente]] as const) {
     if (texto.length > 70) {
       const c = ws.getCell(celda);
       c.style = { ...c.style, alignment: { ...c.alignment, wrapText: true, vertical: 'middle' } };
@@ -77,6 +82,11 @@ export async function generarRemisionExcel(data: RemisionExcelData): Promise<Buf
   }
 
   // ---- Líneas
+  // La plantilla trae las fórmulas de la columna E como fórmula compartida; se reescriben una por una
+  // para que ExcelJS no deje copias apuntando a una celda maestra que se sobrescribe
+  for (let fila = PRIMERA_LINEA; fila < PRIMERA_LINEA + MAX_LINEAS_REMISION; fila++) {
+    ws.getCell(`E${fila}`).value = { formula: `+B${fila}*D${fila}`, result: 0 };
+  }
   let total = 0;
   data.items.forEach((item, i) => {
     const fila = PRIMERA_LINEA + i;
@@ -99,7 +109,7 @@ export async function generarRemisionExcel(data: RemisionExcelData): Promise<Buf
     if (renglones > 1) ws.getRow(fila).height = ALTO_FILA + (renglones - 1) * 12.75;
   });
 
-  // La imagen de la firma arranca en la fila 23, que es la línea 9: si se usa, se baja una fila para no taparla
+  // La imagen de la firma arranca en la fila 23, que es la línea 8: si se usa, se baja una fila para no taparla
   if (data.items.length === MAX_LINEAS_REMISION) {
     for (const img of ws.getImages()) {
       const { tl, br } = img.range as any;
@@ -112,11 +122,11 @@ export async function generarRemisionExcel(data: RemisionExcelData): Promise<Buf
 
   // ---- Total (en número y en letras)
   ws.getCell('E24').value = { formula: `SUM(E${PRIMERA_LINEA}:E${PRIMERA_LINEA + MAX_LINEAS_REMISION - 1})`, result: total };
-  const enLetras = ws.getCell('B13');
+  const enLetras = ws.getCell('B14');
   enLetras.value = totalEnLetras(total);
   if (String(enLetras.value).length > CARACTERES_EN_LETRAS) {
     enLetras.alignment = { ...enLetras.alignment, wrapText: true, vertical: 'middle' };
-    ws.getRow(13).height = 27;
+    ws.getRow(14).height = 27;
   }
 
   // exceljs reescribe mal el área de impresión al cargar la plantilla; esta forma produce $A$1:$E$43

@@ -86,7 +86,7 @@ export default function DashboardView({ controller, remisionesController }) {
           ) : activeView === 'productos' ? (
             <ProductosView showToast={showToast} />
           ) : activeView === 'clientes' ? (
-            <ClientesView showToast={showToast} onChanged={refresh} />
+            <ClientesView showToast={showToast} onChanged={refresh} onOpenCase={openCase} casosVersion={casos} />
           ) : activeView === 'alertas' ? (
             <AlertasView casos={casos} onOpen={openCase} />
           ) : activeView === 'cuentas' ? (

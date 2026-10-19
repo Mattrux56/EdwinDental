@@ -90,8 +90,8 @@ export class RemisionesService {
           casoId: caso.id,
           fecha: dateOnlyToUtc(dto.fecha ?? todayLocal()),
           noOrden: dto.noOrden?.trim() || caso.codigo,
-          // Copia de los nombres: si luego se edita o fusiona el cliente, esta remisión no cambia
-          doctorNombre: caso.doctorNombre ?? caso.cliente.nombre,
+          // Copia de los nombres: si luego se edita el caso, esta remisión no cambia (la clínica sale del cliente del caso)
+          doctorNombre: caso.doctorNombre,
           pacienteNombre: caso.pacienteNombre,
           items: {
             create: dto.items.map((item) => {
@@ -244,7 +244,8 @@ export class RemisionesService {
     const buffer = await generarRemisionExcel({
       numero: r.tipo === TipoRemision.ELECTRONICA ? `FE-${r.numero}` : r.numero,
       fecha: r.fecha,
-      doctor: r.doctorNombre ?? r.caso.cliente.nombre,
+      clinica: r.caso.cliente.nombre,
+      doctor: r.doctorNombre ?? r.caso.doctorNombre ?? '',
       paciente: r.pacienteNombre ?? r.caso.pacienteNombre ?? '',
       noOrden: r.noOrden ?? r.caso.codigo,
       anulada: r.anulada,

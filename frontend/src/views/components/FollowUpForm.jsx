@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import styles from '../../styles/app.module.css';
 import { MOVIMIENTOS, normalizeEstado } from '../../constants.js';
 import PhotoPicker from './PhotoPicker.jsx';
@@ -7,12 +7,6 @@ import { ConfirmModal } from './Modal.jsx';
 import { Icon } from './Icon.jsx';
 
 const esIngreso = (seg) => seg?.tipo?.toLocaleLowerCase('es') === 'ingreso inicial';
-
-/** Entrega que hereda un movimiento nuevo: la del último seguimiento que tenga una (al inicio, la del ingreso) */
-function fechaHeredada(caso) {
-  const conFecha = [...(caso.seguimientos ?? [])].reverse().find((s) => s.fechaEntregaEstimada);
-  return String(conFecha?.fechaEntregaEstimada ?? caso.fechaEntregaEstimada ?? '').slice(0, 10);
-}
 
 /**
  * Formulario de movimiento. Sin `seguimiento` registra uno nuevo; con `seguimiento` edita ese mismo
@@ -26,14 +20,10 @@ export default function FollowUpForm({ caso, saving, onSubmit, seguimiento, onCa
     : MOVIMIENTOS.find((m) => m.estado === estadoActual) ?? MOVIMIENTOS[0];
   const [movimiento, setMovimiento] = useState(`${movimientoActual.tipo}|${movimientoActual.estado}`);
   const [descripcion, setDescripcion] = useState(editando ? seguimiento.descripcion : '');
-  // Un movimiento nuevo hereda la entrega del ingreso inicial (o la última fijada) hasta que se cambie a mano
-  const fechaPorDefecto = editando ? String(seguimiento.fechaEntregaEstimada ?? '').slice(0, 10) : fechaHeredada(caso);
-  const [fechaEntregaEstimada, setFechaEntregaEstimada] = useState(fechaPorDefecto);
-  const [fechaTocada, setFechaTocada] = useState(false);
-  // Si la fecha heredada cambia (p. ej. se edita el ingreso en el historial) y no se ha tocado, se actualiza
-  useEffect(() => {
-    if (!editando && !fechaTocada) setFechaEntregaEstimada(fechaPorDefecto);
-  }, [editando, fechaTocada, fechaPorDefecto]);
+  // La entrega solo se corrige al editar un seguimiento; uno nuevo hereda la última fijada (lo resuelve el backend)
+  const [fechaEntregaEstimada, setFechaEntregaEstimada] = useState(
+    editando ? String(seguimiento.fechaEntregaEstimada ?? '').slice(0, 10) : '',
+  );
   const [fotos, setFotos] = useState([]);
   const [verFoto, setVerFoto] = useState(null);
   const [fotoABorrar, setFotoABorrar] = useState(null);
@@ -54,7 +44,6 @@ export default function FollowUpForm({ caso, saving, onSubmit, seguimiento, onCa
     const updated = await onSubmit(caso.id, {
       tipo,
       estado,
-      fechaEntregaEstimada: fechaEntregaEstimada || undefined,
       descripcion,
       fotos,
     });
@@ -63,8 +52,6 @@ export default function FollowUpForm({ caso, saving, onSubmit, seguimiento, onCa
       const estadoNuevo = normalizeEstado(updated.estado);
       const siguiente = MOVIMIENTOS.find((m) => m.estado === estadoNuevo) ?? MOVIMIENTOS[0];
       setMovimiento(`${siguiente.tipo}|${siguiente.estado}`);
-      setFechaEntregaEstimada(fechaHeredada(updated));
-      setFechaTocada(false);
       setFotos([]);
     }
   };
@@ -97,21 +84,20 @@ export default function FollowUpForm({ caso, saving, onSubmit, seguimiento, onCa
           )}
         </div>
 
-        <div className={styles.field}>
-          <label className={styles.label} htmlFor={`${idp}-entrega`}>
-            Entrega estimada de este seguimiento
-          </label>
-          <input
-            id={`${idp}-entrega`}
-            className={styles.input}
-            type="date"
-            value={fechaEntregaEstimada}
-            onChange={(e) => {
-              setFechaEntregaEstimada(e.target.value);
-              setFechaTocada(true);
-            }}
-          />
-        </div>
+        {editando && (
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor={`${idp}-entrega`}>
+              Entrega estimada de este seguimiento
+            </label>
+            <input
+              id={`${idp}-entrega`}
+              className={styles.input}
+              type="date"
+              value={fechaEntregaEstimada}
+              onChange={(e) => setFechaEntregaEstimada(e.target.value)}
+            />
+          </div>
+        )}
 
         <div className={`${styles.field} ${styles.fieldFull}`}>
           <label className={styles.label} htmlFor={`${idp}-desc`}>

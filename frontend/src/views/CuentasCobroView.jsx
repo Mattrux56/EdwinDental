@@ -124,6 +124,7 @@ export default function CuentasCobroView({ showToast }) {
           saving={guardando}
           onClose={() => setAbierta(null)}
           onConfirm={confirmar}
+          showToast={showToast}
         />
       )}
     </>

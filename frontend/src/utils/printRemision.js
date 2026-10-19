@@ -16,10 +16,10 @@ import { imprimirImagen, PAGINAS } from './imprimirImagen.js';
 const ESCALA = 3; // se dibuja a 288 ppp para que el texto salga nítido
 const COLUMNAS = { A: 19, B: 89, C: 391, D: 114, E: 120 }; // 733 px = PAGINAS.remision.anchoImagen
 const ULTIMA_FILA = 27;
-const ALTO_FILA_PT = { 3: 23.25, 4: 13.5, 9: 12.75, 10: 12, 11: 12.75, 12: 13.5, 13: 13.5, 14: 18, 16: 13.5, 17: 13.5, 18: 14.25, 19: 14.25, 20: 14.25, 21: 14.25, 22: 14.25, 23: 12.75, 24: 12.75 };
-const ALTO_FILA_DEFECTO_PT = 13.2;
-const PRIMERA_LINEA = 15;
-const MAX_LINEAS = 9; // filas 15 a 23
+const ALTO_FILA_PT = { 3: 23.25, 4: 13.5, 11: 12, 13: 13.5, 14: 13.5, 15: 18, 17: 13.5, 18: 13.5, 19: 14.25, 20: 14.25, 21: 14.25, 22: 14.25 };
+const ALTO_FILA_DEFECTO_PT = 12.75;
+const PRIMERA_LINEA = 16;
+const MAX_LINEAS = 8; // filas 16 a 23
 const INTERLINEADO = 17; // 12.75 pt: lo que crece una fila por cada renglón de más
 
 const FUENTE = 'bold 13.33px Arial, Helvetica, sans-serif'; // Arial 10 negrita
@@ -31,10 +31,10 @@ const MARGEN = 3; // espacio entre el texto y el borde de la celda
 
 /** Imágenes de la plantilla con su ancla (columna/fila + desplazamiento en px, como en drawing1.xml) */
 const IMAGENES = [
-  { url: logoUrl, desde: ['B', 1, 63.3, 5], hasta: ['C', 4, 45.2, 11.9] },
-  { url: tituloUrl, desde: ['C', 1, 59.2, 13.3], hasta: ['C', 4, 295.6, 5.3] },
+  { url: logoUrl, desde: ['B', 1, 74.5, 0], hasta: ['C', 3, 45.2, 26.5] },
+  { url: tituloUrl, desde: ['C', 1, 59.8, 7.3], hasta: ['C', 3, 296.3, 30] },
   { url: direccionUrl, desde: ['C', 1, 330.8, 15], hasta: ['E', 3, 80.1, 29] },
-  { url: franjaUrl, desde: ['A', 4, 18.3, 15.8], hasta: ['F', 6, 1.3, 16] }, // llega a la columna F: el canvas la recorta
+  { url: franjaUrl, desde: ['A', 4, 18.3, 2.5], hasta: ['F', 6, 1.3, 2.7] }, // llega a la columna F: el canvas la recorta
   { url: firmaUrl, desde: ['C', 23, 1.7, 5], hasta: ['C', 27, 146.7, 1.2], firma: true },
 ];
 const cargarImagenes = cacheImagenes(IMAGENES.map((imagen) => imagen.url));
@@ -62,7 +62,8 @@ function tops(altos) {
 export async function generarRemision(remision) {
   const imagenes = await cargarImagenes();
   const items = remision.items ?? [];
-  const doctor = mayus(remision.doctorNombre ?? remision.caso?.cliente?.nombre);
+  const clinica = mayus(remision.caso?.cliente?.nombre);
+  const doctor = mayus(remision.doctorNombre ?? remision.caso?.doctorNombre);
   const paciente = mayus(remision.pacienteNombre ?? remision.caso?.pacienteNombre);
   const noOrden = mayus(remision.noOrden || remision.caso?.codigo);
   const letras = String(remision.totalEnLetras ?? '');
@@ -77,9 +78,10 @@ export async function generarRemision(remision) {
   for (let fila = 1; fila <= ULTIMA_FILA; fila++) altos[fila] = altoBase(fila);
   const anchoCombinado = COLUMNAS.C + COLUMNAS.D + COLUMNAS.E - 2 * MARGEN;
   const renglonesDe = {
-    9: renglones(ctx, doctor, anchoCombinado),
-    10: renglones(ctx, paciente, anchoCombinado),
-    13: renglones(ctx, letras, ANCHO - X.B - 2 * MARGEN),
+    9: renglones(ctx, clinica, anchoCombinado),
+    10: renglones(ctx, doctor, anchoCombinado),
+    11: renglones(ctx, paciente, anchoCombinado),
+    14: renglones(ctx, letras, ANCHO - X.B - 2 * MARGEN),
   };
   items.forEach((item, i) => {
     renglonesDe[PRIMERA_LINEA + i] = renglones(ctx, mayus(item.descripcion), COLUMNAS.C - 2 * MARGEN);
@@ -143,21 +145,21 @@ export async function generarRemision(remision) {
   };
 
   // ---- Rellenos celestes
-  pintar(rango('B', 12, 'E'), CELESTE);
-  pintar(rango('B', 14, 'E'), CELESTE);
+  pintar(rango('B', 13, 'E'), CELESTE);
+  pintar(rango('B', 15, 'E'), CELESTE);
   pintar(rango('E', 24), CELESTE);
 
   // ---- Bordes (los de styles.xml de la plantilla)
   marco(rango('B', 1, 'E'), 'b', GRIS_CLARO);
   marco(rango('B', 3, 'B', 6), 'l', GRIS_CLARO);
   marco(rango('E', 2, 'E', 6), 'r', GRIS_CLARO);
-  marco(rango('E', 11), 'r', GRIS_CLARO);
-  marco(rango('B', 12, 'E'), 'ltrb', GRIS_CLARO, 2);
-  marco(rango('B', 13, 'E'), 'lrb', GRIS_CLARO, 2);
-  marco(rango('B', 14), 'ltb', GRIS);
-  marco(rango('B', 14), 'r', GRIS_CLARO);
-  marco(rango('C', 14), 'tr', GRIS_CLARO);
-  marco(rango('E', 14), 'ltb', GRIS);
+  marco(rango('E', 12), 'r', GRIS_CLARO);
+  marco(rango('B', 13, 'E'), 'ltrb', GRIS_CLARO, 2);
+  marco(rango('B', 14, 'E'), 'lrb', GRIS_CLARO, 2);
+  marco(rango('B', 15), 'ltb', GRIS);
+  marco(rango('B', 15), 'r', GRIS_CLARO);
+  marco(rango('C', 15), 'tr', GRIS_CLARO);
+  marco(rango('E', 15), 'ltb', GRIS);
   for (let fila = PRIMERA_LINEA; fila < PRIMERA_LINEA + MAX_LINEAS - 1; fila++) {
     for (const col of LETRAS.slice(1)) marco(rango(col, fila), 'ltrb', GRIS);
   }
@@ -168,7 +170,7 @@ export async function generarRemision(remision) {
   marco(rango('D', 25, 'D', 26), 'l', GRIS);
   marco(rango('C', 26), 'lb', GRIS);
 
-  // ---- Logos, franja y firma (la firma arranca en la fila 23; si se usan las 9 líneas, baja una fila)
+  // ---- Logos, franja y firma (la firma arranca en la fila 23; si se usan las 8 líneas, baja una fila)
   IMAGENES.forEach((imagen, i) => {
     const [c1, f1, dx1, dy1] = imagen.desde;
     const [c2, f2, dx2, dy2] = imagen.hasta;
@@ -181,23 +183,24 @@ export async function generarRemision(remision) {
   });
 
   // ---- Encabezado
-  const rotulos = { 7: 'Remision No', 8: 'Fecha:', 9: 'Doctor.(a):', 10: 'Paciente:', 11: 'No Orden:' };
+  const rotulos = { 7: 'Remision No', 8: 'Fecha:', 9: 'Clinica :', 10: 'Doctor.(a):', 11: 'Paciente:', 12: 'No Orden:' };
   for (const [fila, texto] of Object.entries(rotulos)) escribir(rango('B', Number(fila)), texto);
   escribir(rango('C', 7), formatRemisionNumber(remision));
   escribir(rango('C', 8, 'E'), remision.fecha ? fechaCorta(remision.fecha) : '');
-  escribir(rango('C', 9, 'E'), doctor, { lineas: renglonesDe[9] });
-  escribir(rango('C', 10, 'E'), paciente, { lineas: renglonesDe[10] });
-  escribir(rango('C', 11), noOrden);
+  escribir(rango('C', 9, 'E'), clinica, { lineas: renglonesDe[9] });
+  escribir(rango('C', 10, 'E'), doctor, { lineas: renglonesDe[10] });
+  escribir(rango('C', 11, 'E'), paciente, { lineas: renglonesDe[11] });
+  escribir(rango('C', 12), noOrden);
   if (remision.anulada) {
     escribir(rango('E', 7), 'ANULADA', { alinear: 'right', vertical: 'middle', fuente: 'bold 21.33px Arial, Helvetica, sans-serif', color: '#c00000' });
   }
 
   // ---- Valor en letras y encabezado de la tabla
-  escribir(rango('B', 12, 'E'), 'DEBE LA SUMA DE:');
-  escribir(rango('B', 13, 'E'), letras, { lineas: renglonesDe[13] });
-  escribir(rango('B', 14), 'CANTIDAD', { alinear: 'center' });
-  escribir(rango('C', 14), 'DESCRIPCION', { alinear: 'center' });
-  escribir(rango('E', 14), 'VALOR TOTAL', { alinear: 'center' });
+  escribir(rango('B', 13, 'E'), 'DEBE LA SUMA DE:');
+  escribir(rango('B', 14, 'E'), letras, { lineas: renglonesDe[14] });
+  escribir(rango('B', 15), 'CANTIDAD', { alinear: 'center' });
+  escribir(rango('C', 15), 'DESCRIPCION', { alinear: 'center' });
+  escribir(rango('E', 15), 'VALOR TOTAL', { alinear: 'center' });
 
   // ---- Líneas: valor unitario con formato contable ($ a la izquierda) y total a la derecha
   items.forEach((item, i) => {

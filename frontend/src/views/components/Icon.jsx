@@ -12,6 +12,13 @@ const PATHS = {
     </>
   ),
   minus: <line x1="5" y1="12" x2="19" y2="12" />,
+  back: (
+    <>
+      <line x1="19" y1="12" x2="5" y2="12" />
+      <polyline points="12 19 5 12 12 5" />
+    </>
+  ),
+  chevronRight: <polyline points="9 18 15 12 9 6" />,
   close: (
     <>
       <line x1="18" y1="6" x2="6" y2="18" />

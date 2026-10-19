@@ -11,7 +11,6 @@ import FollowUpForm from './FollowUpForm.jsx';
 import EditHistorialModal from './EditHistorialModal.jsx';
 import ImageViewer from './ImageViewer.jsx';
 import NotaModal from './NotaModal.jsx';
-import { Badge } from './ui.jsx';
 
 export default function CaseDetailDrawer({
   caso,
@@ -41,7 +40,8 @@ export default function CaseDetailDrawer({
   // Remisiones emitidas para este caso
   useEffect(() => {
     let active = true;
-    remisionesService.list(caso.id).then((lista) => active && setRemisiones(lista)).catch(() => {});
+    // Solo las vigentes: una remisión anulada no se muestra en el caso
+    remisionesService.list(caso.id).then((lista) => active && setRemisiones(lista.filter((r) => !r.anulada))).catch(() => {});
     return () => {
       active = false;
     };
@@ -107,12 +107,12 @@ export default function CaseDetailDrawer({
               <ul>
                 {remisiones.map((rem) => (
                   <li key={rem.id}>
-                    <button type="button" className={styles.linkBtn} onClick={() => setRemisionAbierta(rem)}>
-                      N° {formatRemisionNumber(rem)}
+                    <button type="button" className={styles.remisionRow} onClick={() => setRemisionAbierta(rem)}>
+                      <span className={styles.remisionRowNumero}>N° {formatRemisionNumber(rem)}</span>
+                      <span className={styles.remisionRowFecha}>{formatEstimatedDate(rem.fecha)}</span>
+                      <span className={styles.remisionRowTotal}>{formatMoney(rem.total)}</span>
+                      <span className={styles.remisionRowChevron}><Icon name="chevronRight" size={16} /></span>
                     </button>
-                    <span className={styles.mutedText}>{formatEstimatedDate(rem.fecha)}</span>
-                    <span>{formatMoney(rem.total)}</span>
-                    {rem.anulada && <Badge>Anulada</Badge>}
                   </li>
                 ))}
               </ul>
