@@ -147,9 +147,18 @@ export class ProductosController {
     }
   }
 
-  /** DELETE /productos/:id: borra el producto; las remisiones ya emitidas conservan su copia de descripción y precio */
+  /**
+   * DELETE /productos/:id: borra un producto que nunca se usó. Si ya está en alguna remisión no se borra (al corregir esa remisión
+   * se perdería su línea): se desactiva.
+   */
   @Delete(':id')
   async remove(@Param('id', ParseIntPipe) id: number) {
+    const enRemisiones = await this.prisma.remisionItem.count({ where: { productoId: id } });
+    if (enRemisiones > 0) {
+      throw new BadRequestException(
+        `El producto ya está en ${enRemisiones === 1 ? '1 remisión' : `${enRemisiones} remisiones`} y no se puede eliminar; desactívalo para que no aparezca al crear remisiones`,
+      );
+    }
     try {
       await this.prisma.producto.delete({ where: { id } });
       return { id, eliminado: true };

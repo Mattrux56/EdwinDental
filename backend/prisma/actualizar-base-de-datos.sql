@@ -3,7 +3,7 @@
 -- Crea tablas, índices, llaves foráneas y el bucket de fotos. Para una base NUEVA / VACÍA.
 -- La lista de precios se carga después desde la opción Productos (Importar Excel).
 -- Si ya tienes las tablas, NO lo ejecutes: fallará sin cambiar nada.
--- Para actualizar una base existente usa migrar-remisiones-electronicas.sql.
+-- Para actualizar una base existente usa migrar-protesis-superior-inferior.sql.
 -- =====================================================================
 BEGIN;
 

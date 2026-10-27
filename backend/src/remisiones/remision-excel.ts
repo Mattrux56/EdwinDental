@@ -8,6 +8,9 @@ import { totalEnLetras } from './numero-letras';
  *
  *   C7 número · C8 fecha · C9 clínica · C10 doctor(a) · C11 paciente · C12 no. de orden
  *   B14 valor en letras · filas 16-23: B cantidad, C descripción, D valor unitario, E total (fórmula) · E24 total
+ *
+ * Una prótesis con reparto ocupa un renglón por lado (superior / inferior). Se usan primero las filas 16-23 y, si hacen
+ * falta más, se insertan filas de datos y el total y la firma bajan. Las filas conservan la altura de la plantilla.
  */
 const PLANTILLA = join(__dirname, '..', '..', 'templates', 'remision.xlsx');
 const HOJA = 'REMISION';

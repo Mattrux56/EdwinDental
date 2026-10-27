@@ -525,7 +525,7 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
                     {editando && l.protesis && (
                       <button
                         type="button"
-                        className={styles.editLineBtn}
+                        className={`${styles.editLineBtn} ${repartoInvalido(l) ? styles.editLineBtnError : ''}`}
                         onClick={() => setRepartoAbierto((actual) => (actual === l.productoId ? null : l.productoId))}
                         aria-expanded={repartoAbierto === l.productoId}
                       >
@@ -557,7 +557,12 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
         <button type="button" className={styles.secondaryBtn} onClick={onCancel} disabled={saving}>
           Cancelar
         </button>
-        <button type="submit" className={styles.primaryBtn} disabled={!puedeGuardar}>
+        <button
+          type="submit"
+          className={styles.primaryBtn}
+          disabled={!puedeGuardar}
+          title={repartoIncompleto ? 'Revisa las prótesis: superiores más inferiores deben sumar la cantidad' : undefined}
+        >
           <Icon name="download" size={16} />{' '}
           {saving ? (editando ? 'Guardando…' : 'Generando…') : editando ? 'Guardar corrección' : 'Crear remisión'}
         </button>

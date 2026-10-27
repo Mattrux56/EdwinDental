@@ -2874,3 +2874,9 @@ input[type='checkbox'] {
   align-items: center;
   gap: 12px;
 }
+
+.editLineBtnError,
+.editLineBtnError:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}

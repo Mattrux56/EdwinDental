@@ -19,9 +19,12 @@ export default function ProductosView({ showToast }) {
   const [importando, setImportando] = useState(false);
   const archivoRef = useRef(null);
 
-  const [categoria, setCategoria] = useState('');
+  const [categoriaElegida, setCategoriaElegida] = useState('');
   const [orden, setOrden] = useState('asc'); // por código: 'asc' (1001 arriba) o 'desc' (el más alto arriba)
   const [confirmar, setConfirmar] = useState(null); // { accion: 'estado' | 'eliminar', producto }
+
+  // Si la categoría elegida ya no existe (se eliminó su último producto o se renombró), vale «todas»
+  const categoria = productos.some((p) => p.categoria === categoriaElegida) ? categoriaElegida : '';
 
   // Se agrupa por categoría para poder poner una barra al cambiar; las categorías van según su código más bajo (o más alto en 'desc')
   const filtered = useMemo(() => {
@@ -187,7 +190,7 @@ export default function ProductosView({ showToast }) {
         )}
       >
         <FilterBar>
-          <SelectFilter value={categoria} onChange={setCategoria} options={opcionesCategoria} label="Filtrar por categoría" />
+          <SelectFilter value={categoria} onChange={setCategoriaElegida} options={opcionesCategoria} label="Filtrar por categoría" />
           <SearchField value={query} onChange={setQuery} placeholder="Buscar por código, categoría o descripción" label="Buscar productos" />
         </FilterBar>
 
@@ -234,7 +237,7 @@ export default function ProductosView({ showToast }) {
         >
           <p>
             ¿Eliminar <strong>{confirmar.producto.codigo} · {confirmar.producto.descripcion}</strong> del catálogo? Esta acción no se puede deshacer.
-            Las remisiones ya emitidas conservan su descripción y precio.
+            Si el producto ya está en alguna remisión no se podrá eliminar: desactívalo.
           </p>
         </ConfirmModal>
       )}
