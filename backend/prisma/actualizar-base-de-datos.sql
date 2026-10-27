@@ -83,6 +83,8 @@ CREATE TABLE "RemisionItem" (
     "productoId" INTEGER,
     "descripcion" TEXT NOT NULL,
     "cantidad" INTEGER NOT NULL,
+    "cantidadSuperior" INTEGER NOT NULL DEFAULT 0,
+    "cantidadInferior" INTEGER NOT NULL DEFAULT 0,
     "valorUnitario" INTEGER NOT NULL,
     CONSTRAINT "RemisionItem_pkey" PRIMARY KEY ("id")
 );

@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   NotFoundException,
   Param,
@@ -142,6 +143,20 @@ export class ProductosController {
         throw new NotFoundException(`El producto #${id} no existe`);
       }
       this.throwIfDuplicate(error);
+      throw error;
+    }
+  }
+
+  /** DELETE /productos/:id: borra el producto; las remisiones ya emitidas conservan su copia de descripción y precio */
+  @Delete(':id')
+  async remove(@Param('id', ParseIntPipe) id: number) {
+    try {
+      await this.prisma.producto.delete({ where: { id } });
+      return { id, eliminado: true };
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+        throw new NotFoundException(`El producto #${id} no existe`);
+      }
       throw error;
     }
   }

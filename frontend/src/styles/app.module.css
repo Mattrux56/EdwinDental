@@ -2694,3 +2694,183 @@ input[type='checkbox'] {
 .actionsTh {
   text-align: right;
 }
+
+/* Catálogo: orden por código, estado clicable y barra al empezar cada categoría */
+.sortBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.sortBtn:hover {
+  color: var(--ink);
+}
+
+.sortBtn:focus-visible,
+.statusBtn:focus-visible {
+  outline: 2px solid var(--reagent);
+  outline-offset: 2px;
+}
+
+.statusBtn {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.statusBtn:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.table .groupRow th {
+  position: static;
+  padding: 10px 20px;
+  border-top: 14px solid var(--surface);
+  border-bottom: 1px solid var(--line);
+  background: var(--reagent-soft);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.table tbody tr:first-child.groupRow th {
+  border-top: 0;
+}
+
+/* Remisión: reparto opcional de una prótesis entre superiores e inferiores (misma familia que .qty) */
+.productRowSplit {
+  grid-template-columns: 56px minmax(0, 1fr) auto auto auto;
+}
+
+.splitFields {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.splitItem {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.splitItem input[type='number'] {
+  width: 44px;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-right: 1px solid var(--line);
+  background: transparent;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  -moz-appearance: textfield;
+}
+
+.splitItem input[type='number']:disabled {
+  background: var(--paper);
+  cursor: not-allowed;
+}
+
+.splitItem input[type='number']::-webkit-outer-spin-button,
+.splitItem input[type='number']::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+.splitCheck {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 11px 0 9px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.splitCheck input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--reagent);
+  cursor: pointer;
+}
+
+.splitItemOn {
+  border-color: var(--reagent);
+  background: var(--reagent-soft);
+}
+
+.splitItemOn .splitCheck {
+  color: var(--reagent-dark);
+  font-weight: 500;
+}
+
+.splitItemOn input[type='number'] {
+  border-right-color: var(--reagent);
+}
+
+.splitItemError,
+.splitItemError input[type='number'] {
+  border-color: var(--danger);
+}
+
+.splitItemError .splitCheck {
+  color: var(--danger);
+}
+
+.splitItem:focus-within {
+  outline: 2px solid var(--reagent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 720px) {
+  .productRowSplit {
+    grid-template-columns: 56px minmax(0, 1fr) auto;
+  }
+  .productRowSplit .splitFields {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Resumen de la remisión: acciones por línea y editor del reparto sup/inf */
+.summaryActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.editLineBtn {
+  border: 0;
+  background: transparent;
+  color: var(--reagent-dark);
+  font-size: 13px;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+
+.editLineBtn:hover {
+  background: var(--reagent-soft);
+}
+
+.summaryEdit {
+  grid-column: 2 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}

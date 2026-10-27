@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { Prisma } from '@prisma/client';
 import { dateOnlyToUtc, todayLocal } from '../common/date-only';
 import { PrismaService } from '../prisma/prisma.service';
+import { esProtesis } from '../productos/es-protesis';
 import { CreateRemisionDto, TipoRemision } from './dto/create-remision.dto';
 import { UpdateRemisionDto } from './dto/update-remision.dto';
 import { totalEnLetras } from './numero-letras';
@@ -100,6 +101,7 @@ export class RemisionesService {
                 productoId: p.id,
                 descripcion: p.descripcion,
                 cantidad: item.cantidad,
+                ...this.reparto(item, p.categoria, p.descripcion),
                 valorUnitario: p.valor,
               };
             }),
@@ -161,14 +163,21 @@ export class RemisionesService {
       const sinPrecio = productos.find((p) => p.valor <= 0);
       if (sinPrecio) throw new BadRequestException(`El producto "${sinPrecio.descripcion}" no tiene precio en la lista`);
       const porId = new Map(productos.map((p) => [p.id, p]));
+      // La categoría de todas las líneas (también las ya existentes, aunque estén inactivas) decide si es prótesis
+      const categorias = new Map(
+        (await this.prisma.producto.findMany({ where: { id: { in: ids } }, select: { id: true, categoria: true } }))
+          .map((p) => [p.id, p.categoria]),
+      );
       nuevasLineas = dto.items.map((item) => {
         const previo = previos.get(item.productoId);
         const p = porId.get(item.productoId);
+        const descripcion = previo?.descripcion ?? p!.descripcion;
         return {
           remisionId: id,
           productoId: item.productoId,
-          descripcion: previo?.descripcion ?? p!.descripcion,
+          descripcion,
           cantidad: item.cantidad,
+          ...this.reparto(item, categorias.get(item.productoId) ?? '', descripcion),
           valorUnitario: previo?.valorUnitario ?? p!.valor,
         };
       });
@@ -252,6 +261,8 @@ export class RemisionesService {
       items: r.items.map((i) => ({
         cantidad: i.cantidad,
         descripcion: i.descripcion,
+        cantidadSuperior: i.cantidadSuperior,
+        cantidadInferior: i.cantidadInferior,
         valorUnitario: i.valorUnitario,
       })),
     });
@@ -265,6 +276,24 @@ export class RemisionesService {
     const r = await this.prisma.remision.findUnique({ where: { id }, include: REMISION_INCLUDE });
     if (!r) throw new NotFoundException(`La remisión #${id} no existe`);
     return r;
+  }
+
+  /** Prótesis: el reparto es opcional, pero si se indica las superiores más las inferiores deben sumar la cantidad. Los demás productos no llevan reparto. */
+  private reparto(
+    item: { cantidad: number; cantidadSuperior?: number; cantidadInferior?: number },
+    categoria: string,
+    descripcion: string,
+  ) {
+    if (!esProtesis(categoria)) return { cantidadSuperior: 0, cantidadInferior: 0 };
+    const cantidadSuperior = item.cantidadSuperior ?? 0;
+    const cantidadInferior = item.cantidadInferior ?? 0;
+    const indicado = cantidadSuperior + cantidadInferior;
+    if (indicado !== 0 && indicado !== item.cantidad) {
+      throw new BadRequestException(
+        `En "${descripcion}" las superiores (${cantidadSuperior}) más las inferiores (${cantidadInferior}) deben sumar ${item.cantidad}`,
+      );
+    }
+    return { cantidadSuperior, cantidadInferior };
   }
 
   private withTotal(r: RemisionConItems) {

@@ -12,10 +12,9 @@ import { totalEnLetras } from './numero-letras';
 const PLANTILLA = join(__dirname, '..', '..', 'templates', 'remision.xlsx');
 const HOJA = 'REMISION';
 const PRIMERA_LINEA = 16;
-export const MAX_LINEAS_REMISION = 8; // filas 16 a 23 de la plantilla
+export const MAX_LINEAS_REMISION = 8; // filas 16 a 23 de la plantilla; también el máximo de productos por remisión (el reparto sup/inf añade filas)
 
-const ALTO_FILA = 14.25; // alto de las filas de la plantilla
-const CARACTERES_POR_RENGLON = 42; // descripción en negrita y mayúsculas dentro de la columna C
+const ULTIMA_FILA = 43; // última fila del área de impresión de la plantilla
 const CARACTERES_EN_LETRAS = 80; // el valor en letras ocupa B14:E14
 
 export interface RemisionExcelData {
@@ -30,7 +29,8 @@ export interface RemisionExcelData {
   noOrden: string;
   /** Una remisión anulada se descarga con la marca «ANULADA» para que no se use como válida */
   anulada?: boolean;
-  items: { cantidad: number; descripcion: string; valorUnitario: number }[];
+  /** En las prótesis con reparto, `cantidadSuperior` e `cantidadInferior` salen en renglones aparte bajo la descripción */
+  items: { cantidad: number; descripcion: string; valorUnitario: number; cantidadSuperior?: number; cantidadInferior?: number }[];
 }
 
 const mayus = (texto: string) => texto.trim().toLocaleUpperCase('es');
@@ -81,47 +81,80 @@ export async function generarRemisionExcel(data: RemisionExcelData): Promise<Buf
     };
   }
 
-  // ---- Líneas
+  // ---- Filas
+  // Cada lado (superior / inferior) de una prótesis con reparto es un renglón propio, como si fuera un producto aparte
+  const filas = data.items.flatMap((item) => {
+    const lados = ([['SUPERIOR', item.cantidadSuperior], ['INFERIOR', item.cantidadInferior]] as const).filter(([, cantidad]) => cantidad);
+    if (lados.length === 0) return [{ cantidad: item.cantidad, descripcion: mayus(item.descripcion), valorUnitario: item.valorUnitario }];
+    return lados.map(([lado, cantidad]) => ({
+      cantidad: cantidad as number,
+      descripcion: `${mayus(item.descripcion)} - ${lado}`,
+      valorUnitario: item.valorUnitario,
+    }));
+  });
+
+  // Si las filas no caben en las de la plantilla, se insertan filas de datos y todo lo de abajo (total, firma) se corre hacia abajo
+  const extra = Math.max(0, filas.length - MAX_LINEAS_REMISION);
+  const filaTotal = PRIMERA_LINEA + MAX_LINEAS_REMISION;
+  if (extra > 0) {
+    const columnas = Math.max(5, ws.columnCount);
+    for (let fila = ULTIMA_FILA; fila >= filaTotal; fila--) {
+      const origen = ws.getRow(fila);
+      const destino = ws.getRow(fila + extra);
+      for (let col = 1; col <= columnas; col++) {
+        destino.getCell(col).value = origen.getCell(col).value;
+        destino.getCell(col).style = { ...origen.getCell(col).style };
+      }
+      destino.height = origen.height;
+    }
+    const modelo = ws.getRow(PRIMERA_LINEA + 3); // una fila de datos de la plantilla
+    for (let fila = filaTotal; fila < filaTotal + extra; fila++) {
+      for (let col = 1; col <= columnas; col++) {
+        ws.getRow(fila).getCell(col).value = null;
+        ws.getRow(fila).getCell(col).style = { ...modelo.getCell(col).style };
+      }
+      ws.getRow(fila).height = modelo.height;
+    }
+  }
+
   // La plantilla trae las fórmulas de la columna E como fórmula compartida; se reescriben una por una
   // para que ExcelJS no deje copias apuntando a una celda maestra que se sobrescribe
-  for (let fila = PRIMERA_LINEA; fila < PRIMERA_LINEA + MAX_LINEAS_REMISION; fila++) {
+  for (let fila = PRIMERA_LINEA; fila < filaTotal + extra; fila++) {
     ws.getCell(`E${fila}`).value = { formula: `+B${fila}*D${fila}`, result: 0 };
   }
   let total = 0;
-  data.items.forEach((item, i) => {
+  filas.forEach((item, i) => {
     const fila = PRIMERA_LINEA + i;
     const subtotal = item.cantidad * item.valorUnitario;
     total += subtotal;
 
     ws.getCell(`B${fila}`).value = item.cantidad;
     const descripcion = ws.getCell(`C${fila}`);
-    descripcion.value = mayus(item.descripcion);
+    descripcion.value = item.descripcion;
     ws.getCell(`D${fila}`).value = item.valorUnitario;
     ws.getCell(`E${fila}`).value = { formula: `+B${fila}*D${fila}`, result: subtotal };
 
-    // Las descripciones largas hacen salto de renglón y la fila crece (centrando el resto de la fila)
-    const renglones = Math.max(1, Math.ceil(String(descripcion.value).length / CARACTERES_POR_RENGLON));
-    descripcion.alignment = { ...descripcion.alignment, wrapText: true, vertical: 'middle' };
+    // La fila conserva la altura de la plantilla: si la descripción no cabe, se reduce la letra en vez de agrandar la fila
+    descripcion.alignment = { ...descripcion.alignment, wrapText: false, shrinkToFit: true, vertical: 'middle' };
     for (const col of ['B', 'D', 'E']) {
       const celda = ws.getCell(`${col}${fila}`);
       celda.alignment = { ...celda.alignment, vertical: 'middle' };
     }
-    if (renglones > 1) ws.getRow(fila).height = ALTO_FILA + (renglones - 1) * 12.75;
   });
 
-  // La imagen de la firma arranca en la fila 23, que es la línea 8: si se usa, se baja una fila para no taparla
-  if (data.items.length === MAX_LINEAS_REMISION) {
+  // La imagen de la firma arranca en la fila 23, que es la línea 8: si esa línea se usa, se baja (junto con las filas insertadas) para no taparla
+  if (filas.length >= MAX_LINEAS_REMISION) {
     for (const img of ws.getImages()) {
       const { tl, br } = img.range as any;
       if (tl.nativeRow === PRIMERA_LINEA + MAX_LINEAS_REMISION - 2 && br) {
-        tl.nativeRow += 1;
-        br.nativeRow += 1;
+        tl.nativeRow += extra + 1;
+        br.nativeRow += extra + 1;
       }
     }
   }
 
   // ---- Total (en número y en letras)
-  ws.getCell('E24').value = { formula: `SUM(E${PRIMERA_LINEA}:E${PRIMERA_LINEA + MAX_LINEAS_REMISION - 1})`, result: total };
+  ws.getCell(`E${filaTotal + extra}`).value = { formula: `SUM(E${PRIMERA_LINEA}:E${filaTotal + extra - 1})`, result: total };
   const enLetras = ws.getCell('B14');
   enLetras.value = totalEnLetras(total);
   if (String(enLetras.value).length > CARACTERES_EN_LETRAS) {
@@ -130,7 +163,7 @@ export async function generarRemisionExcel(data: RemisionExcelData): Promise<Buf
   }
 
   // exceljs reescribe mal el área de impresión al cargar la plantilla; esta forma produce $A$1:$E$43
-  ws.pageSetup.printArea = 'A$1:E$43';
+  ws.pageSetup.printArea = `A$1:E$${ULTIMA_FILA + extra}`;
 
   wb.calcProperties.fullCalcOnLoad = true; // Excel recalcula al abrir
   return Buffer.from(await wb.xlsx.writeBuffer());

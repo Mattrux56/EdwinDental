@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import styles from '../../styles/app.module.css';
 import { EmptyState, ErrorBanner, LoadingState } from './ui.jsx';
 
@@ -11,6 +12,7 @@ const alinear = (align) => (align ? { textAlign: align } : undefined);
  * rows: filas ya filtradas · rowKey(row) (por defecto row.id)
  * onRowClick(row): la fila se abre con clic, Enter o espacio · rowLabel(row): texto para lectores de pantalla
  * empty: { title, children } cuando no hay filas · variant 'mini' para tablas dentro de modales · footer: filas del <tfoot>
+ * groupKey(row): con filas ya ordenadas, intercala una barra cada vez que cambia el valor (renderGroup(row) = su contenido)
  */
 export default function DataTable({
   columns,
@@ -26,6 +28,8 @@ export default function DataTable({
   empty,
   variant = 'default',
   footer,
+  groupKey,
+  renderGroup,
 }) {
   if (error) return <ErrorBanner onRetry={onRetry}>{error}</ErrorBanner>;
   if (rows.length === 0) {
@@ -45,24 +49,30 @@ export default function DataTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr
-              key={rowKey(row)}
-              className={`${rowClassName?.(row) ?? ''} ${onRowClick ? styles.rowClickable : ''}`}
-              onClick={onRowClick && (() => onRowClick(row))}
-              onKeyDown={onRowClick && ((event) => {
-                if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
-                  event.preventDefault();
-                  onRowClick(row);
-                }
-              })}
-              tabIndex={onRowClick ? 0 : undefined}
-              aria-label={rowLabel?.(row)}
-            >
-              {columns.map((col) => (
-                <td key={col.key} className={col.className} style={alinear(col.align)}>{col.render(row)}</td>
-              ))}
-            </tr>
+          {rows.map((row, index) => (
+            <Fragment key={rowKey(row)}>
+              {groupKey && (index === 0 || groupKey(row) !== groupKey(rows[index - 1])) && (
+                <tr className={styles.groupRow}>
+                  <th colSpan={columns.length} scope="colgroup">{renderGroup ? renderGroup(row) : groupKey(row)}</th>
+                </tr>
+              )}
+              <tr
+                className={`${rowClassName?.(row) ?? ''} ${onRowClick ? styles.rowClickable : ''}`}
+                onClick={onRowClick && (() => onRowClick(row))}
+                onKeyDown={onRowClick && ((event) => {
+                  if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
+                    event.preventDefault();
+                    onRowClick(row);
+                  }
+                })}
+                tabIndex={onRowClick ? 0 : undefined}
+                aria-label={rowLabel?.(row)}
+              >
+                {columns.map((col) => (
+                  <td key={col.key} className={col.className} style={alinear(col.align)}>{col.render(row)}</td>
+                ))}
+              </tr>
+            </Fragment>
           ))}
         </tbody>
         {footer && <tfoot>{footer}</tfoot>}

@@ -8,7 +8,20 @@ import PrintRemisionButton from './PrintRemisionButton.jsx';
 /** Detalle de una remisión: encabezado, líneas con cantidades y precios, total. Editar/anular solo si se pasan los callbacks. */
 const COLUMNAS = [
   { key: 'cantidad', header: 'Cant.', render: (item) => item.cantidad },
-  { key: 'descripcion', header: 'Descripción', render: (item) => item.descripcion },
+  {
+    key: 'descripcion',
+    header: 'Descripción',
+    render: (item) => (
+      <>
+        {item.descripcion}
+        {item.cantidadSuperior + item.cantidadInferior > 0 && (
+          <div className={styles.hint}>
+            {[item.cantidadSuperior > 0 && `${item.cantidadSuperior} superior(es)`, item.cantidadInferior > 0 && `${item.cantidadInferior} inferior(es)`].filter(Boolean).join(' · ')}
+          </div>
+        )}
+      </>
+    ),
+  },
   { key: 'unitario', header: 'Valor unitario', align: 'right', render: (item) => formatMoney(item.valorUnitario) },
   { key: 'subtotal', header: 'Subtotal', align: 'right', render: (item) => formatMoney(item.cantidad * item.valorUnitario) },
 ];

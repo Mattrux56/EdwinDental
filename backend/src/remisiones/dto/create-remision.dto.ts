@@ -32,6 +32,21 @@ export class RemisionItemDto {
   @Min(1, { message: 'La cantidad mínima es 1' })
   @Max(999, { message: 'La cantidad máxima por producto es 999' })
   cantidad!: number;
+
+  /** Solo prótesis: cuántas son superiores e inferiores; entre las dos suman `cantidad` */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'La cantidad superior debe ser un número entero' })
+  @Min(0, { message: 'La cantidad superior no puede ser negativa' })
+  @Max(999)
+  cantidadSuperior?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'La cantidad inferior debe ser un número entero' })
+  @Min(0, { message: 'La cantidad inferior no puede ser negativa' })
+  @Max(999)
+  cantidadInferior?: number;
 }
 
 export class CreateRemisionDto {

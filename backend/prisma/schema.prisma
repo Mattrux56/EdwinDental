@@ -110,6 +110,9 @@ model RemisionItem {
   producto      Producto? @relation(fields: [productoId], references: [id], onDelete: SetNull)
   descripcion   String
   cantidad      Int
+  /// Solo en prótesis: cuántas son superiores e inferiores (suman `cantidad`); en el resto quedan en 0
+  cantidadSuperior Int     @default(0)
+  cantidadInferior Int     @default(0)
   valorUnitario Int
 
   @@index([remisionId])

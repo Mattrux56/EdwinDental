@@ -61,6 +61,11 @@ export const remisionesService = {
     });
   },
 
+  /** DELETE /productos/:id */
+  deleteProducto(id) {
+    return request(`/productos/${id}`, { method: 'DELETE' });
+  },
+
   /** POST /remisiones  { casoId, fecha?, noOrden?, items: [{ productoId, cantidad }] } */
   create(payload) {
     return request('/remisiones', {

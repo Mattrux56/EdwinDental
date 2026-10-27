@@ -5,9 +5,9 @@ import { downloadListaPrecios, remisionesService } from '../services/remisiones.
 import { formatMoney } from '../utils/format.js';
 import { matchesSearch } from '../utils/search.js';
 import DataTable from './components/DataTable.jsx';
-import { FilterBar, SearchField } from './components/filters.jsx';
+import { FilterBar, SearchField, SelectFilter } from './components/filters.jsx';
 import { Icon } from './components/Icon.jsx';
-import Modal from './components/Modal.jsx';
+import Modal, { ConfirmModal } from './components/Modal.jsx';
 import ProductoForm from './components/ProductoForm.jsx';
 import { Badge, contar, Panel } from './components/ui.jsx';
 
@@ -19,10 +19,27 @@ export default function ProductosView({ showToast }) {
   const [importando, setImportando] = useState(false);
   const archivoRef = useRef(null);
 
-  const filtered = useMemo(
-    () => productos.filter((p) => matchesSearch(query, [p.codigo, p.categoria, p.descripcion, p.valor])),
-    [productos, query],
-  );
+  const [categoria, setCategoria] = useState('');
+  const [orden, setOrden] = useState('asc'); // por código: 'asc' (1001 arriba) o 'desc' (el más alto arriba)
+  const [confirmar, setConfirmar] = useState(null); // { accion: 'estado' | 'eliminar', producto }
+
+  // Se agrupa por categoría para poder poner una barra al cambiar; las categorías van según su código más bajo (o más alto en 'desc')
+  const filtered = useMemo(() => {
+    const signo = orden === 'asc' ? 1 : -1;
+    const lista = productos.filter((p) =>
+      (!categoria || p.categoria === categoria) &&
+      matchesSearch(query, [p.codigo, p.categoria, p.descripcion, p.valor]));
+    const extremo = new Map();
+    lista.forEach((p) => {
+      const actual = extremo.get(p.categoria);
+      if (actual === undefined || (orden === 'asc' ? p.codigo < actual : p.codigo > actual)) extremo.set(p.categoria, p.codigo);
+    });
+    return lista.sort((a, b) =>
+      signo * (extremo.get(a.categoria) - extremo.get(b.categoria)) ||
+      a.categoria.localeCompare(b.categoria, 'es') ||
+      signo * (a.codigo - b.codigo) ||
+      signo * (a.id - b.id));
+  }, [productos, query, categoria, orden]);
 
   const save = async (payload) => {
     setSaving(true);
@@ -54,10 +71,29 @@ export default function ProductosView({ showToast }) {
       showToast('error', reason.message);
     } finally {
       setSaving(false);
+      setConfirmar(null);
+    }
+  };
+
+  const eliminar = async (producto) => {
+    setSaving(true);
+    try {
+      await remisionesService.deleteProducto(producto.id);
+      showToast('success', 'Producto eliminado');
+      await load();
+    } catch (reason) {
+      showToast('error', reason.message);
+    } finally {
+      setSaving(false);
+      setConfirmar(null);
     }
   };
 
   const categorias = useMemo(() => [...new Set(productos.map((p) => p.categoria))], [productos]);
+  const opcionesCategoria = useMemo(
+    () => [{ value: '', label: 'Todas las categorías' }, ...[...categorias].sort((a, b) => a.localeCompare(b, 'es'))],
+    [categorias],
+  );
 
   const importar = async (event) => {
     const archivo = event.target.files?.[0];
@@ -81,11 +117,40 @@ export default function ProductosView({ showToast }) {
   const exportar = () => downloadListaPrecios().catch((reason) => showToast('error', reason.message));
 
   const columnas = [
-    { key: 'codigo', header: 'Código', className: styles.codeCell, render: (p) => p.codigo },
+    {
+      key: 'codigo',
+      header: (
+        <button
+          type="button"
+          className={styles.sortBtn}
+          onClick={() => setOrden((actual) => (actual === 'asc' ? 'desc' : 'asc'))}
+          title={orden === 'asc' ? 'Del código más bajo al más alto; clic para invertir' : 'Del código más alto al más bajo; clic para invertir'}
+        >
+          Código <span aria-hidden="true">{orden === 'asc' ? '▲' : '▼'}</span>
+        </button>
+      ),
+      headerProps: { 'aria-sort': orden === 'asc' ? 'ascending' : 'descending' },
+      className: styles.codeCell,
+      render: (p) => p.codigo,
+    },
     { key: 'categoria', header: 'Categoría', render: (p) => p.categoria },
     { key: 'descripcion', header: 'Descripción', render: (p) => p.descripcion },
     { key: 'valor', header: 'Valor', render: (p) => formatMoney(p.valor) },
-    { key: 'estado', header: 'Estado', render: (p) => <Badge tone={p.activo ? 'lab' : 'default'}>{p.activo ? 'Activo' : 'Inactivo'}</Badge> },
+    {
+      key: 'estado',
+      header: 'Estado',
+      render: (p) => (
+        <button
+          type="button"
+          className={styles.statusBtn}
+          onClick={() => setConfirmar({ accion: 'estado', producto: p })}
+          disabled={saving}
+          title={p.activo ? 'Clic para desactivar' : 'Clic para activar'}
+        >
+          <Badge tone={p.activo ? 'lab' : 'default'}>{p.activo ? 'Activo' : 'Inactivo'}</Badge>
+        </button>
+      ),
+    },
     {
       key: 'acciones',
       header: '',
@@ -93,8 +158,8 @@ export default function ProductosView({ showToast }) {
       render: (p) => (
         <div className={styles.productActions}>
           <button type="button" className={styles.secondaryBtn} onClick={() => setModal({ producto: p })} disabled={saving}>Editar</button>
-          <button type="button" className={styles.secondaryBtn} onClick={() => toggleActive(p)} disabled={saving}>
-            {p.activo ? 'Desactivar' : 'Activar'}
+          <button type="button" className={styles.deleteBtn} onClick={() => setConfirmar({ accion: 'eliminar', producto: p })} disabled={saving}>
+            <Icon name="trash" size={15} /> Eliminar
           </button>
         </div>
       ),
@@ -122,12 +187,14 @@ export default function ProductosView({ showToast }) {
         )}
       >
         <FilterBar>
+          <SelectFilter value={categoria} onChange={setCategoria} options={opcionesCategoria} label="Filtrar por categoría" />
           <SearchField value={query} onChange={setQuery} placeholder="Buscar por código, categoría o descripción" label="Buscar productos" />
         </FilterBar>
 
         <DataTable
           columns={columnas}
           rows={filtered}
+          groupKey={(p) => p.categoria}
           loading={loading}
           loadingText="Cargando productos…"
           error={error}
@@ -137,6 +204,40 @@ export default function ProductosView({ showToast }) {
             : { title: 'El catálogo está vacío', children: 'Agrega productos para poder seleccionarlos en las remisiones.' }}
         />
       </Panel>
+
+      {confirmar?.accion === 'estado' && (
+        <ConfirmModal
+          title={confirmar.producto.activo ? 'Desactivar producto' : 'Activar producto'}
+          confirmLabel={confirmar.producto.activo ? 'Desactivar' : 'Activar'}
+          busyLabel={confirmar.producto.activo ? 'Desactivando…' : 'Activando…'}
+          danger={confirmar.producto.activo}
+          busy={saving}
+          onCancel={() => setConfirmar(null)}
+          onConfirm={() => toggleActive(confirmar.producto)}
+        >
+          <p>
+            {confirmar.producto.activo
+              ? <>¿Desactivar <strong>{confirmar.producto.codigo} · {confirmar.producto.descripcion}</strong>? Dejará de aparecer al crear remisiones, pero las ya emitidas no cambian.</>
+              : <>¿Activar <strong>{confirmar.producto.codigo} · {confirmar.producto.descripcion}</strong>? Volverá a aparecer al crear remisiones.</>}
+          </p>
+        </ConfirmModal>
+      )}
+
+      {confirmar?.accion === 'eliminar' && (
+        <ConfirmModal
+          title="Eliminar producto"
+          confirmLabel="Eliminar producto"
+          busyLabel="Eliminando…"
+          busy={saving}
+          onCancel={() => setConfirmar(null)}
+          onConfirm={() => eliminar(confirmar.producto)}
+        >
+          <p>
+            ¿Eliminar <strong>{confirmar.producto.codigo} · {confirmar.producto.descripcion}</strong> del catálogo? Esta acción no se puede deshacer.
+            Las remisiones ya emitidas conservan su descripción y precio.
+          </p>
+        </ConfirmModal>
+      )}
 
       {modal && (
         <Modal
