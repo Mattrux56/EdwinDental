@@ -13,6 +13,15 @@ Necesita internet (la base de datos y las fotos estan en Supabase).
 - Desinstalar: Configuracion de Windows > Aplicaciones > LabTrace.
 - Si algo falla al abrir: menu **Archivo > Abrir carpeta de registros** (`labtrace.log`).
 
+## Si Windows bloquea la descarga o la instalacion
+El instalador no esta firmado (la firma cuesta dinero), asi que Edge/Windows lo marcan como «peligroso». No es un virus; solo pasa con la primera descarga desde el navegador (las actualizaciones que baja la propia app no lo muestran).
+1. **Edge** al descargar: en Descargas, menu **...** del archivo > **Conservar** > **Mostrar mas** > **Conservar de todos modos**.
+2. **Chrome**: menu **...** del archivo > **Conservar**.
+3. Al abrir el instalador: **Mas informacion** > **Ejecutar de todas formas**.
+4. Si no aparece ese boton: clic derecho al `.exe` > **Propiedades** > marcar **Desbloquear** > Aceptar, y volver a abrirlo.
+5. Sin ninguna alerta: pasar el instalador por USB o red local (no lleva la marca de «descargado de Internet»).
+6. Opcional: enviar el `.exe` en https://www.microsoft.com/wdsi/filesubmission como «falso positivo» para que Defender lo reconozca.
+
 ## Base de datos (quien configura, una vez)
 1. Crear cuenta y proyecto en https://supabase.com
 2. Base nueva y vacia: pegar `backend/prisma/actualizar-base-de-datos.sql` en SQL Editor y ejecutar. Base LabTrace existente: pegar `backend/prisma/migrar-remisiones-electronicas.sql` (se puede ejecutar mas de una vez).
