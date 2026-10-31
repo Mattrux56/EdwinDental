@@ -60,6 +60,13 @@ model CasoImagen {
   @@index([seguimientoId])
 }
 
+/// Clasificación que fija el orden en la remisión: primero las bases, luego las prótesis y al final los adicionales
+enum TipoProducto {
+  BASE
+  PROTESIS
+  ADICIONAL
+}
+
 /// Lista de precios (se administra desde la opción Productos). Los valores son pesos enteros (COP).
 model Producto {
   id          Int            @id @default(autoincrement())
@@ -68,6 +75,7 @@ model Producto {
   descripcion String
   valor       Int
   activo      Boolean        @default(true)
+  tipo        TipoProducto   @default(ADICIONAL)
   creadoEn    DateTime       @default(now())
   items       RemisionItem[]
 

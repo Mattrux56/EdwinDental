@@ -175,7 +175,7 @@ export default function ClienteDetalle({ cliente, onBack, onOpenCase, showToast,
       </Panel>
 
       {remisionAbierta && (
-        <RemisionDetailModal remision={remisionAbierta} onClose={() => setRemisionAbierta(null)} showToast={showToast} />
+        <RemisionDetailModal remision={remisionAbierta} onClose={() => setRemisionAbierta(null)} onVerCaso={onOpenCase} showToast={showToast} />
       )}
     </>
   );

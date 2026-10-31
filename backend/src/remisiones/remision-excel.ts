@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs';
 import { join } from 'path';
+import { TipoProductoValor } from '../productos/tipo-producto';
 import { totalEnLetras } from './numero-letras';
 
 /**
@@ -33,7 +34,7 @@ export interface RemisionExcelData {
   /** Una remisión anulada se descarga con la marca «ANULADA» para que no se use como válida */
   anulada?: boolean;
   /** En las prótesis con reparto, `cantidadSuperior` e `cantidadInferior` salen en renglones aparte bajo la descripción */
-  items: { cantidad: number; descripcion: string; valorUnitario: number; cantidadSuperior?: number; cantidadInferior?: number }[];
+  items: { tipo?: TipoProductoValor; cantidad: number; descripcion: string; valorUnitario: number; cantidadSuperior?: number; cantidadInferior?: number }[];
 }
 
 const mayus = (texto: string) => texto.trim().toLocaleUpperCase('es');
@@ -86,15 +87,22 @@ export async function generarRemisionExcel(data: RemisionExcelData): Promise<Buf
 
   // ---- Filas
   // Cada lado (superior / inferior) de una prótesis con reparto es un renglón propio, como si fuera un producto aparte
-  const filas = data.items.flatMap((item) => {
-    const lados = ([['SUPERIOR', item.cantidadSuperior], ['INFERIOR', item.cantidadInferior]] as const).filter(([, cantidad]) => cantidad);
-    if (lados.length === 0) return [{ cantidad: item.cantidad, descripcion: mayus(item.descripcion), valorUnitario: item.valorUnitario }];
-    return lados.map(([lado, cantidad]) => ({
-      cantidad: cantidad as number,
-      descripcion: `${mayus(item.descripcion)} - ${lado}`,
-      valorUnitario: item.valorUnitario,
-    }));
-  });
+  // Orden: bases, prótesis sin reparto, todas las superiores, todas las inferiores y al final los adicionales
+  const filas = data.items
+    .flatMap((item) => {
+      const lados = ([['SUPERIOR', item.cantidadSuperior], ['INFERIOR', item.cantidadInferior]] as const).filter(([, cantidad]) => cantidad);
+      const grupo = item.tipo === 'BASE' ? 0 : item.tipo === 'ADICIONAL' ? 4 : 1;
+      if (lados.length === 0) return [{ grupo, cantidad: item.cantidad, descripcion: mayus(item.descripcion), valorUnitario: item.valorUnitario }];
+      return lados.map(([lado, cantidad]) => ({
+        grupo: grupo === 1 ? (lado === 'SUPERIOR' ? 2 : 3) : grupo,
+        cantidad: cantidad as number,
+        descripcion: `${mayus(item.descripcion)} - ${lado}`,
+        valorUnitario: item.valorUnitario,
+      }));
+    })
+    .map((fila, i) => ({ fila, i }))
+    .sort((a, b) => a.fila.grupo - b.fila.grupo || a.i - b.i)
+    .map(({ fila }) => fila);
 
   // Si las filas no caben en las de la plantilla, se insertan filas de datos y todo lo de abajo (total, firma) se corre hacia abajo
   const extra = Math.max(0, filas.length - MAX_LINEAS_REMISION);

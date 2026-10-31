@@ -1,4 +1,7 @@
+import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import styles from '../../styles/app.module.css';
+import CambiarBaseModal from './CambiarBaseModal.jsx';
 import { Icon } from './Icon.jsx';
 
 const MENU = [
@@ -12,6 +15,8 @@ const MENU = [
 ];
 
 export default function Sidebar({ active, onNavigate, alertCount = 0 }) {
+  const [cambiandoBase, setCambiandoBase] = useState(false);
+  const esEscritorio = Boolean(window.labtraceEscritorio?.configGuardar); // el .env solo existe en la app de escritorio
   return (
     <aside className={styles.sidebar}>
       <div className={styles.brand}>
@@ -42,6 +47,14 @@ export default function Sidebar({ active, onNavigate, alertCount = 0 }) {
           </button>
         ))}
       </nav>
+
+      {esEscritorio && (
+        <button type="button" title="Cambiar base" className={`${styles.navItem} ${styles.navItemBottom}`} onClick={() => setCambiandoBase(true)}>
+          <Icon name="refresh" />
+          <span className={styles.navLabel}>Cambiar base</span>
+        </button>
+      )}
+      {cambiandoBase && createPortal(<CambiarBaseModal onClose={() => setCambiandoBase(false)} />, document.body)}
     </aside>
   );
 }

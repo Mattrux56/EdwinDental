@@ -5,6 +5,7 @@ import logoUrl from '../assets/remision-logo.png';
 import firmaUrl from '../assets/remision-firma.jpeg';
 import { cacheImagenes, renglones } from './canvasTexto.js';
 import { formatRemisionNumber } from './format.js';
+import { ordenarPorTipo } from './protesis.js';
 import { imprimirImagen, PAGINAS } from './imprimirImagen.js';
 
 /**
@@ -15,7 +16,7 @@ import { imprimirImagen, PAGINAS } from './imprimirImagen.js';
  */
 const ESCALA = 3; // se dibuja a 288 ppp para que el texto salga nítido
 const COLUMNAS = { A: 19, B: 89, C: 391, D: 114, E: 120 }; // 733 px = PAGINAS.remision.anchoImagen
-const ULTIMA_FILA = 27;
+const ULTIMA_FILA = 27; // de la plantilla; con renglones de más el total y la firma bajan
 const ALTO_FILA_PT = { 3: 23.25, 4: 13.5, 11: 12, 13: 13.5, 14: 13.5, 15: 18, 17: 13.5, 18: 13.5, 19: 14.25, 20: 14.25, 21: 14.25, 22: 14.25 };
 const ALTO_FILA_DEFECTO_PT = 12.75;
 const PRIMERA_LINEA = 16;
@@ -55,13 +56,34 @@ const fechaCorta = (iso) =>
 /** Posición de cada fila (en px) según sus altos */
 function tops(altos) {
   const top = [0, 0];
-  for (let fila = 1; fila <= ULTIMA_FILA; fila++) top[fila + 1] = top[fila] + altos[fila];
+  for (let fila = 1; fila < altos.length; fila++) top[fila + 1] = top[fila] + altos[fila];
   return top;
+}
+
+/**
+ * Cada lado (superior / inferior) de una prótesis con reparto es un renglón propio, como en
+ * backend/src/remisiones/remision-excel.ts
+ */
+function renglonesDeItems(items) {
+  // Orden: bases, prótesis sin reparto, todas las superiores, todas las inferiores y al final los adicionales
+  const grupoDe = (tipo, lado) => (tipo === 'BASE' ? 0 : tipo === 'ADICIONAL' || !tipo ? 4 : lado === 'SUPERIOR' ? 2 : lado === 'INFERIOR' ? 3 : 1);
+  const renglones = ordenarPorTipo(items, (item) => item.producto?.tipo).flatMap((item) => {
+    const tipo = item.producto?.tipo;
+    const lados = [['SUPERIOR', item.cantidadSuperior], ['INFERIOR', item.cantidadInferior]].filter(([, cantidad]) => cantidad);
+    if (lados.length === 0) return [{ grupo: grupoDe(tipo), cantidad: item.cantidad, descripcion: mayus(item.descripcion), valorUnitario: item.valorUnitario }];
+    return lados.map(([lado, cantidad]) => ({ grupo: grupoDe(tipo ?? 'PROTESIS', lado), cantidad, descripcion: `${mayus(item.descripcion)} - ${lado}`, valorUnitario: item.valorUnitario }));
+  });
+  return renglones.map((r, i) => ({ r, i })).sort((a, b) => a.r.grupo - b.r.grupo || a.i - b.i).map(({ r }) => r);
 }
 
 export async function generarRemision(remision) {
   const imagenes = await cargarImagenes();
-  const items = remision.items ?? [];
+  const items = renglonesDeItems(remision.items ?? []);
+  const extra = Math.max(0, items.length - MAX_LINEAS); // renglones de más: el total y la firma bajan
+  const filaTotal = PRIMERA_LINEA + MAX_LINEAS + extra; // fila 24 de la plantilla, desplazada
+  const ultimaFila = ULTIMA_FILA + extra;
+  /** Fila de la plantilla que da el alto de una fila de la hoja (las filas añadidas son como una de datos) */
+  const deLaPlantilla = (fila) => (fila < 24 ? fila : fila < 24 + extra ? 19 : fila - extra);
   const clinica = mayus(remision.caso?.cliente?.nombre);
   const doctor = mayus(remision.doctorNombre ?? remision.caso?.doctorNombre);
   const paciente = mayus(remision.pacienteNombre ?? remision.caso?.pacienteNombre);
@@ -75,7 +97,7 @@ export async function generarRemision(remision) {
 
   // ---- Altos de fila: los textos largos saltan de renglón y la fila crece (como en el Excel)
   const altos = [0];
-  for (let fila = 1; fila <= ULTIMA_FILA; fila++) altos[fila] = altoBase(fila);
+  for (let fila = 1; fila <= ultimaFila; fila++) altos[fila] = altoBase(deLaPlantilla(fila));
   const anchoCombinado = COLUMNAS.C + COLUMNAS.D + COLUMNAS.E - 2 * MARGEN;
   const renglonesDe = {
     9: renglones(ctx, clinica, anchoCombinado),
@@ -90,10 +112,10 @@ export async function generarRemision(remision) {
     if (lineas.length > 1) altos[fila] = Math.max(altos[fila], altoBase(19) + (lineas.length - 1) * INTERLINEADO);
   }
   const top = tops(altos);
-  const topBase = tops(altos.map((_, fila) => (fila ? altoBase(fila) : 0)));
+  const topBase = tops([0, ...Array.from({ length: ULTIMA_FILA }, (_, i) => altoBase(i + 1))]); // la plantilla sin filas añadidas
 
   canvas.width = ANCHO * ESCALA;
-  canvas.height = Math.ceil(top[ULTIMA_FILA + 1] + 4) * ESCALA;
+  canvas.height = Math.ceil(top[ultimaFila + 1] + 4) * ESCALA;
   ctx.scale(ESCALA, ESCALA);
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, ANCHO, canvas.height / ESCALA);
@@ -147,7 +169,7 @@ export async function generarRemision(remision) {
   // ---- Rellenos celestes
   pintar(rango('B', 13, 'E'), CELESTE);
   pintar(rango('B', 15, 'E'), CELESTE);
-  pintar(rango('E', 24), CELESTE);
+  pintar(rango('E', filaTotal), CELESTE);
 
   // ---- Bordes (los de styles.xml de la plantilla)
   marco(rango('B', 1, 'E'), 'b', GRIS_CLARO);
@@ -160,21 +182,21 @@ export async function generarRemision(remision) {
   marco(rango('B', 15), 'r', GRIS_CLARO);
   marco(rango('C', 15), 'tr', GRIS_CLARO);
   marco(rango('E', 15), 'ltb', GRIS);
-  for (let fila = PRIMERA_LINEA; fila < PRIMERA_LINEA + MAX_LINEAS - 1; fila++) {
+  for (let fila = PRIMERA_LINEA; fila < PRIMERA_LINEA + MAX_LINEAS + extra - 1; fila++) {
     for (const col of LETRAS.slice(1)) marco(rango(col, fila), 'ltrb', GRIS);
   }
-  marco(rango('E', 23), 'ltrb', GRIS);
-  marco(rango('B', 24), 'lt', GRIS);
-  marco(rango('E', 24), 'ltb', GRIS);
-  marco(rango('C', 25), 'b', GRIS);
-  marco(rango('D', 25, 'D', 26), 'l', GRIS);
-  marco(rango('C', 26), 'lb', GRIS);
+  marco(rango('E', filaTotal - 1), 'ltrb', GRIS);
+  marco(rango('B', filaTotal), 'lt', GRIS);
+  marco(rango('E', filaTotal), 'ltb', GRIS);
+  marco(rango('C', filaTotal + 1), 'b', GRIS);
+  marco(rango('D', filaTotal + 1, 'D', filaTotal + 2), 'l', GRIS);
+  marco(rango('C', filaTotal + 2), 'lb', GRIS);
 
   // ---- Logos, franja y firma (la firma arranca en la fila 23; si se usan las 8 líneas, baja una fila)
   IMAGENES.forEach((imagen, i) => {
     const [c1, f1, dx1, dy1] = imagen.desde;
     const [c2, f2, dx2, dy2] = imagen.hasta;
-    const baja = imagen.firma && items.length === MAX_LINEAS ? 1 : 0;
+    const baja = imagen.firma && items.length >= MAX_LINEAS ? extra + 1 : 0;
     const w = X[c2] + dx2 - (X[c1] + dx1);
     const h = topBase[f2] + dy2 - (topBase[f1] + dy1);
     if (imagen.firma) ctx.globalCompositeOperation = 'multiply'; // el fondo blanco de la firma no tapa las líneas
@@ -214,10 +236,10 @@ export async function generarRemision(remision) {
   });
 
   // ---- Total y firmas
-  escribir(rango('D', 24), 'TOTAL');
-  escribir(rango('E', 24), `$ ${miles(total)}`, { alinear: 'right' });
-  escribir(rango('B', 25), 'FIRMA:');
-  escribir(rango('C', 25), 'RECIBI:', { alinear: 'center' });
+  escribir(rango('D', filaTotal), 'TOTAL');
+  escribir(rango('E', filaTotal), `$ ${miles(total)}`, { alinear: 'right' });
+  escribir(rango('B', filaTotal + 1), 'FIRMA:');
+  escribir(rango('C', filaTotal + 1), 'RECIBI:', { alinear: 'center' });
 
   return canvas.toDataURL('image/png');
 }

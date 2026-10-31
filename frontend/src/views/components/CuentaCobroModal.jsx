@@ -8,7 +8,7 @@ import RemisionDetailModal from './RemisionDetailModal.jsx';
 import { Badge } from './ui.jsx';
 
 /** Remisiones de un cliente en el mes: se marca cuáles están pagadas y se guarda con «Confirmar remisiones» */
-export default function CuentaCobroModal({ cuenta, periodo, saving, onClose, onConfirm, showToast }) {
+export default function CuentaCobroModal({ cuenta, periodo, saving, onClose, onConfirm, onOpenCase, showToast }) {
   const [remisionAbierta, setRemisionAbierta] = useState(null);
   const [cargandoId, setCargandoId] = useState(null);
   const original = useMemo(() => new Set(cuenta.remisiones.filter((x) => x.pagada).map((x) => x.id)), [cuenta]);
@@ -109,7 +109,7 @@ export default function CuentaCobroModal({ cuenta, periodo, saving, onClose, onC
       </div>
 
       {remisionAbierta && (
-        <RemisionDetailModal remision={remisionAbierta} onClose={() => setRemisionAbierta(null)} showToast={showToast} />
+        <RemisionDetailModal remision={remisionAbierta} onClose={() => setRemisionAbierta(null)} onVerCaso={onOpenCase} showToast={showToast} />
       )}
     </Modal>
   );

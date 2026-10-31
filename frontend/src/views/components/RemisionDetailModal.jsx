@@ -26,7 +26,7 @@ const COLUMNAS = [
   { key: 'subtotal', header: 'Subtotal', align: 'right', render: (item) => formatMoney(item.cantidad * item.valorUnitario) },
 ];
 
-export default function RemisionDetailModal({ remision, onClose, onEdit, onAnular, onEliminar, onReactivar, reactivando, showToast }) {
+export default function RemisionDetailModal({ remision, onClose, onEdit, onAnular, onEliminar, onReactivar, reactivando, onVerCaso, showToast }) {
   const doctor = remision.doctorNombre ?? remision.caso?.doctorNombre;
   const paciente = remision.pacienteNombre ?? remision.caso?.pacienteNombre;
 
@@ -64,6 +64,11 @@ export default function RemisionDetailModal({ remision, onClose, onEdit, onAnula
       />
 
       <div className={styles.formActions}>
+        {onVerCaso && remision.caso && (
+          <button type="button" className={styles.secondaryBtn} onClick={() => onVerCaso(remision.caso)}>
+            <Icon name="layers" size={15} /> Ver caso
+          </button>
+        )}
         {onAnular && !remision.anulada && (
           <button type="button" className={styles.deleteBtn} onClick={() => onAnular(remision)}>Anular</button>
         )}

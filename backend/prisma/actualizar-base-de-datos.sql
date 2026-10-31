@@ -3,7 +3,7 @@
 -- Crea tablas, índices, llaves foráneas y el bucket de fotos. Para una base NUEVA / VACÍA.
 -- La lista de precios se carga después desde la opción Productos (Importar Excel).
 -- Si ya tienes las tablas, NO lo ejecutes: fallará sin cambiar nada.
--- Para actualizar una base existente usa migrar-protesis-superior-inferior.sql.
+-- Para actualizar una base existente usa migrar-tipo-producto.sql.
 -- =====================================================================
 BEGIN;
 
@@ -48,6 +48,8 @@ CREATE TABLE "CasoImagen" (
     CONSTRAINT "CasoImagen_pkey" PRIMARY KEY ("id")
 );
 
+CREATE TYPE "TipoProducto" AS ENUM ('BASE', 'PROTESIS', 'ADICIONAL');
+
 CREATE TABLE "Producto" (
     "id" SERIAL NOT NULL,
     "codigo" INTEGER NOT NULL,
@@ -55,6 +57,7 @@ CREATE TABLE "Producto" (
     "descripcion" TEXT NOT NULL,
     "valor" INTEGER NOT NULL,
     "activo" BOOLEAN NOT NULL DEFAULT true,
+    "tipo" "TipoProducto" NOT NULL DEFAULT 'ADICIONAL',
     "creadoEn" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "Producto_pkey" PRIMARY KEY ("id")
 );

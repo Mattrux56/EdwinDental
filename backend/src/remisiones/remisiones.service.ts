@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { dateOnlyToUtc, todayLocal } from '../common/date-only';
 import { PrismaService } from '../prisma/prisma.service';
 import { esProtesis } from '../productos/es-protesis';
+import { ordenarPorTipo, tipoDeProducto } from '../productos/tipo-producto';
 import { CreateRemisionDto, TipoRemision } from './dto/create-remision.dto';
 import { UpdateRemisionDto } from './dto/update-remision.dto';
 import { totalEnLetras } from './numero-letras';
@@ -15,10 +16,15 @@ const REMISION_INCLUDE = {
       codigo: true,
       doctorNombre: true,
       pacienteNombre: true,
+      estado: true,
+      archivado: true,
+      fechaIngreso: true,
+      fechaEntregaEstimada: true,
+      creadoEn: true,
       cliente: { select: { id: true, nombre: true } },
     },
   },
-  items: { orderBy: { id: 'asc' } },
+  items: { orderBy: { id: 'asc' }, include: { producto: { select: { tipo: true, categoria: true } } } },
 } satisfies Prisma.RemisionInclude;
 
 type RemisionConItems = Prisma.RemisionGetPayload<{ include: typeof REMISION_INCLUDE }>;
@@ -95,7 +101,7 @@ export class RemisionesService {
           doctorNombre: caso.doctorNombre,
           pacienteNombre: caso.pacienteNombre,
           items: {
-            create: dto.items.map((item) => {
+            create: ordenarPorTipo(dto.items, (i) => porId.get(i.productoId)!.tipo).map((item) => {
               const p = porId.get(item.productoId)!;
               return {
                 productoId: p.id,
@@ -165,10 +171,10 @@ export class RemisionesService {
       const porId = new Map(productos.map((p) => [p.id, p]));
       // La categoría de todas las líneas (también las ya existentes, aunque estén inactivas) decide si es prótesis
       const categorias = new Map(
-        (await this.prisma.producto.findMany({ where: { id: { in: ids } }, select: { id: true, categoria: true } }))
-          .map((p) => [p.id, p.categoria]),
+        (await this.prisma.producto.findMany({ where: { id: { in: ids } }, select: { id: true, categoria: true, tipo: true } }))
+          .map((p) => [p.id, p]),
       );
-      nuevasLineas = dto.items.map((item) => {
+      nuevasLineas = ordenarPorTipo(dto.items, (i) => categorias.get(i.productoId)?.tipo ?? 'ADICIONAL').map((item) => {
         const previo = previos.get(item.productoId);
         const p = porId.get(item.productoId);
         const descripcion = previo?.descripcion ?? p!.descripcion;
@@ -177,7 +183,7 @@ export class RemisionesService {
           productoId: item.productoId,
           descripcion,
           cantidad: item.cantidad,
-          ...this.reparto(item, categorias.get(item.productoId) ?? '', descripcion),
+          ...this.reparto(item, categorias.get(item.productoId)?.categoria ?? '', descripcion),
           valorUnitario: previo?.valorUnitario ?? p!.valor,
         };
       });
@@ -258,7 +264,8 @@ export class RemisionesService {
       paciente: r.pacienteNombre ?? r.caso.pacienteNombre ?? '',
       noOrden: r.noOrden ?? r.caso.codigo,
       anulada: r.anulada,
-      items: r.items.map((i) => ({
+      items: this.ordenados(r).map((i) => ({
+        tipo: i.producto?.tipo ?? tipoDeProducto(i.producto?.categoria ?? '', i.descripcion),
         cantidad: i.cantidad,
         descripcion: i.descripcion,
         cantidadSuperior: i.cantidadSuperior,
@@ -296,9 +303,15 @@ export class RemisionesService {
     return { cantidadSuperior, cantidadInferior };
   }
 
+  /** Bases, prótesis y adicionales, también en remisiones guardadas antes de existir esta regla */
+  private ordenados(r: RemisionConItems) {
+    return ordenarPorTipo(r.items, (i) => i.producto?.tipo ?? tipoDeProducto(i.producto?.categoria ?? '', i.descripcion));
+  }
+
   private withTotal(r: RemisionConItems) {
-    const total = r.items.reduce((acc, i) => acc + i.cantidad * i.valorUnitario, 0);
-    return { ...r, total, totalEnLetras: totalEnLetras(total) };
+    const items = this.ordenados(r);
+    const total = items.reduce((acc, i) => acc + i.cantidad * i.valorUnitario, 0);
+    return { ...r, items, total, totalEnLetras: totalEnLetras(total) };
   }
 
   private async nextNumero(tipo: TipoRemision): Promise<number | null> {

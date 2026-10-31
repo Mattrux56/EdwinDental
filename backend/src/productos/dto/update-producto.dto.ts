@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
+  IsIn,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -40,4 +41,8 @@ export class UpdateProductoDto {
   @IsOptional()
   @IsBoolean()
   activo?: boolean;
+
+  @IsOptional()
+  @IsIn(['BASE', 'PROTESIS', 'ADICIONAL'])
+  tipo?: 'BASE' | 'PROTESIS' | 'ADICIONAL';
 }

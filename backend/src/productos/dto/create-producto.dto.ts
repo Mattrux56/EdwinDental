@@ -1,7 +1,9 @@
 import { Type } from 'class-transformer';
 import {
+  IsIn,
   IsInt,
   IsNotEmpty,
+  IsOptional,
   IsString,
   MaxLength,
   Max,
@@ -30,4 +32,8 @@ export class CreateProductoDto {
   @Min(0)
   @Max(100_000_000, { message: 'El valor máximo permitido es 100.000.000' })
   valor!: number;
+
+  @IsOptional()
+  @IsIn(['BASE', 'PROTESIS', 'ADICIONAL'])
+  tipo?: 'BASE' | 'PROTESIS' | 'ADICIONAL';
 }

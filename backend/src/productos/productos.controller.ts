@@ -19,6 +19,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateProductoDto } from './dto/create-producto.dto';
 import { UpdateProductoDto } from './dto/update-producto.dto';
 import { exportarProductos, leerProductos } from './productos-excel';
+import { tipoDeProducto } from './tipo-producto';
 
 const XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
@@ -31,7 +32,7 @@ export class ProductosController {
   findAll() {
     return this.prisma.producto.findMany({
       where: { activo: true },
-      select: { id: true, codigo: true, categoria: true, descripcion: true, valor: true },
+      select: { id: true, codigo: true, categoria: true, descripcion: true, valor: true, tipo: true },
       orderBy: [{ codigo: 'asc' }, { id: 'asc' }],
     });
   }
@@ -40,7 +41,7 @@ export class ProductosController {
   @Get('admin')
   findAllForAdmin() {
     return this.prisma.producto.findMany({
-      select: { id: true, codigo: true, categoria: true, descripcion: true, valor: true, activo: true },
+      select: { id: true, codigo: true, categoria: true, descripcion: true, valor: true, activo: true, tipo: true },
       orderBy: [{ categoria: 'asc' }, { codigo: 'asc' }, { id: 'asc' }],
     });
   }
@@ -49,7 +50,7 @@ export class ProductosController {
   @Get('exportar')
   async exportar() {
     const productos = await this.prisma.producto.findMany({
-      select: { codigo: true, categoria: true, descripcion: true, valor: true, activo: true },
+      select: { codigo: true, categoria: true, descripcion: true, valor: true, activo: true, tipo: true },
       orderBy: [{ categoria: 'asc' }, { codigo: 'asc' }, { id: 'asc' }],
     });
     return new StreamableFile(await exportarProductos(productos), {
@@ -93,7 +94,7 @@ export class ProductosController {
           actualizados++;
         } else {
           await tx.producto.create({
-            data: { codigo: f.codigo, categoria: f.categoria, descripcion: f.descripcion, valor: f.valor, activo: f.activo ?? true },
+            data: { codigo: f.codigo, categoria: f.categoria, descripcion: f.descripcion, tipo: tipoDeProducto(f.categoria, f.descripcion), valor: f.valor, activo: f.activo ?? true },
           });
           creados++;
         }
@@ -105,16 +106,19 @@ export class ProductosController {
   /** POST /productos: agrega un producto a la lista de precios */
   @Post()
   async create(@Body() dto: CreateProductoDto) {
+    const categoria = this.requiredText(dto.categoria, 'La categoría es obligatoria');
+    const descripcion = this.requiredText(dto.descripcion, 'La descripción es obligatoria');
     const data = {
       codigo: dto.codigo,
-      categoria: this.requiredText(dto.categoria, 'La categoría es obligatoria'),
-      descripcion: this.requiredText(dto.descripcion, 'La descripción es obligatoria'),
+      categoria,
+      descripcion,
       valor: dto.valor,
+      tipo: dto.tipo ?? tipoDeProducto(categoria, descripcion),
     };
     try {
       return await this.prisma.producto.create({
         data,
-        select: { id: true, codigo: true, categoria: true, descripcion: true, valor: true, activo: true },
+        select: { id: true, codigo: true, categoria: true, descripcion: true, valor: true, activo: true, tipo: true },
       });
     } catch (error) {
       this.throwIfDuplicate(error);
@@ -129,14 +133,21 @@ export class ProductosController {
     @Body() dto: UpdateProductoDto,
   ) {
     const data = this.normalize(dto);
-    if (Object.keys(data).length === 0 && dto.activo === undefined) {
+    if (Object.keys(data).length === 0 && dto.activo === undefined && dto.tipo === undefined) {
       throw new BadRequestException('Indica al menos un campo para actualizar');
     }
     try {
+      // Si el formulario no indica el tipo, se recalcula al cambiar la categoría o la descripción
+      let tipo: ReturnType<typeof tipoDeProducto> | undefined = dto.tipo;
+      if (tipo === undefined && (data.categoria !== undefined || data.descripcion !== undefined)) {
+        const actual = await this.prisma.producto.findUnique({ where: { id }, select: { categoria: true, descripcion: true } });
+        if (!actual) throw new NotFoundException(`El producto #${id} no existe`);
+        tipo = tipoDeProducto(data.categoria ?? actual.categoria, data.descripcion ?? actual.descripcion);
+      }
       return await this.prisma.producto.update({
         where: { id },
-        data: { ...data, ...(dto.activo !== undefined ? { activo: dto.activo } : {}) },
-        select: { id: true, codigo: true, categoria: true, descripcion: true, valor: true, activo: true },
+        data: { ...data, ...(tipo ? { tipo } : {}), ...(dto.activo !== undefined ? { activo: dto.activo } : {}) },
+        select: { id: true, codigo: true, categoria: true, descripcion: true, valor: true, activo: true, tipo: true },
       });
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {

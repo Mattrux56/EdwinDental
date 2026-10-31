@@ -25,6 +25,8 @@ export default function CaseDetailDrawer({
   showToast,
   blocked = false,
 }) {
+  // Si ya hay otra ventana abierta (p. ej. una remisión desde la que se pidió «Ver caso»), el panel se muestra encima de ella
+  const [encima] = useState(() => Boolean(document.querySelector('[role="dialog"]')));
   const [lightbox, setLightbox] = useState(null);
   const [remisiones, setRemisiones] = useState([]);
   const [remisionAbierta, setRemisionAbierta] = useState(null);
@@ -48,7 +50,7 @@ export default function CaseDetailDrawer({
   }, [caso.id]);
 
   return (
-    <div className={styles.detailOverlay} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+    <div className={`${styles.detailOverlay} ${encima ? styles.detailOverlayEncima : ''}`} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <section className={styles.detailModal} role="dialog" aria-modal="true" aria-label={`Trazabilidad ${caso.codigo}`}>
         <div className={styles.drawerHeader}>
           <div>

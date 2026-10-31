@@ -22,6 +22,7 @@ const LOG_FILE = join(app.getPath('userData'), 'logs', 'labtrace.log');
 let mainWin = null;
 let setupWin = null;
 let server = null;
+let buscandoActualizacion = false;
 let busy = false; // evita cerrar la app mientras se pasa de una ventana a otra
 let ultimasLineas = [];
 
@@ -124,10 +125,20 @@ async function baseResponde(port) {
   }
 }
 
+/** Recarga la ventana principal sin caché, para que no quede nada de lo que mostraba la base anterior */
+function recargarPrincipal(url) {
+  if (!mainWin) return;
+  const contents = mainWin.webContents;
+  contents.session.clearCache().finally(() => {
+    if (mainWin && contents.getURL() === url) contents.reloadIgnoringCache();
+    else mainWin?.loadURL(url);
+  });
+}
+
 function abrirPrincipal(port) {
   const url = `http://127.0.0.1:${port}/`;
   if (mainWin) {
-    mainWin.loadURL(url);
+    recargarPrincipal(url);
     mainWin.focus();
     return;
   }
@@ -220,7 +231,10 @@ async function lanzar() {
     }
     abrirPrincipal(port);
     setupWin?.close();
-    buscarActualizacion(() => mainWin);
+    if (!buscandoActualizacion) {
+      buscandoActualizacion = true; // solo al abrir la app, no en cada cambio de base
+      buscarActualizacion(() => mainWin);
+    }
     return { ok: true };
   } catch (error) {
     await detenerServidor();
@@ -397,24 +411,39 @@ ipcMain.handle('impresion:vista', async (event, datos) => {
     return { ok: false, message: `No se pudo abrir la vista previa: ${error.message}` };
   }
 });
-ipcMain.handle('config:leer', () => leerClaves());
-ipcMain.handle('config:importar', async () => {
-  const { canceled, filePaths } = await dialog.showOpenDialog(setupWin, {
+/** Solo las ventanas de la propia app (configuración inicial o ventana principal) pueden leer o cambiar las claves */
+const origenPermitido = (event) => event.sender === setupWin?.webContents || event.sender === mainWin?.webContents;
+
+ipcMain.handle('config:leer', (event) => (origenPermitido(event) ? leerClaves() : null));
+ipcMain.handle('config:importar', async (event) => {
+  if (!origenPermitido(event)) return null;
+  const { canceled, filePaths } = await dialog.showOpenDialog(setupWin ?? mainWin, {
     title: 'Elegir el archivo .env de LabTrace',
     properties: ['openFile', 'showHiddenFiles'],
     filters: [{ name: 'Todos los archivos', extensions: ['*'] }],
   });
   return canceled ? null : leerClaves(filePaths[0]);
 });
-ipcMain.handle('config:guardar', async (_event, valores) => {
+ipcMain.handle('config:guardar', async (event, valores) => {
+  if (!origenPermitido(event)) return { ok: false, message: 'Origen no permitido.' };
   const limpios = {};
   for (const clave of CLAVES) {
     const valor = String(valores?.[clave] ?? '').trim().replace(/^(["'])(.*)\1$/, '$2');
     if (!valor || /[\r\n"]/.test(valor)) return { ok: false, message: `Revisa el valor de ${clave}.` };
     limpios[clave] = valor;
   }
+  const anteriores = leerClaves();
   guardarClaves(limpios);
-  return lanzar();
+  const resultado = await lanzar();
+  // Desde la ventana principal, si la base nueva no responde se vuelve a la anterior para que la app siga funcionando
+  if (!resultado.ok && mainWin && CLAVES.every((clave) => anteriores[clave])) {
+    guardarClaves(anteriores);
+    await lanzar(); // levanta la base anterior y recarga la ventana limpia
+    return { ok: false, message: `${resultado.message}
+
+Se conservó la base anterior.` };
+  }
+  return resultado;
 });
 
 if (!app.requestSingleInstanceLock()) {

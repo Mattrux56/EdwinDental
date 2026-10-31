@@ -15,7 +15,7 @@ const estadoDe = (c) => (c.pagada ? 'Pagada' : c.pagadas > 0 ? 'Pago parcial' : 
 const TONO_ESTADO = { Pagada: 'done', 'Pago parcial': 'progress', Pendiente: 'lab' };
 
 /** Cuenta de estado = remisiones (no anuladas) de cada cliente en el mes. Al abrir un cliente se marca cuáles están pagadas. */
-export default function CuentasCobroView({ showToast }) {
+export default function CuentasCobroView({ showToast, onOpenCase }) {
   const hoy = new Date();
   const [periodo, setPeriodo] = useState({ anio: hoy.getFullYear(), mes: hoy.getMonth() + 1 });
   const { anio, mes } = periodo;
@@ -124,6 +124,7 @@ export default function CuentasCobroView({ showToast }) {
           saving={guardando}
           onClose={() => setAbierta(null)}
           onConfirm={confirmar}
+          onOpenCase={onOpenCase}
           showToast={showToast}
         />
       )}

@@ -4,7 +4,7 @@ import { formatMoney } from '../../utils/format.js';
 import { Icon } from './Icon.jsx';
 import StatusBadge from './StatusBadge.jsx';
 import { DateFilter, SearchField } from './filters.jsx';
-import { esProtesis } from '../../utils/protesis.js';
+import { esProtesis, ordenarPorTipo } from '../../utils/protesis.js';
 import { matchesSearch, normalizeSearchText } from '../../utils/search.js';
 import { remisionesService } from '../../services/remisiones.service.js';
 
@@ -206,6 +206,7 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
         categoria: 'Ya en esta remisión',
         descripcion: i.descripcion,
         valor: i.valorUnitario,
+        tipo: i.producto?.tipo,
         protesis: (i.cantidadSuperior ?? 0) + (i.cantidadInferior ?? 0) > 0, // la categoría real ya no se conoce
       }));
     return [...extra, ...productosActivos];
@@ -303,11 +304,15 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
 
   const categorias = useMemo(() => [...new Set(productos.map((p) => p.categoria))].sort((a, b) => a.localeCompare(b, 'es')), [productos]);
 
-  const detalle = lineas.map((l) => {
-    const p = productosPorId.get(l.productoId);
-    const valor = precioOriginal.get(l.productoId) ?? p?.valor ?? 0;
-    return { ...l, descripcion: p?.descripcion ?? '', valor, subtotal: l.cantidad * valor, protesis: esProductoProtesis(p) };
-  });
+  // Como en la remisión guardada e impresa: bases, prótesis y adicionales (dentro de cada grupo, en el orden en que se eligieron)
+  const detalle = ordenarPorTipo(
+    lineas.map((l) => {
+      const p = productosPorId.get(l.productoId);
+      const valor = precioOriginal.get(l.productoId) ?? p?.valor ?? 0;
+      return { ...l, descripcion: p?.descripcion ?? '', valor, subtotal: l.cantidad * valor, protesis: esProductoProtesis(p), tipo: p?.tipo };
+    }),
+    (l) => l.tipo,
+  );
   const total = detalle.reduce((acc, l) => acc + l.subtotal, 0);
   const numeroValido = Number.isInteger(Number(numero)) && Number(numero) >= 1 && Number(numero) <= 2147483647;
   // El reparto es opcional, pero si en una prótesis se marcó una casilla, superiores + inferiores deben dar la cantidad

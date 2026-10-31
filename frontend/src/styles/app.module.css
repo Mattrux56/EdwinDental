@@ -136,6 +136,10 @@
   position: relative;
 }
 
+.navItemBottom {
+  margin-top: auto;
+}
+
 .navItemActive,
 .navItemActive:hover {
   background: var(--side-hover);
@@ -1049,6 +1053,11 @@
 }
 
 .modalOverlay {
+  z-index: 60;
+}
+
+/* Panel del caso abierto sobre otra ventana: en el DOM va después, así que con el mismo nivel queda encima */
+.detailOverlayEncima {
   z-index: 60;
 }
 

@@ -82,7 +82,7 @@ export default function DashboardView({ controller, remisionesController }) {
       <div className={styles.main}>
         <main className={`${styles.content} ${fillView ? styles.contentFill : ''}`}>
           {showRemisiones ? (
-            <RemisionesView casos={casos} controller={remisionesController} showToast={showToast} />
+            <RemisionesView casos={casos} controller={remisionesController} showToast={showToast} onOpenCase={openCase} />
           ) : activeView === 'productos' ? (
             <ProductosView showToast={showToast} />
           ) : activeView === 'clientes' ? (
@@ -90,7 +90,7 @@ export default function DashboardView({ controller, remisionesController }) {
           ) : activeView === 'alertas' ? (
             <AlertasView casos={casos} onOpen={openCase} />
           ) : activeView === 'cuentas' ? (
-            <CuentasCobroView showToast={showToast} />
+            <CuentasCobroView showToast={showToast} onOpenCase={openCase} />
           ) : (
             <>
               {activeView === 'resumen' ? (

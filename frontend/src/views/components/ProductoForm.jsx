@@ -1,7 +1,14 @@
 import { useState } from 'react';
 import styles from '../../styles/app.module.css';
 
-const EMPTY = { codigo: '', categoria: '', descripcion: '', valor: '' };
+const EMPTY = { codigo: '', categoria: '', descripcion: '', valor: '', tipo: '' }; // tipo vacío = automático
+
+// El tipo fija el orden en la remisión: primero las bases, luego las prótesis y al final los adicionales
+const TIPOS = [
+  { value: 'BASE', label: 'Base' },
+  { value: 'PROTESIS', label: 'Prótesis' },
+  { value: 'ADICIONAL', label: 'Adicional' },
+];
 
 const OTRA = '__otra';
 
@@ -11,6 +18,7 @@ export default function ProductoForm({ producto, saving, onSubmit, onCancel, cat
     categoria: producto.categoria,
     descripcion: producto.descripcion,
     valor: String(producto.valor),
+    tipo: producto.tipo ?? '',
   } : EMPTY);
 
   // Categoría: lista desplegable con las existentes (evita escribirla distinta cada vez); "Otra…" permite crear una nueva
@@ -28,6 +36,8 @@ export default function ProductoForm({ producto, saving, onSubmit, onCancel, cat
       categoria: form.categoria.trim(),
       descripcion: form.descripcion.trim(),
       valor: Number(form.valor),
+      // Solo si el usuario lo eligió o lo cambió: si no, el servidor lo calcula por nombre y categoría
+      ...(form.tipo && form.tipo !== (producto?.tipo ?? '') ? { tipo: form.tipo } : {}),
     });
     if (saved) onCancel();
   };
@@ -114,6 +124,14 @@ export default function ProductoForm({ producto, saving, onSubmit, onCancel, cat
             onChange={update('valor')}
             required
           />
+        </div>
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="producto-tipo">Tipo de producto</label>
+          <select id="producto-tipo" className={styles.select} value={form.tipo} onChange={update('tipo')}>
+            {!producto && <option value="">Automático (según nombre y categoría)</option>}
+            {TIPOS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </select>
+          <span className={styles.hint}>Define el orden en la remisión: bases, prótesis y adicionales.</span>
         </div>
       </div>
       <div className={styles.formActions}>

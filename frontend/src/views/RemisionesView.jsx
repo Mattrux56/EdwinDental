@@ -10,7 +10,7 @@ import { remisionesService } from '../services/remisiones.service.js';
 import { formatRemisionNumber } from '../utils/format.js';
 
 /** Vista de Remisiones: lista + creación a partir de un caso existente y la lista de precios */
-export default function RemisionesView({ casos, controller, showToast }) {
+export default function RemisionesView({ casos, controller, showToast, onOpenCase }) {
   const { remisiones, productos, loading, error, saving, anulandoId, reload, reloadProductos, createRemision, updateRemision, anularRemision, eliminarRemision, reactivarRemision } = controller;
   const [detalle, setDetalle] = useState(null);
   const [editTarget, setEditTarget] = useState(null);
@@ -77,6 +77,7 @@ export default function RemisionesView({ casos, controller, showToast }) {
           onEliminar={(rem) => setEliminarTarget(rem)}
           onReactivar={reactivarRemision}
           reactivando={anulandoId === detalle.id}
+          onVerCaso={onOpenCase}
           showToast={showToast}
         />
       )}
