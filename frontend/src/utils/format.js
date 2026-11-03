@@ -25,11 +25,26 @@ export function deliverySla(fecha) {
   return { label: 'A tiempo', status: 'onTime' };
 }
 
+/*
+ * El listado de casos viene resumido (totalMovimientos, ultimoMovimiento, portada) y el detalle trae el historial
+ * completo (seguimientos). Estos tres helpers sirven con cualquiera de las dos formas.
+ */
+
 /** Fecha del último movimiento de un caso (último seguimiento) */
 export const lastMovement = (caso) => {
-  const list = caso?.seguimientos ?? [];
-  return list.length ? list[list.length - 1].creadoEn : caso?.creadoEn;
+  const list = caso?.seguimientos;
+  if (list) return list.length ? list[list.length - 1].creadoEn : caso?.creadoEn;
+  return caso?.ultimoMovimiento ?? caso?.creadoEn;
 };
+
+/** Cantidad de movimientos (seguimientos) del caso */
+export const totalMovimientos = (caso) => caso?.seguimientos?.length ?? caso?.totalMovimientos ?? 0;
+
+/** Primera foto del caso, si tiene */
+export const portadaCaso = (caso) =>
+  caso?.seguimientos
+    ? caso.seguimientos.flatMap((movimiento) => movimiento.imagenes ?? [])[0]?.urlImagen
+    : caso?.portada ?? undefined;
 
 const money = new Intl.NumberFormat('es-CO', {
   style: 'currency',

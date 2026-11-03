@@ -35,6 +35,9 @@ model Caso {
   remisiones   Remision[]
 
   @@index([clienteId])
+  @@index([archivado, creadoEn])
+  @@index([archivado, estado])
+  @@index([fechaEntregaEstimada])
 }
 
 model Seguimiento {
@@ -48,6 +51,7 @@ model Seguimiento {
   imagenes    CasoImagen[]
 
   @@index([casoId])
+  @@index([casoId, creadoEn])
 }
 
 model CasoImagen {
@@ -106,6 +110,7 @@ model Remision {
   @@unique([tipo, numero])
   @@index([casoId])
   @@index([fecha])
+  @@index([anulada, fecha])
 }
 
 /// Cada línea guarda una copia de la descripción y del precio vigente al crear la remisión,

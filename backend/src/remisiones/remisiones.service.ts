@@ -30,15 +30,35 @@ const REMISION_INCLUDE = {
 type RemisionConItems = Prisma.RemisionGetPayload<{ include: typeof REMISION_INCLUDE }>;
 const MAX_NUMERO_REMISION = 2147483647;
 
+export interface FiltrosRemisiones {
+  casoId?: number;
+  clienteId?: number;
+  desde?: string;
+  hasta?: string;
+  limit?: number;
+  offset?: number;
+}
+
 @Injectable()
 export class RemisionesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAll(casoId?: number) {
+  async findAll(filtros: FiltrosRemisiones = {}) {
+    const where: Prisma.RemisionWhereInput = {};
+    if (filtros.casoId) where.casoId = filtros.casoId;
+    if (filtros.clienteId) where.caso = { clienteId: filtros.clienteId };
+    if (filtros.desde || filtros.hasta) {
+      where.fecha = {
+        ...(filtros.desde ? { gte: dateOnlyToUtc(filtros.desde) } : {}),
+        ...(filtros.hasta ? { lte: dateOnlyToUtc(filtros.hasta) } : {}),
+      };
+    }
     const remisiones = await this.prisma.remision.findMany({
-      where: casoId ? { casoId } : undefined,
+      where,
       include: REMISION_INCLUDE,
       orderBy: [{ numero: 'desc' }, { tipo: 'asc' }],
+      ...(filtros.limit ? { take: Math.min(filtros.limit, 500) } : {}),
+      ...(filtros.offset ? { skip: filtros.offset } : {}),
     });
     return remisiones.map((r) => this.withTotal(r));
   }

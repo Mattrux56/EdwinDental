@@ -40,7 +40,7 @@ function ClienteForm({ cliente, clientes, saving, onSubmit, onCancel }) {
 }
 
 export default function ClientesView({ showToast, onChanged, onOpenCase, casosVersion }) {
-  const { data: clientes, loading, error, reload: load } = useResource(() => clientesService.list());
+  const { data: clientes, loading, error, reload: load } = useResource(() => clientesService.list({ fresco: true }));
   const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState('');
   const [soloDuplicados, setSoloDuplicados] = useState(false);

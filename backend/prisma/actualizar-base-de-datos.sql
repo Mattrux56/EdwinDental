@@ -106,6 +106,13 @@ CREATE INDEX "Remision_casoId_idx" ON "Remision"("casoId");
 CREATE INDEX "Remision_fecha_idx" ON "Remision"("fecha");
 CREATE INDEX "RemisionItem_remisionId_idx" ON "RemisionItem"("remisionId");
 
+-- Índices de apoyo a los listados y filtros (ver también optimizar-consultas.sql)
+CREATE INDEX "Caso_archivado_creadoEn_idx" ON "Caso"("archivado", "creadoEn");
+CREATE INDEX "Caso_archivado_estado_idx" ON "Caso"("archivado", "estado");
+CREATE INDEX "Caso_fechaEntregaEstimada_idx" ON "Caso"("fechaEntregaEstimada");
+CREATE INDEX "Seguimiento_casoId_creadoEn_idx" ON "Seguimiento"("casoId", "creadoEn");
+CREATE INDEX "Remision_anulada_fecha_idx" ON "Remision"("anulada", "fecha");
+
 -- Conexiones (llaves foráneas)
 ALTER TABLE "Caso" ADD CONSTRAINT "Caso_clienteId_fkey" FOREIGN KEY ("clienteId") REFERENCES "Cliente"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "Seguimiento" ADD CONSTRAINT "Seguimiento_casoId_fkey" FOREIGN KEY ("casoId") REFERENCES "Caso"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { casesService } from '../services/cases.service.js';
+import { invalidarClientes } from '../services/clientes.service.js';
+import { lastMovement, portadaCaso, totalMovimientos } from '../utils/format.js';
 
 const EMPTY_STATS = {
   total: 0,
@@ -11,6 +13,17 @@ const EMPTY_STATS = {
   archivados: 0,
   alertas: 0,
 };
+
+/** El listado guarda cada caso resumido (sin el historial completo); así se reduce lo que devuelve una mutación */
+function resumir({ seguimientos, ...caso }) {
+  if (!seguimientos) return caso;
+  return {
+    ...caso,
+    totalMovimientos: totalMovimientos({ seguimientos }),
+    ultimoMovimiento: lastMovement({ seguimientos, creadoEn: caso.creadoEn }),
+    portada: portadaCaso({ seguimientos }) ?? null,
+  };
+}
 
 export function useCasesController() {
   const [casos, setCasos] = useState([]);
@@ -68,6 +81,19 @@ export function useCasesController() {
     }
   }, []);
 
+  /** Pone el caso devuelto por el servidor en el listado (o lo quita si ya no pertenece a él), sin volver a pedir todo */
+  const mergeCase = useCallback(
+    (caso) => {
+      setCasos((prev) => {
+        const sigue = Boolean(caso.archivado) === verArchivados;
+        if (!sigue) return prev.filter((c) => c.id !== caso.id);
+        const resumen = resumir(caso);
+        return prev.some((c) => c.id === caso.id) ? prev.map((c) => (c.id === caso.id ? resumen : c)) : [resumen, ...prev];
+      });
+    },
+    [verArchivados],
+  );
+
   useEffect(() => {
     loadCases();
   }, [loadCases]);
@@ -88,6 +114,7 @@ export function useCasesController() {
       const fresh = await casesService.getById(caso.id); // ...y los refresca desde el servidor
       setSelectedCase((current) => (current && current.id === fresh.id ? fresh : current));
     } catch (e) {
+      setSelectedCase((current) => (current && current.id === caso.id ? null : current)); // sin historial no hay nada que mostrar
       showToast('error', e.message);
     }
   }, [showToast]);
@@ -99,6 +126,7 @@ export function useCasesController() {
       setSaving(true);
       try {
         const created = await casesService.create(payload);
+        invalidarClientes(); // el caso pudo crear un cliente nuevo
         showToast('success', `Orden de trabajo ${created.codigo} registrada correctamente`);
         setActiveView('casos');
         await Promise.all([loadCases(), loadStats()]);
@@ -120,8 +148,10 @@ export function useCasesController() {
       try {
         const updated = await casesService.update(id, payload);
         setSelectedCase((current) => (current && current.id === id ? updated : current));
+        invalidarClientes(); // pudo cambiar de cliente o crear uno nuevo
+        mergeCase(updated);
         showToast('success', 'Caso actualizado');
-        await refresh();
+        await loadStats();
         return updated;
       } catch (e) {
         showToast('error', e.message);
@@ -130,17 +160,18 @@ export function useCasesController() {
         setSaving(false);
       }
     },
-    [refresh, showToast],
+    [loadStats, mergeCase, showToast],
   );
 
   const archiveCase = useCallback(
     async (caso, archivar = true) => {
       setSaving(true);
       try {
-        await (archivar ? casesService.archivar(caso.id) : casesService.restaurar(caso.id));
+        const actualizado = await (archivar ? casesService.archivar(caso.id) : casesService.restaurar(caso.id));
         if (selectedCase?.id === caso.id) setSelectedCase(null);
+        mergeCase(actualizado);
         showToast('success', archivar ? `Caso ${caso.codigo} archivado` : `Caso ${caso.codigo} restaurado`);
-        await refresh();
+        await loadStats();
         return true;
       } catch (e) {
         showToast('error', e.message);
@@ -149,7 +180,7 @@ export function useCasesController() {
         setSaving(false);
       }
     },
-    [refresh, selectedCase, showToast],
+    [loadStats, mergeCase, selectedCase, showToast],
   );
 
   const removePhoto = useCallback(
@@ -158,8 +189,8 @@ export function useCasesController() {
       try {
         const updated = await casesService.removeImagen(imagenId);
         setSelectedCase(updated);
+        mergeCase(updated);
         showToast('success', 'Foto eliminada');
-        await loadCases();
         return true;
       } catch (e) {
         showToast('error', e.message);
@@ -168,7 +199,7 @@ export function useCasesController() {
         setSaving(false);
       }
     },
-    [loadCases, showToast],
+    [mergeCase, showToast],
   );
 
   const deleteCase = useCallback(async (caso) => {
@@ -193,8 +224,9 @@ export function useCasesController() {
       try {
         const updated = await casesService.addFollowUp(casoId, payload);
         setSelectedCase(updated);
+        mergeCase(updated);
         showToast('success', 'Seguimiento registrado');
-        await refresh();
+        await loadStats();
         return updated;
       } catch (e) {
         showToast('error', e.message);
@@ -203,7 +235,7 @@ export function useCasesController() {
         setSaving(false);
       }
     },
-    [refresh, showToast],
+    [loadStats, mergeCase, showToast],
   );
 
   /** Edita un seguimiento ya registrado (tipo, descripción, fecha de entrega y fotos nuevas) */
@@ -213,8 +245,9 @@ export function useCasesController() {
       try {
         const updated = await casesService.updateFollowUp(casoId, seguimientoId, payload);
         setSelectedCase(updated);
+        mergeCase(updated);
         showToast('success', 'Seguimiento actualizado');
-        await refresh();
+        await loadStats();
         return updated;
       } catch (e) {
         showToast('error', e.message);
@@ -223,7 +256,7 @@ export function useCasesController() {
         setSaving(false);
       }
     },
-    [refresh, showToast],
+    [loadStats, mergeCase, showToast],
   );
 
   /** Elimina un seguimiento del historial (y sus fotos) */
@@ -233,8 +266,9 @@ export function useCasesController() {
       try {
         const updated = await casesService.removeFollowUp(casoId, seguimientoId);
         setSelectedCase(updated);
+        mergeCase(updated);
         showToast('success', 'Seguimiento eliminado');
-        await refresh();
+        await loadStats();
         return updated;
       } catch (e) {
         showToast('error', e.message);
@@ -243,7 +277,7 @@ export function useCasesController() {
         setSaving(false);
       }
     },
-    [refresh, showToast],
+    [loadStats, mergeCase, showToast],
   );
 
   return {

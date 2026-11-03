@@ -1,18 +1,18 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import styles from '../styles/app.module.css';
 import Sidebar from './components/Sidebar.jsx';
 import MetricCards from './components/MetricCards.jsx';
 import CasesTable from './components/CasesTable.jsx';
 import NewCaseForm from './components/NewCaseForm.jsx';
 import CaseDetailDrawer from './components/CaseDetailDrawer.jsx';
-import RemisionesView from './RemisionesView.jsx';
-import ProductosView from './ProductosView.jsx';
-import ClientesView from './ClientesView.jsx';
-import AlertasView from './AlertasView.jsx';
-import CuentasCobroView from './CuentasCobroView.jsx';
+const RemisionesView = lazy(() => import('./RemisionesView.jsx')); // se descarga al entrar a la vista
+const ProductosView = lazy(() => import('./ProductosView.jsx')); // se descarga al entrar a la vista
+const ClientesView = lazy(() => import('./ClientesView.jsx')); // se descarga al entrar a la vista
+const AlertasView = lazy(() => import('./AlertasView.jsx')); // se descarga al entrar a la vista
+const CuentasCobroView = lazy(() => import('./CuentasCobroView.jsx')); // se descarga al entrar a la vista
 import EditCaseForm from './components/EditCaseForm.jsx';
 import Modal, { ConfirmModal } from './components/Modal.jsx';
-import { PageHeader } from './components/ui.jsx';
+import { LoadingState, PageHeader } from './components/ui.jsx';
 import Toast from './components/Toast.jsx';
 import { Icon } from './components/Icon.jsx';
 
@@ -81,6 +81,7 @@ export default function DashboardView({ controller, remisionesController }) {
 
       <div className={styles.main}>
         <main className={`${styles.content} ${fillView ? styles.contentFill : ''}`}>
+          <Suspense fallback={<LoadingState>Cargando…</LoadingState>}>
           {showRemisiones ? (
             <RemisionesView casos={casos} controller={remisionesController} showToast={showToast} onOpenCase={openCase} />
           ) : activeView === 'productos' ? (
@@ -126,6 +127,7 @@ export default function DashboardView({ controller, remisionesController }) {
               )}
             </>
           )}
+          </Suspense>
         </main>
       </div>
 

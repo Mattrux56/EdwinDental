@@ -6,6 +6,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, write
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { build as empaquetar } from 'esbuild';
 
 const DESKTOP = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(DESKTOP, '..');
@@ -45,11 +46,30 @@ console.log('▶ Preparando los archivos de la aplicación…');
 rmSync(WORK, { recursive: true, force: true });
 mkdirSync(STAGE, { recursive: true });
 // Misma disposición que el repositorio: las rutas relativas del backend siguen funcionando sin cambios
-cpSync(join(ROOT, 'backend', 'dist'), join(STAGE, 'backend', 'dist'), { recursive: true });
+// El servidor va en UN solo archivo (antes eran miles entre el código y node_modules): el instalador y el primer
+// arranque tardaban minutos porque Windows analiza cada archivo. Prisma queda aparte: trae su motor nativo.
+await empaquetar({
+  entryPoints: [join(ROOT, 'backend', 'dist', 'main.js')],
+  outfile: join(STAGE, 'backend', 'dist', 'main.js'),
+  bundle: true,
+  platform: 'node',
+  target: 'node22',
+  logLevel: 'warning',
+  external: [
+    '@prisma/client',
+    '.prisma/client',
+    // paquetes opcionales de Nest que esta app no usa
+    '@nestjs/microservices',
+    '@nestjs/websockets',
+    '@nestjs/platform-socket.io',
+    '@nestjs/platform-fastify',
+    'cache-manager',
+  ],
+});
 cpSync(join(ROOT, 'backend', 'templates'), join(STAGE, 'backend', 'templates'), { recursive: true });
 cpSync(join(ROOT, 'backend', 'prisma', 'schema.prisma'), join(STAGE, 'backend', 'prisma', 'schema.prisma'));
 cpSync(join(ROOT, 'frontend', 'dist'), join(STAGE, 'frontend', 'dist'), { recursive: true });
-for (const file of ['main.cjs', 'updater.cjs', 'preload.cjs', 'preload-app.cjs', 'preload-vista.cjs', 'setup.html', 'update.html', 'LabTrace.ico']) {
+for (const file of ['main.cjs', 'updater.cjs', 'preload.cjs', 'preload-app.cjs', 'preload-vista.cjs', 'setup.html', 'update.html', 'splash.html', 'LabTrace.ico']) {
   cpSync(join(DESKTOP, file), join(STAGE, 'electron', file));
 }
 
@@ -60,15 +80,14 @@ if (/^v\d/.test(process.env.GITHUB_REF_NAME ?? '') && process.env.GITHUB_REF_NAM
   console.error(`\n✖ La etiqueta ${process.env.GITHUB_REF_NAME} no coincide con la versión ${version} de package.json\n`);
   process.exit(1);
 }
-// Dependencias de producción del backend, en la versión exacta instalada (la misma con la que se probó),
+// Lo único que no va dentro del paquete del servidor: el cliente de Prisma (motor nativo), en la versión exacta instalada,
 // más las propias de la app de escritorio (el actualizador)
+const versionInstalada = (name) => {
+  const local = join(ROOT, 'backend', 'node_modules', name, 'package.json');
+  return json(existsSync(local) ? local : join(ROOT, 'node_modules', name, 'package.json')).version;
+};
 const dependencies = {
-  ...Object.fromEntries(
-    Object.keys(json(join(ROOT, 'backend', 'package.json')).dependencies).map((name) => {
-      const local = join(ROOT, 'backend', 'node_modules', name, 'package.json');
-      return [name, json(existsSync(local) ? local : join(ROOT, 'node_modules', name, 'package.json')).version];
-    }),
-  ),
+  '@prisma/client': versionInstalada('@prisma/client'),
   ...json(join(DESKTOP, 'package.json')).dependencies,
 };
 writeFileSync(
@@ -103,6 +122,7 @@ await build({
     productName: 'LabTrace',
     electronVersion: json(join(DESKTOP, 'node_modules', 'electron', 'package.json')).version,
     directories: { app: STAGE, output: OUT },
+    electronLanguages: ['es', 'en-US'], // sin los ~50 archivos de idiomas que la app no usa
     asar: false, // el motor nativo de Prisma y los archivos estáticos se leen directo del disco
     npmRebuild: false,
     // electron-builder solo copia paquetes declarados; el cliente generado de Prisma vive en node_modules/.prisma

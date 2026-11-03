@@ -50,13 +50,14 @@ export class ClientesController {
   @Get()
   async findAll() {
     const clientes = await this.prisma.cliente.findMany({ select: LISTA, orderBy: { nombre: 'asc' } });
-    // Remisiones vigentes (no anuladas) por cliente, igual que en las cuentas de cobro, en una sola consulta
-    const remisiones = await this.prisma.remision.findMany({
-      where: { anulada: false },
-      select: { caso: { select: { clienteId: true } } },
-    });
-    const porCliente = new Map<number, number>();
-    remisiones.forEach((r) => porCliente.set(r.caso.clienteId, (porCliente.get(r.caso.clienteId) ?? 0) + 1));
+    // Remisiones vigentes (no anuladas) por cliente, igual que en las cuentas de cobro: el conteo lo hace la base de datos
+    const conteo = await this.prisma.$queryRaw<{ clienteId: number; total: number }[]>`
+      SELECT c."clienteId" AS "clienteId", COUNT(*)::int AS "total"
+      FROM "Remision" r
+      JOIN "Caso" c ON c."id" = r."casoId"
+      WHERE r."anulada" = false
+      GROUP BY c."clienteId"`;
+    const porCliente = new Map(conteo.map((fila) => [fila.clienteId, fila.total]));
     return clientes.map((c) => ({ ...c, remisiones: porCliente.get(c.id) ?? 0 }));
   }
 

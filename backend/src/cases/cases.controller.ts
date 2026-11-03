@@ -31,13 +31,31 @@ const FOTOS_OPTIONS = {
   },
 };
 
+/** Número entero positivo de un parámetro de la URL; si no lo es, se ignora */
+const entero = (valor?: string) => {
+  const n = Number(valor);
+  return valor && Number.isInteger(n) && n > 0 ? n : undefined;
+};
+
 @Controller('cases')
 export class CasesController {
   constructor(private readonly casesService: CasesService) {}
 
   @Get()
-  findAll(@Query('search') search?: string, @Query('archivados') archivados?: string) {
-    return this.casesService.findAll(search, archivados === '1' || archivados === 'true');
+  findAll(
+    @Query('search') search?: string,
+    @Query('archivados') archivados?: string,
+    @Query('clienteId') clienteId?: string,
+    @Query('estado') estado?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    return this.casesService.findAll(search, archivados === '1' || archivados === 'true', {
+      clienteId: entero(clienteId),
+      estado: estado?.trim() || undefined,
+      limit: entero(limit),
+      offset: entero(offset),
+    });
   }
 
   @Get('stats')

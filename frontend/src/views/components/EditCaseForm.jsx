@@ -15,6 +15,7 @@ export default function EditCaseForm({ caso, saving, onSubmit, onCancel }) {
     doctorNombre: caso.doctorNombre ?? '',
     pacienteNombre: caso.pacienteNombre ?? '',
     fechaIngreso: dateOnly(caso.fechaIngreso ?? caso.creadoEn),
+    fechaEntregaEstimada: dateOnly(caso.fechaEntregaEstimada),
   });
 
   useEffect(() => {
@@ -36,6 +37,7 @@ export default function EditCaseForm({ caso, saving, onSubmit, onCancel }) {
       doctorNombre: form.doctorNombre,
       pacienteNombre: form.pacienteNombre,
       fechaIngreso: form.fechaIngreso,
+      fechaEntregaEstimada: form.fechaEntregaEstimada,
     };
     if (nuevo) payload.clienteNombre = clienteNuevo;
     else if (Number(clienteId) !== caso.cliente?.id) payload.clienteId = Number(clienteId);
@@ -84,6 +86,10 @@ export default function EditCaseForm({ caso, saving, onSubmit, onCancel }) {
         <div className={styles.field}>
           <label className={styles.label} htmlFor="ec-ingreso">Fecha de ingreso <span className={styles.required}>*</span></label>
           <input id="ec-ingreso" className={styles.input} type="date" value={form.fechaIngreso} onChange={set('fechaIngreso')} required />
+        </div>
+        <div className={styles.field}>
+          <label className={styles.label} htmlFor="ec-entrega">Fecha estimada de entrega</label>
+          <input id="ec-entrega" className={styles.input} type="date" value={form.fechaEntregaEstimada} onChange={set('fechaEntregaEstimada')} />
         </div>
       </div>
       <div className={styles.formActions}>

@@ -5,7 +5,7 @@ const { createWriteStream, existsSync, mkdirSync, mkdtempSync, readFileSync, rmS
 const { tmpdir } = require('node:os');
 const { createServer } = require('node:net');
 const { dirname, join } = require('node:path');
-const { buscarActualizacion } = require('./updater.cjs');
+const { actualizacionEnCurso, buscarActualizacion, limpiarMarcaActualizacion } = require('./updater.cjs');
 
 // Instalada: <app>/electron/main.cjs · En desarrollo: <repo>/desktop/main.cjs. En ambos casos el backend queda en ../backend
 const ROOT = join(__dirname, '..');
@@ -21,6 +21,9 @@ const LOG_FILE = join(app.getPath('userData'), 'logs', 'labtrace.log');
 
 let mainWin = null;
 let setupWin = null;
+let splashWin = null;
+let cerrandoSplash = false; // distingue el cierre propio de la splash del que hace la persona con la X
+let lanzamiento = null; // lanzamiento en curso (ver lanzar)
 let server = null;
 let buscandoActualizacion = false;
 let busy = false; // evita cerrar la app mientras se pasa de una ventana a otra
@@ -85,7 +88,13 @@ async function iniciarServidor() {
     cwd: join(ROOT, 'backend'),
     stdio: 'pipe',
     serviceName: 'LabTrace servidor',
-    env: { ...process.env, PORT: String(port), NODE_ENV: 'production', LABTRACE_ENV_FILE: ENV_FILE },
+    env: {
+      ...process.env,
+      PORT: String(port),
+      NODE_ENV: 'production',
+      LABTRACE_ENV_FILE: ENV_FILE,
+      NODE_COMPILE_CACHE: join(app.getPath('userData'), 'cache'), // las siguientes aperturas leen el código ya compilado
+    },
   });
   server = child;
   let salio = false;
@@ -135,6 +144,36 @@ function recargarPrincipal(url) {
   });
 }
 
+/** Ventana de «Abriendo…» que se ve al instante: sin ella, mientras arranca el servidor parece que no pasó nada y se vuelve a hacer clic */
+function abrirSplash() {
+  if (splashWin) return;
+  splashWin = new BrowserWindow({
+    width: 420,
+    height: 170,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    icon: ICON,
+    title: 'LabTrace',
+    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
+  });
+  splashWin.setMenuBarVisibility(false);
+  splashWin.on('close', () => {
+    if (!cerrandoSplash) app.quit(); // cerrarla con la X cancela la apertura
+  });
+  splashWin.on('closed', () => {
+    splashWin = null;
+  });
+  splashWin.loadFile(join(__dirname, 'splash.html'));
+}
+
+function cerrarSplash() {
+  if (!splashWin) return;
+  cerrandoSplash = true;
+  splashWin.destroy();
+  cerrandoSplash = false;
+}
+
 function abrirPrincipal(port) {
   const url = `http://127.0.0.1:${port}/`;
   if (mainWin) {
@@ -160,6 +199,7 @@ function abrirPrincipal(port) {
   mainWin.once('ready-to-show', () => {
     mainWin.maximize();
     mainWin.show();
+    cerrarSplash();
   });
   // Lo que no sea la propia app se abre en el navegador del equipo
   mainWin.webContents.setWindowOpenHandler(({ url: destino }) => {
@@ -218,7 +258,15 @@ function abrirConfiguracion() {
 }
 
 /** Reinicia el servidor con las claves guardadas y muestra la app. Devuelve { ok, message } */
-async function lanzar() {
+function lanzar() {
+  // Un segundo clic (o un doble «Guardar») mientras ya se está abriendo reutiliza el mismo trabajo en vez de reiniciar el servidor
+  lanzamiento ??= lanzarServidor().finally(() => {
+    lanzamiento = null;
+  });
+  return lanzamiento;
+}
+
+async function lanzarServidor() {
   busy = true;
   try {
     await detenerServidor();
@@ -233,7 +281,7 @@ async function lanzar() {
     setupWin?.close();
     if (!buscandoActualizacion) {
       buscandoActualizacion = true; // solo al abrir la app, no en cada cambio de base
-      buscarActualizacion(() => mainWin);
+      buscarActualizacion(() => mainWin, { antesDeInstalar: detenerServidor });
     }
     return { ok: true };
   } catch (error) {
@@ -246,6 +294,7 @@ async function lanzar() {
 
 async function iniciar() {
   if (!existsSync(ENV_FILE)) return abrirConfiguracion();
+  abrirSplash();
   for (;;) {
     const resultado = await lanzar();
     if (resultado.ok) return;
@@ -259,7 +308,10 @@ async function iniciar() {
       cancelId: 2,
       noLink: true,
     });
-    if (response === 1) return abrirConfiguracion();
+    if (response === 1) {
+      cerrarSplash();
+      return abrirConfiguracion();
+    }
     if (response === 2) return app.quit();
   }
 }
@@ -450,7 +502,7 @@ if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
   app.on('second-instance', () => {
-    const win = setupWin ?? mainWin;
+    const win = setupWin ?? mainWin ?? splashWin;
     if (!win) return;
     if (win.isMinimized()) win.restore();
     win.focus();
@@ -461,8 +513,23 @@ if (!app.requestSingleInstanceLock()) {
   app.on('will-quit', () => {
     server?.kill();
   });
-  app.whenReady().then(() => {
+  app.whenReady().then(async () => {
     Menu.setApplicationMenu(null);
+    // Si alguien abre LabTrace mientras el instalador lo está actualizando, se le pide esperar en vez de arrancar con archivos a medias
+    if (actualizacionEnCurso()) {
+      const { response } = await dialog.showMessageBox({
+        type: 'info',
+        title: 'LabTrace',
+        message: 'LabTrace se está actualizando',
+        detail: 'La actualización se está instalando y LabTrace se abrirá solo cuando termine (puede tardar unos minutos). No hace falta abrirlo otra vez.',
+        buttons: ['Esperar', 'Abrir de todos modos'],
+        defaultId: 0,
+        cancelId: 0,
+        noLink: true,
+      });
+      if (response === 0) return app.quit();
+      limpiarMarcaActualizacion(); // salida de emergencia por si la instalación falló
+    }
     iniciar();
   });
 }

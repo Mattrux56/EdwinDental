@@ -39,11 +39,17 @@ function buildFormData(fields, fotos = []) {
 }
 
 export const casesService = {
-  /** GET /cases?search=&archivados= */
-  list(search = '', archivados = false) {
+  /** GET /cases  (list('texto', true) o list({ search, archivados, clienteId, estado, limit, offset })) */
+  list(arg = '', archivadosArg = false) {
+    const { search = '', archivados = false, clienteId, estado, limit, offset } =
+      typeof arg === 'object' ? arg : { search: arg, archivados: archivadosArg };
     const params = new URLSearchParams();
     if (search.trim()) params.set('search', search.trim());
     if (archivados) params.set('archivados', '1');
+    if (clienteId) params.set('clienteId', clienteId);
+    if (estado) params.set('estado', estado);
+    if (limit) params.set('limit', limit);
+    if (offset) params.set('offset', offset);
     const qs = params.toString();
     return request(`/cases${qs ? `?${qs}` : ''}`);
   },

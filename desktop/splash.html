@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'" />
+    <title>LabTrace</title>
+    <style>
+      body { margin: 0; padding: 28px 32px; font: 14px/1.45 "Segoe UI", system-ui, sans-serif; color: #1c2430; background: #f5f7fa; user-select: none; }
+      h1 { margin: 0 0 6px; font-size: 18px; font-weight: 600; }
+      p { margin: 0 0 18px; color: #556070; }
+      .bar { height: 8px; background: #dde3ec; border-radius: 999px; overflow: hidden; }
+      .bar::after { content: ''; display: block; height: 100%; width: 35%; background: #2f6fed; border-radius: 999px; animation: ir 1.2s ease-in-out infinite; }
+      @keyframes ir { 0% { margin-left: -35%; } 100% { margin-left: 100%; } }
+    </style>
+  </head>
+  <body>
+    <h1>Abriendo LabTrace…</h1>
+    <p>Puede tardar unos segundos. No lo abras otra vez: se mostrará solo.</p>
+    <div class="bar"></div>
+  </body>
+</html>

@@ -15,17 +15,37 @@ import { CreateRemisionDto, TipoRemision } from './dto/create-remision.dto';
 import { UpdateRemisionDto } from './dto/update-remision.dto';
 import { RemisionesService } from './remisiones.service';
 
-const XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+/** Número entero positivo de un parámetro de la URL; si no lo es, se ignora */
+const entero = (valor?: string) => {
+  const n = Number(valor);
+  return valor && Number.isInteger(n) && n > 0 ? n : undefined;
+};
+
+const XLSX ='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 @Controller('remisiones')
 export class RemisionesController {
   constructor(private readonly remisiones: RemisionesService) {}
 
-  /** GET /remisiones  (?casoId= para ver solo las de un caso) */
+  /** GET /remisiones  (opcionales: casoId, clienteId, desde, hasta [YYYY-MM-DD], limit, offset) */
   @Get()
-  findAll(@Query('casoId') casoId?: string) {
-    const id = Number(casoId);
-    return this.remisiones.findAll(Number.isInteger(id) && id > 0 ? id : undefined);
+  findAll(
+    @Query('casoId') casoId?: string,
+    @Query('clienteId') clienteId?: string,
+    @Query('desde') desde?: string,
+    @Query('hasta') hasta?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    const fecha = (valor?: string) => (valor && /^\d{4}-\d{2}-\d{2}$/.test(valor) ? valor : undefined);
+    return this.remisiones.findAll({
+      casoId: entero(casoId),
+      clienteId: entero(clienteId),
+      desde: fecha(desde),
+      hasta: fecha(hasta),
+      limit: entero(limit),
+      offset: entero(offset),
+    });
   }
 
   /** GET /remisiones/siguiente-numero */

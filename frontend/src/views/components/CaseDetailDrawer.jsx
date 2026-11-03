@@ -121,15 +121,22 @@ export default function CaseDetailDrawer({
             </div>
           )}
 
-          <Timeline
-            seguimientos={caso.seguimientos ?? []}
-            onEdit={onUpdateFollowUp ? () => setEditandoHistorial(true) : undefined}
-            editDisabled={saving}
-            onOpenImage={setLightbox}
-            onNota={setNotaDe}
-          />
+          {/* El listado trae el caso resumido: el historial llega con el detalle que se pide al abrir el panel */}
+          {caso.seguimientos === undefined ? (
+            <p className={styles.mutedText} role="status">Cargando historial…</p>
+          ) : (
+            <>
+              <Timeline
+                seguimientos={caso.seguimientos}
+                onEdit={onUpdateFollowUp ? () => setEditandoHistorial(true) : undefined}
+                editDisabled={saving}
+                onOpenImage={setLightbox}
+                onNota={setNotaDe}
+              />
 
-          <FollowUpForm key={caso.id} caso={caso} saving={saving} onSubmit={onAddFollowUp} />
+              <FollowUpForm key={caso.id} caso={caso} saving={saving} onSubmit={onAddFollowUp} />
+            </>
+          )}
         </div>
       </section>
 

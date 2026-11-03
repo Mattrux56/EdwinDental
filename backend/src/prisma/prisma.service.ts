@@ -5,6 +5,11 @@ import { PrismaClient } from '@prisma/client';
 export class PrismaService extends PrismaClient implements OnModuleInit {
   private readonly logger = new Logger(PrismaService.name);
 
+  constructor() {
+    // PRISMA_LOG_QUERIES=1 imprime cada consulta con su duración (solo para medir)
+    super(process.env.PRISMA_LOG_QUERIES === '1' ? { log: [{ emit: 'stdout', level: 'query' }] } : undefined);
+  }
+
   async onModuleInit() {
     try {
       await this.$connect();

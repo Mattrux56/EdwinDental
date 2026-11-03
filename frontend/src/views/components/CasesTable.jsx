@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import styles from '../../styles/app.module.css';
-import { deliverySla, formatDateTime, formatEstimatedDate, lastMovement } from '../../utils/format.js';
+import { deliverySla, formatDateTime, formatEstimatedDate, lastMovement, portadaCaso, totalMovimientos } from '../../utils/format.js';
 import { ESTADOS, normalizeEstado } from '../../constants.js';
 import { matchesSearch } from '../../utils/search.js';
 import { ChipGroup, DateFilter, FilterBar, SearchField } from './filters.jsx';
@@ -11,9 +11,7 @@ import { contar, EmptyState, ErrorBanner, LoadingState, Pagination, Panel } from
 const FILTERS = ['Todos', ...ESTADOS];
 const PAGE_SIZES = [9, 18, 36];
 
-export function coverImage(caso) {
-  return caso.seguimientos?.flatMap((movimiento) => movimiento.imagenes ?? [])[0]?.urlImagen;
-}
+export const coverImage = portadaCaso;
 
 function ingresoDate(caso) {
   if (caso.fechaIngreso) return String(caso.fechaIngreso).slice(0, 10);
@@ -152,7 +150,7 @@ export default function CasesTable({
                 </button>
                 {!compact && (
                   <div className={styles.caseCardActions}>
-                    <span>{caso.seguimientos?.length ?? 0} {caso.seguimientos?.length === 1 ? 'movimiento' : 'movimientos'}</span>
+                    <span>{totalMovimientos(caso)} {totalMovimientos(caso) === 1 ? 'movimiento' : 'movimientos'}</span>
                     <div className={styles.cardButtons}>
                       <button
                         type="button"

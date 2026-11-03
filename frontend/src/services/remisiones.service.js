@@ -2,9 +2,15 @@ import { request } from './cases.service.js';
 import { downloadFile } from './download.js';
 
 export const remisionesService = {
-  /** GET /remisiones (opcional: solo las de un caso) */
-  list(casoId) {
-    return request(casoId ? `/remisiones?casoId=${casoId}` : '/remisiones');
+  /** GET /remisiones  (list(casoId) o list({ casoId, clienteId, desde, hasta, limit, offset })) */
+  list(arg) {
+    const filtros = typeof arg === 'object' && arg !== null ? arg : { casoId: arg };
+    const params = new URLSearchParams();
+    Object.entries(filtros).forEach(([clave, valor]) => {
+      if (valor) params.set(clave, valor);
+    });
+    const qs = params.toString();
+    return request(`/remisiones${qs ? `?${qs}` : ''}`);
   },
 
   /** GET /remisiones/:id (con sus líneas y el caso) */

@@ -33,6 +33,39 @@ const CASO_INCLUDE = {
   },
 } satisfies Prisma.CasoInclude;
 
+/** Listado: sin el historial completo; de cada seguimiento solo la fecha y su primera foto (para portada y contadores) */
+const CASO_LISTA = {
+  id: true,
+  codigo: true,
+  clienteId: true,
+  pacienteNombre: true,
+  doctorNombre: true,
+  estado: true,
+  creadoEn: true,
+  fechaIngreso: true,
+  fechaEntregaEstimada: true,
+  archivado: true,
+  archivadoEn: true,
+  codigoPublico: true,
+  cliente: { select: { id: true, nombre: true } },
+  seguimientos: {
+    orderBy: [{ creadoEn: 'asc' }, { id: 'asc' }],
+    select: {
+      creadoEn: true,
+      imagenes: { orderBy: { subidoEn: 'asc' }, take: 1, select: { urlImagen: true } },
+    },
+  },
+} satisfies Prisma.CasoSelect;
+
+const LIMITE_MAXIMO = 500;
+
+export interface FiltrosCasos {
+  clienteId?: number;
+  estado?: string;
+  limit?: number;
+  offset?: number;
+}
+
 @Injectable()
 export class CasesService {
   constructor(
@@ -43,9 +76,11 @@ export class CasesService {
   // ---------------------------------------------------------------- LECTURA
 
   /** Búsqueda flexible e insensible a mayúsculas: orden, doctor, paciente, cliente o ID */
-  async findAll(search?: string, archivados = false) {
+  async findAll(search?: string, archivados = false, filtros: FiltrosCasos = {}) {
     const term = search?.trim();
     const where: Prisma.CasoWhereInput = { archivado: archivados };
+    if (filtros.clienteId) where.clienteId = filtros.clienteId;
+    if (filtros.estado) where.estado = { equals: filtros.estado, mode: 'insensitive' };
 
     if (term) {
       const or: Prisma.CasoWhereInput[] = [
@@ -62,10 +97,17 @@ export class CasesService {
 
     const casos = await this.prisma.caso.findMany({
       where,
-      include: CASO_INCLUDE,
-      orderBy: { creadoEn: 'desc' },
+      select: CASO_LISTA,
+      orderBy: [{ creadoEn: 'desc' }, { id: 'desc' }],
+      ...(filtros.limit ? { take: Math.min(filtros.limit, LIMITE_MAXIMO) } : {}),
+      ...(filtros.offset ? { skip: filtros.offset } : {}),
     });
-    return casos.map((caso) => this.normalizeLegacyStatus(caso));
+    return casos.map(({ seguimientos, ...caso }) => this.normalizeLegacyStatus({
+      ...caso,
+      totalMovimientos: seguimientos.length,
+      ultimoMovimiento: seguimientos.length ? seguimientos[seguimientos.length - 1].creadoEn : caso.creadoEn,
+      portada: seguimientos.find((s) => s.imagenes.length > 0)?.imagenes[0].urlImagen ?? null,
+    }));
   }
 
   async findOne(id: number) {
@@ -283,16 +325,15 @@ export class CasesService {
     dto: CreateSeguimientoDto,
     files: Express.Multer.File[] = [],
   ) {
-    await this.ensureExists(casoId);
     if (ESTADO_POR_MOVIMIENTO[dto.tipo] !== dto.estado) {
       throw new BadRequestException('El movimiento y el estado seleccionado no coinciden');
     }
+    // Una sola lectura: comprueba que el caso existe y trae la última fecha de entrega fijada
+    const vigente = await this.fechaEntregaVigente(casoId);
     const urls = await this.uploadFiles(files, `casos/${casoId}`);
     const nuevoEstado = dto.estado.trim();
     // Sin fecha nueva se hereda la última fijada (la del ingreso inicial hasta que se cambie a mano)
-    const fechaEntrega = dto.fechaEntregaEstimada
-      ? dateOnlyToUtc(dto.fechaEntregaEstimada)
-      : await this.ultimaFechaEntrega(casoId);
+    const fechaEntrega = dto.fechaEntregaEstimada ? dateOnlyToUtc(dto.fechaEntregaEstimada) : vigente;
 
     await this.prisma.caso.update({
       where: { id: casoId },
@@ -323,7 +364,6 @@ export class CasesService {
     dto: UpdateSeguimientoDto,
     files: Express.Multer.File[] = [],
   ) {
-    await this.ensureExists(casoId);
     const seg = await this.prisma.seguimiento.findFirst({
       where: { id: seguimientoId, casoId },
       select: { id: true, tipo: true },
@@ -344,8 +384,10 @@ export class CasesService {
       throw new BadRequestException('Indica al menos un dato para actualizar');
     }
     if (urls.length > 0) data.imagenes = { create: urls.map((urlImagen) => ({ urlImagen })) };
-    await this.prisma.seguimiento.update({ where: { id: seguimientoId }, data });
-    await this.syncCasoConUltimo(casoId);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.seguimiento.update({ where: { id: seguimientoId }, data });
+      await this.syncCasoConUltimo(tx, casoId);
+    });
     return this.findOne(casoId);
   }
 
@@ -354,7 +396,6 @@ export class CasesService {
    * eliminar cuando es el único seguimiento del caso.
    */
   async removeSeguimiento(casoId: number, seguimientoId: number) {
-    await this.ensureExists(casoId);
     const seg = await this.prisma.seguimiento.findFirst({
       where: { id: seguimientoId, casoId },
       select: { id: true, tipo: true, imagenes: { select: { urlImagen: true } } },
@@ -366,8 +407,10 @@ export class CasesService {
         throw new BadRequestException('El ingreso inicial solo se puede eliminar cuando es el único seguimiento');
       }
     }
-    await this.prisma.seguimiento.delete({ where: { id: seguimientoId } });
-    await this.syncCasoConUltimo(casoId);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.seguimiento.delete({ where: { id: seguimientoId } });
+      await this.syncCasoConUltimo(tx, casoId);
+    });
     // Los archivos de Storage se borran después; si falla, el seguimiento ya quedó eliminado y solo sobran archivos
     await this.supabase.removeByUrls(seg.imagenes.map((i) => i.urlImagen));
     return this.findOne(casoId);
@@ -376,37 +419,46 @@ export class CasesService {
   // ---------------------------------------------------------------- HELPERS
 
   /** El caso refleja el seguimiento más reciente: su estado y su entrega estimada */
-  private async syncCasoConUltimo(casoId: number) {
-    const ultimo = await this.prisma.seguimiento.findFirst({
+  private async syncCasoConUltimo(tx: Prisma.TransactionClient, casoId: number) {
+    const ultimo = await tx.seguimiento.findFirst({
       where: { casoId },
       orderBy: [{ creadoEn: 'desc' }, { id: 'desc' }],
       select: { tipo: true, fechaEntregaEstimada: true },
     });
     if (!ultimo) {
       // Sin historial el caso vuelve a "En laboratorio" y conserva su fecha de entrega
-      await this.prisma.caso.update({ where: { id: casoId }, data: { estado: 'En laboratorio' } });
+      await tx.caso.update({ where: { id: casoId }, data: { estado: 'En laboratorio' } });
       return;
     }
     const tipo = ultimo.tipo.toLocaleLowerCase('es');
     const estado = tipo === 'ingreso inicial'
       ? 'En laboratorio'
       : ESTADO_POR_MOVIMIENTO[tipo as keyof typeof ESTADO_POR_MOVIMIENTO];
-    await this.prisma.caso.update({
+    await tx.caso.update({
       where: { id: casoId },
       data: { ...(estado ? { estado } : {}), fechaEntregaEstimada: ultimo.fechaEntregaEstimada ?? null },
     });
   }
 
-  /** Fecha de entrega del seguimiento más reciente que tenga una; si ninguno, la del caso */
-  private async ultimaFechaEntrega(casoId: number) {
-    const conFecha = await this.prisma.seguimiento.findFirst({
-      where: { casoId, fechaEntregaEstimada: { not: null } },
-      orderBy: [{ creadoEn: 'desc' }, { id: 'desc' }],
-      select: { fechaEntregaEstimada: true },
+  /**
+   * Fecha de entrega vigente: la del seguimiento más reciente que tenga una; si ninguno, la del caso.
+   * Falla si el caso no existe (sirve también como comprobación de existencia).
+   */
+  private async fechaEntregaVigente(casoId: number) {
+    const caso = await this.prisma.caso.findUnique({
+      where: { id: casoId },
+      select: {
+        fechaEntregaEstimada: true,
+        seguimientos: {
+          where: { fechaEntregaEstimada: { not: null } },
+          orderBy: [{ creadoEn: 'desc' }, { id: 'desc' }],
+          take: 1,
+          select: { fechaEntregaEstimada: true },
+        },
+      },
     });
-    if (conFecha?.fechaEntregaEstimada) return conFecha.fechaEntregaEstimada;
-    const caso = await this.prisma.caso.findUnique({ where: { id: casoId }, select: { fechaEntregaEstimada: true } });
-    return caso?.fechaEntregaEstimada ?? undefined;
+    if (!caso) throw new NotFoundException(`El caso #${casoId} no existe`);
+    return caso.seguimientos[0]?.fechaEntregaEstimada ?? caso.fechaEntregaEstimada ?? undefined;
   }
 
   private async buildClienteRelation(

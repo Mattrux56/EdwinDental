@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs';
+import { existsSync } from 'fs';
 import { join } from 'path';
 import { TipoProductoValor } from '../productos/tipo-producto';
 import { totalEnLetras } from './numero-letras';
@@ -13,7 +14,12 @@ import { totalEnLetras } from './numero-letras';
  * Una prótesis con reparto ocupa un renglón por lado (superior / inferior). Se usan primero las filas 16-23 y, si hacen
  * falta más, se insertan filas de datos y el total y la firma bajan. Las filas conservan la altura de la plantilla.
  */
-const PLANTILLA = join(__dirname, '..', '..', 'templates', 'remision.xlsx');
+// En la app de escritorio el servidor va empaquetado en backend/dist/main.js (plantilla en ../templates);
+// al compilar con tsc queda en backend/dist/remisiones/ (plantilla en ../../templates)
+const PLANTILLA = [
+  join(__dirname, '..', 'templates', 'remision.xlsx'),
+  join(__dirname, '..', '..', 'templates', 'remision.xlsx'),
+].find((ruta) => existsSync(ruta)) ?? join(__dirname, '..', '..', 'templates', 'remision.xlsx');
 const HOJA = 'REMISION';
 const PRIMERA_LINEA = 16;
 export const MAX_LINEAS_REMISION = 8; // filas 16 a 23 de la plantilla; también el máximo de productos por remisión (el reparto sup/inf añade filas)

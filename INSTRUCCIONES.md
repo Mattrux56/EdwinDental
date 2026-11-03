@@ -9,7 +9,9 @@
 Necesita internet (la base de datos y las fotos estan en Supabase).
 
 - Cambiar las claves: menu **Archivo > Configurar conexion**.
-- Actualizar: es automatico. Si hay una version nueva, al abrir LabTrace aparece un aviso con **Actualizar ahora** (descarga, instala y vuelve a abrir) y **En otro momento** (vuelve a preguntar la proxima vez). Las claves se conservan (estan en `%APPDATA%\LabTrace\.env`).
+- Actualizar: es automatico. Si hay una version nueva, al abrir LabTrace aparece un aviso con **Actualizar ahora** (descarga, instala y vuelve a abrir) y **En otro momento** (vuelve a preguntar la proxima vez). Mientras se instala se ve una barra de progreso y LabTrace se abre solo al terminar: **no hay que volver a abrirlo**. Si alguien lo abre a mitad de la instalacion, aparece un aviso para esperar. Las claves se conservan (estan en `%APPDATA%\LabTrace\.env`).
+- Al abrir, primero aparece una ventanita «Abriendo LabTrace…»; es normal que tarde unos segundos. Un clic extra en el icono solo la trae al frente.
+- Para que instalar y abrir sea mas rapido (opcional, requiere administrador): en Seguridad de Windows > Proteccion antivirus > Administrar configuracion > Exclusiones, agregar la carpeta `%LOCALAPPDATA%\Programs\LabTrace`.
 - Desinstalar: Configuracion de Windows > Aplicaciones > LabTrace.
 - Si algo falla al abrir: menu **Archivo > Abrir carpeta de registros** (`labtrace.log`).
 

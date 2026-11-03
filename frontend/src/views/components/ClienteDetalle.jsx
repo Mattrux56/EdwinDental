@@ -27,15 +27,16 @@ export default function ClienteDetalle({ cliente, onBack, onOpenCase, showToast,
   // Casos activos y archivados + remisiones; se recarga cuando cambian los casos (p. ej. tras editar uno en el panel)
   const { data, loading, error, reload } = useResource(
     async () => {
+      // El servidor filtra por cliente: ya no se bajan todos los casos y remisiones del laboratorio
       const [activos, archivados, remisiones] = await Promise.all([
-        casesService.list('', false),
-        casesService.list('', true),
-        remisionesService.list(),
+        casesService.list({ clienteId: cliente.id }),
+        casesService.list({ clienteId: cliente.id, archivados: true }),
+        remisionesService.list({ clienteId: cliente.id }),
       ]);
-      const casos = [...activos, ...archivados].filter((caso) => caso.cliente?.id === cliente.id);
+      const casos = [...activos, ...archivados];
       const porCaso = new Map();
       remisiones
-        .filter((rem) => !rem.anulada && rem.caso?.cliente?.id === cliente.id)
+        .filter((rem) => !rem.anulada)
         .forEach((rem) => porCaso.set(rem.caso.id, [...(porCaso.get(rem.caso.id) ?? []), rem]));
       return { casos, porCaso };
     },
