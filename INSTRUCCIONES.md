@@ -9,11 +9,18 @@
 Necesita internet (la base de datos y las fotos estan en Supabase).
 
 - Cambiar las claves: menu **Archivo > Configurar conexion**.
-- Actualizar: es automatico. Si hay una version nueva, al abrir LabTrace aparece un aviso con **Actualizar ahora** (descarga, instala y vuelve a abrir) y **En otro momento** (vuelve a preguntar la proxima vez). Mientras se instala se ve una barra de progreso y LabTrace se abre solo al terminar: **no hay que volver a abrirlo**. Si alguien lo abre a mitad de la instalacion, aparece un aviso para esperar. Las claves se conservan (estan en `%APPDATA%\LabTrace\.env`).
+- Actualizar: es automatico y **ya no usa un instalador nuevo**. Si hay una version nueva, al abrir LabTrace aparece un aviso con **Actualizar ahora** (descarga un paquete pequeño de unos 2 MB, tarda segundos y LabTrace se reinicia solo) y **En otro momento** (vuelve a preguntar la proxima vez). No hay que volver a abrirlo. Como no se ejecuta ningun .exe nuevo, Windows SmartScreen no interviene. Si la nueva version no llega a abrir bien, LabTrace vuelve solo a la anterior. Solo cuando cambia algo de fondo (Electron o la base de datos de Prisma) hace falta el instalador completo, y entonces se ve la barra de progreso del instalador. Las claves se conservan (estan en `%APPDATA%\LabTrace\.env`).
 - Al abrir, primero aparece una ventanita «Abriendo LabTrace…»; es normal que tarde unos segundos. Un clic extra en el icono solo la trae al frente.
 - Para que instalar y abrir sea mas rapido (opcional, requiere administrador): en Seguridad de Windows > Proteccion antivirus > Administrar configuracion > Exclusiones, agregar la carpeta `%LOCALAPPDATA%\Programs\LabTrace`.
 - Desinstalar: Configuracion de Windows > Aplicaciones > LabTrace.
 - Si algo falla al abrir: menu **Archivo > Abrir carpeta de registros** (`labtrace.log`).
+
+## Primera instalacion de la 1.1.2 (una sola vez por PC)
+Las versiones anteriores (1.0.x y 1.1.x) solo sabian actualizarse con un instalador, y Windows SmartScreen lo bloquea porque no esta firmado. **Por unica vez** hay que instalar a mano `LabTrace-Setup-1.1.2.exe` (o mas nuevo) en cada PC, desde https://github.com/Mattrux56/EdwinDental/releases. A partir de ahi las actualizaciones normales llegan solas, sin instalador. Si SmartScreen lo bloquea:
+1. Clic derecho al `.exe` > **Propiedades** > marcar **Desbloquear** > Aceptar, y abrirlo de nuevo.
+2. En el aviso azul: **Mas informacion** > **Ejecutar de todas formas**.
+3. Si no aparece ese boton, es **Smart App Control** de Windows 11, que bloquea programas sin firma sin dejar ejecutarlos: Seguridad de Windows > Control de aplicaciones y del navegador > Smart App Control > **Desactivado**.
+4. Sin ninguna alerta: pasar el instalador por USB o red local.
 
 ## Si Windows bloquea la descarga o la instalacion
 El instalador no esta firmado (la firma cuesta dinero), asi que Edge/Windows lo marcan como «peligroso». No es un virus; solo pasa con la primera descarga desde el navegador (las actualizaciones que baja la propia app no lo muestran).

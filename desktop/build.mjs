@@ -2,11 +2,13 @@
 //   node desktop/build.mjs         -> genera el instalador en desktop/release/
 //   node desktop/build.mjs --dev   -> compila y abre la app contra este repositorio
 import { spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { build as empaquetar } from 'esbuild';
+import { zipSync } from 'fflate';
 
 const DESKTOP = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(DESKTOP, '..');
@@ -55,6 +57,10 @@ await empaquetar({
   platform: 'node',
   target: 'node22',
   logLevel: 'warning',
+  // El servidor puede correr desde una carpeta de versiones descargadas, sin node_modules: busca Prisma en la del instalador
+  banner: {
+    js: "if (process.env.LABTRACE_NODE_MODULES) { process.env.NODE_PATH = process.env.LABTRACE_NODE_MODULES; require('node:module')._initPaths(); }",
+  },
   external: [
     '@prisma/client',
     '.prisma/client',
@@ -69,7 +75,8 @@ await empaquetar({
 cpSync(join(ROOT, 'backend', 'templates'), join(STAGE, 'backend', 'templates'), { recursive: true });
 cpSync(join(ROOT, 'backend', 'prisma', 'schema.prisma'), join(STAGE, 'backend', 'prisma', 'schema.prisma'));
 cpSync(join(ROOT, 'frontend', 'dist'), join(STAGE, 'frontend', 'dist'), { recursive: true });
-for (const file of ['main.cjs', 'updater.cjs', 'preload.cjs', 'preload-app.cjs', 'preload-vista.cjs', 'setup.html', 'update.html', 'splash.html', 'LabTrace.ico']) {
+// main.cjs y cargador.cjs son el cargador (parte del instalador); el resto es el código que se actualiza por descarga
+for (const file of ['main.cjs', 'cargador.cjs', 'app.cjs', 'codigo.cjs', 'updater.cjs', 'preload.cjs', 'preload-app.cjs', 'preload-vista.cjs', 'setup.html', 'update.html', 'splash.html', 'LabTrace.ico']) {
   cpSync(join(DESKTOP, file), join(STAGE, 'electron', file));
 }
 
@@ -90,6 +97,16 @@ const dependencies = {
   '@prisma/client': versionInstalada('@prisma/client'),
   ...json(join(DESKTOP, 'package.json')).dependencies,
 };
+// Huella del «casco» (lo que solo puede cambiar con un instalador nuevo): Electron, cliente de Prisma con su esquema y
+// los paquetes de la app de escritorio. Los índices y comentarios del esquema no cuentan: no cambian el cliente generado.
+const esquema = readFileSync(join(ROOT, 'backend', 'prisma', 'schema.prisma'), 'utf8')
+  .split(/\r?\n/)
+  .filter((linea) => linea.trim() && !linea.trim().startsWith('//') && !linea.includes('@@index'))
+  .join('\n');
+const casco = createHash('sha256')
+  .update(JSON.stringify({ electron: json(join(DESKTOP, 'node_modules', 'electron', 'package.json')).version, dependencies, esquema }))
+  .digest('hex')
+  .slice(0, 16);
 writeFileSync(
   join(STAGE, 'package.json'),
   `${JSON.stringify({
@@ -100,6 +117,7 @@ writeFileSync(
     description: 'LabTrace: seguimiento y trazabilidad de casos de laboratorio',
     author: 'LabTrace',
     main: 'electron/main.cjs',
+    labtraceCasco: casco,
     dependencies,
   }, null, 2)}\n`,
 );
@@ -119,6 +137,7 @@ await build({
     // De aquí lee la app instalada dónde buscar versiones nuevas (Releases del repositorio)
     publish: { provider: 'github', owner: 'Mattrux56', repo: 'EdwinDental', releaseType: 'release' },
     appId: 'com.labtrace.app',
+    copyright: 'LabTrace · seguimiento y trazabilidad de casos de laboratorio',
     productName: 'LabTrace',
     electronVersion: json(join(DESKTOP, 'node_modules', 'electron', 'package.json')).version,
     directories: { app: STAGE, output: OUT },
@@ -150,4 +169,35 @@ if (!instalador) {
 rmSync(RELEASE, { recursive: true, force: true });
 mkdirSync(RELEASE, { recursive: true });
 for (const file of [instalador, `${instalador}.blockmap`, 'latest.yml']) cpSync(join(OUT, file), join(RELEASE, file));
+// Paquete de código para actualizar sin instalador: las versiones instaladas lo descargan, comprueban su huella y lo usan
+// (ver desktop/codigo.cjs). Lleva todo menos main.cjs y lo que vive en el casco (node_modules, motor de Prisma).
+const entradas = {};
+const agregar = (carpeta) => {
+  for (const nombre of readdirSync(carpeta)) {
+    const ruta = join(carpeta, nombre);
+    if (statSync(ruta).isDirectory()) agregar(ruta);
+    else {
+      const destino = relative(STAGE, ruta).split(sep).join('/');
+      if (destino === 'electron/main.cjs') continue; // el cargador es del instalador (cargador.cjs sí viaja: codigo.cjs lo usa)
+      entradas[destino] = new Uint8Array(readFileSync(ruta));
+    }
+  }
+};
+for (const carpeta of ['electron', 'backend/dist', 'backend/templates', 'frontend/dist']) agregar(join(STAGE, ...carpeta.split('/')));
+const zip = Buffer.from(zipSync(entradas, { level: 9 }));
+const archivoCodigo = `LabTrace-Codigo-${version}.zip`;
+writeFileSync(join(RELEASE, archivoCodigo), zip);
+writeFileSync(
+  join(RELEASE, 'code-latest.json'),
+  `${JSON.stringify({
+    version,
+    archivo: archivoCodigo,
+    sha512: createHash('sha512').update(zip).digest('base64'),
+    tamano: zip.length,
+    casco,
+  }, null, 2)}
+`,
+);
+console.log(`▶ Paquete de código: ${archivoCodigo} (${(zip.length / 1e6).toFixed(1)} MB, ${Object.keys(entradas).length} archivos) · casco ${casco}`);
+
 console.log(`\n✔ Instalador listo: ${join(RELEASE, instalador)}\n  Versión sin instalar para pruebas: ${join(OUT, 'win-unpacked', 'LabTrace.exe')}\n`);

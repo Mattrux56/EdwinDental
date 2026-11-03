@@ -3,6 +3,8 @@
 const { app, BrowserWindow, dialog } = require('electron');
 const { appendFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } = require('node:fs');
 const { dirname, join } = require('node:path');
+const codigo = require('./codigo.cjs');
+const { requerirDelCasco } = require('./cargador.cjs');
 
 let revisado = false; // una sola vez por sesión
 let descargando = false; // evita pedir la descarga dos veces
@@ -72,13 +74,10 @@ function abrirProgreso(parent, version) {
 }
 
 /** `getWin` devuelve la ventana principal vigente (puede haberse cerrado mientras se consultaba) */
-function buscarActualizacion(getWin, { antesDeInstalar } = {}) {
-  if (revisado || !app.isPackaged) return;
-  revisado = true;
-
+function buscarInstalador(getWin, { antesDeInstalar } = {}) {
   let autoUpdater;
   try {
-    ({ autoUpdater } = require('electron-updater'));
+    ({ autoUpdater } = requerirDelCasco('electron-updater'));
   } catch (error) {
     return registrar(`No se pudo cargar el actualizador: ${error.message}`);
   }
@@ -158,6 +157,85 @@ function buscarActualizacion(getWin, { antesDeInstalar } = {}) {
   });
 
   autoUpdater.checkForUpdates().catch((error) => registrar(`Consulta fallida: ${error?.message ?? error}`));
+}
+
+/** Huella del «casco» (Electron + Prisma) con el que se armó este instalador; la deja build.mjs en su package.json */
+function cascoInstalado() {
+  try {
+    return JSON.parse(readFileSync(join(app.getAppPath(), 'package.json'), 'utf8')).labtraceCasco ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Actualización de solo código: sin instalador, así que no interviene SmartScreen. Termina reiniciando la app */
+async function actualizarCodigo(manifiesto, getWin, { antesDeInstalar, versionCodigo, dirCodigo }) {
+  const ventana = () => {
+    const win = getWin();
+    return win && !win.isDestroyed() && win.isVisible() ? win : undefined;
+  };
+  registrar(`Versión de código disponible: ${manifiesto.version} (en uso: ${versionCodigo})`);
+  const opciones = {
+    type: 'info',
+    title: 'LabTrace',
+    message: `Hay una actualización de LabTrace (${manifiesto.version})`,
+    detail: `Tienes la versión ${versionCodigo}. Se descarga en unos segundos y LabTrace se reinicia solo; no lo abras otra vez mientras tanto.`,
+    buttons: ['Actualizar ahora', 'En otro momento'],
+    defaultId: 0,
+    cancelId: 1,
+    noLink: true,
+  };
+  const parent = ventana();
+  const { response } = parent ? await dialog.showMessageBox(parent, opciones) : await dialog.showMessageBox(opciones);
+  if (response !== 0) return registrar('Pospuesta por el usuario');
+  if (descargando) return;
+  descargando = true;
+
+  const progreso = abrirProgreso(ventana(), manifiesto.version);
+  const avanzar = (avance) => {
+    ventana()?.setProgressBar(avance / 100);
+    if (!progreso.isDestroyed()) progreso.webContents.executeJavaScript(`window.avance && window.avance(${avance})`).catch(() => {});
+  };
+  try {
+    await codigo.instalar(manifiesto, { dirCodigo, versionCodigo, alProgreso: avanzar });
+  } catch (error) {
+    registrar(`No se pudo instalar el código ${manifiesto.version}: ${error?.message ?? error}`);
+    descargando = false;
+    if (!progreso.isDestroyed()) progreso.destroy();
+    ventana()?.setProgressBar(-1);
+    dialog.showMessageBox(ventana(), {
+      type: 'warning',
+      title: 'LabTrace',
+      message: 'No se pudo descargar la actualización',
+      detail: 'Revisa la conexión a internet. Se volverá a ofrecer la próxima vez que abras LabTrace.',
+      buttons: ['Aceptar'],
+    });
+    return;
+  }
+  registrar(`Código ${manifiesto.version} listo; reiniciando`);
+  try {
+    await antesDeInstalar?.(); // el servidor debe cerrarse antes de reiniciar
+  } catch (error) {
+    registrar(`No se pudo detener el servidor: ${error?.message ?? error}`);
+  }
+  app.relaunch();
+  app.exit(0);
+}
+
+/**
+ * Al abrir la app: mira qué publicó GitHub. Si solo cambió el código, lo descarga y reinicia (sin instalador);
+ * únicamente si cambió el casco ofrece el instalador completo (el caso en que SmartScreen puede avisar).
+ * `getWin` devuelve la ventana principal vigente (puede haberse cerrado mientras se consultaba).
+ */
+async function buscarActualizacion(getWin, opciones = {}) {
+  if (revisado || !app.isPackaged) return;
+  revisado = true;
+  const versionCodigo = opciones.versionCodigo ?? app.getVersion();
+  const manifiesto = await codigo.leerManifiesto();
+  const decision = codigo.evaluar(manifiesto, { versionCodigo, cascoInstalado: cascoInstalado(), dirCodigo: opciones.dirCodigo });
+  if (decision === 'codigo') return actualizarCodigo(manifiesto, getWin, { ...opciones, versionCodigo });
+  if (decision === 'instalador') return buscarInstalador(getWin, opciones);
+  return undefined;
 }
 
 module.exports = { actualizacionEnCurso, buscarActualizacion, limpiarMarcaActualizacion };
