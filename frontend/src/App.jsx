@@ -4,7 +4,7 @@ import { useRemisionesController } from './controllers/useRemisionesController.j
 
 export default function App() {
   const controller = useCasesController();
-  const remisiones = useRemisionesController({ showToast: controller.showToast });
+  const remisiones = useRemisionesController({ showToast: controller.showToast, onCasosCambiaron: controller.refresh });
   return (
     <DashboardView controller={controller} remisionesController={remisiones} />
   );

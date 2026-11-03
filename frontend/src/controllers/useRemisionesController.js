@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { guardarRemisionExcel, remisionesService } from '../services/remisiones.service.js';
 import { formatRemisionNumber } from '../utils/format.js';
 
-export function useRemisionesController({ showToast }) {
+export function useRemisionesController({ showToast, onCasosCambiaron }) {
   const [remisiones, setRemisiones] = useState([]);
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -46,7 +46,7 @@ export function useRemisionesController({ showToast }) {
         const created = await remisionesService.create(payload);
         showToast('success', `Remisión N° ${formatRemisionNumber(created)} creada`);
         guardarCopia(created);
-        await load();
+        await Promise.all([load(), onCasosCambiaron?.()]); // al remisionar el caso queda finalizado: se actualiza su lista
         return created;
       } catch (e) {
         showToast('error', e.message);
@@ -55,7 +55,7 @@ export function useRemisionesController({ showToast }) {
         setSaving(false);
       }
     },
-    [guardarCopia, load, showToast],
+    [guardarCopia, load, onCasosCambiaron, showToast],
   );
 
   /** Corrige la remisión y pide dónde guardar el Excel actualizado */

@@ -74,7 +74,15 @@ export class RemisionesService {
   async create(dto: CreateRemisionDto) {
     const caso = await this.prisma.caso.findUnique({
       where: { id: dto.casoId },
-      select: { id: true, codigo: true, pacienteNombre: true, doctorNombre: true, cliente: { select: { nombre: true } } },
+      select: {
+        id: true,
+        codigo: true,
+        estado: true,
+        fechaEntregaEstimada: true,
+        pacienteNombre: true,
+        doctorNombre: true,
+        cliente: { select: { nombre: true } },
+      },
     });
     if (!caso) throw new NotFoundException(`El caso #${dto.casoId} no existe`);
 
@@ -110,7 +118,9 @@ export class RemisionesService {
     if (existing) throw this.numeroDuplicado(numero, tipo);
 
     try {
-      const creada = await this.prisma.remision.create({
+      const yaFinalizado = caso.estado.toLocaleLowerCase('es') === 'finalizado';
+      const [creada] = await this.prisma.$transaction([
+        this.prisma.remision.create({
         data: {
           numero,
           tipo,
@@ -134,7 +144,22 @@ export class RemisionesService {
           },
         },
         include: REMISION_INCLUDE,
-      });
+        }),
+        // Facturar es entregar: si el caso aún no está finalizado se registra el movimiento de entrega, para que no dependa de que alguien lo recuerde
+        ...(yaFinalizado
+          ? []
+          : [
+              this.prisma.seguimiento.create({
+                data: {
+                  casoId: caso.id,
+                  tipo: 'entrega',
+                  descripcion: `Finalizado automáticamente al emitir la remisión N° ${tipo === TipoRemision.ELECTRONICA ? 'FE-' : ''}${numero}.`,
+                  ...(caso.fechaEntregaEstimada ? { fechaEntregaEstimada: caso.fechaEntregaEstimada } : {}),
+                },
+              }),
+              this.prisma.caso.update({ where: { id: caso.id }, data: { estado: 'Finalizado' } }),
+            ]),
+      ]);
       return this.withTotal(creada);
     } catch (error) {
       if (
