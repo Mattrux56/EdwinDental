@@ -6,10 +6,15 @@ export function validarPeriodo(anio: number, mes: number) {
   if (!Number.isInteger(mes) || mes < 1 || mes > 12) throw new BadRequestException('El mes no es válido');
 }
 
-const rango = (anio: number, mes: number) => ({
-  gte: new Date(Date.UTC(anio, mes - 1, 1)),
-  lt: new Date(Date.UTC(anio, mes, 1)),
-});
+/** Filtro de fecha del mes; sin periodo (todas las cuentas) no se filtra */
+const filtroFecha = (anio?: number, mes?: number) =>
+  anio === undefined || mes === undefined
+    ? {}
+    : { fecha: { gte: new Date(Date.UTC(anio, mes - 1, 1)), lt: new Date(Date.UTC(anio, mes, 1)) } };
+
+const validarSiHay = (anio?: number, mes?: number) => {
+  if (anio !== undefined && mes !== undefined) validarPeriodo(anio, mes);
+};
 
 /**
  * Cuenta de cobro = remisiones (no anuladas) de un cliente en un mes.
@@ -20,10 +25,10 @@ const rango = (anio: number, mes: number) => ({
 export class CuentasCobroService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listar(anio: number, mes: number) {
-    validarPeriodo(anio, mes);
+  async listar(anio?: number, mes?: number) {
+    validarSiHay(anio, mes);
     const remisiones = await this.prisma.remision.findMany({
-      where: { anulada: false, fecha: rango(anio, mes) },
+      where: { anulada: false, ...filtroFecha(anio, mes) },
       include: {
         items: true,
         caso: {
@@ -64,12 +69,12 @@ export class CuentasCobroService {
    * Guarda el estado de pago de las remisiones vigentes de un cliente en el mes:
    * las que vienen en `pagadas` quedan pagadas y todas las demás pendientes.
    */
-  async guardarPagos(clienteId: number, anio: number, mes: number, pagadas: number[]) {
-    validarPeriodo(anio, mes);
+  async guardarPagos(clienteId: number, anio: number | undefined, mes: number | undefined, pagadas: number[]) {
+    validarSiHay(anio, mes);
     const cliente = await this.prisma.cliente.findUnique({ where: { id: clienteId }, select: { id: true } });
     if (!cliente) throw new NotFoundException(`El cliente #${clienteId} no existe`);
     const vigentes = await this.prisma.remision.findMany({
-      where: { anulada: false, fecha: rango(anio, mes), caso: { clienteId } },
+      where: { anulada: false, ...filtroFecha(anio, mes), caso: { clienteId } },
       select: { id: true, pagada: true },
     });
     if (vigentes.length === 0) throw new BadRequestException('Ese cliente no tiene remisiones vigentes en el periodo');

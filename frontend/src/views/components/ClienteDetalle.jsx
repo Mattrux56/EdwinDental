@@ -7,12 +7,13 @@ import { remisionesService } from '../../services/remisiones.service.js';
 import { deliverySla, formatEstimatedDate, formatMoney, formatRemisionNumber } from '../../utils/format.js';
 import { matchesSearch } from '../../utils/search.js';
 import { coverImage } from './CasesTable.jsx';
-import { ChipGroup, FilterBar, SearchField } from './filters.jsx';
+import { FilterBar, MESES, MonthFilter, SearchField, SelectFilter } from './filters.jsx';
 import { Icon } from './Icon.jsx';
 import RemisionDetailModal from './RemisionDetailModal.jsx';
 import StatusBadge from './StatusBadge.jsx';
-import { contar, EmptyState, ErrorBanner, LoadingState, Panel } from './ui.jsx';
+import { Badge, contar, EmptyState, ErrorBanner, LoadingState, Panel } from './ui.jsx';
 
+const VISTAS = ['Casos', 'Estado de cuenta'];
 const FILTROS = ['Todos', ...ESTADOS, 'Archivados'];
 
 const iniciales = (nombre = '') =>
@@ -23,6 +24,8 @@ export default function ClienteDetalle({ cliente, onBack, onOpenCase, showToast,
   const [query, setQuery] = useState('');
   const [filtro, setFiltro] = useState('Todos');
   const [remisionAbierta, setRemisionAbierta] = useState(null);
+  const [vista, setVista] = useState('Casos');
+  const [periodo, setPeriodo] = useState(null); // null = todos los meses
 
   // Casos activos y archivados + remisiones; se recarga cuando cambian los casos (p. ej. tras editar uno en el panel)
   const { data, loading, error, reload } = useResource(
@@ -35,21 +38,14 @@ export default function ClienteDetalle({ cliente, onBack, onOpenCase, showToast,
       ]);
       const casos = [...activos, ...archivados];
       const porCaso = new Map();
-      remisiones
-        .filter((rem) => !rem.anulada)
-        .forEach((rem) => porCaso.set(rem.caso.id, [...(porCaso.get(rem.caso.id) ?? []), rem]));
-      return { casos, porCaso };
+      const vigentes = remisiones.filter((rem) => !rem.anulada);
+      vigentes.forEach((rem) => porCaso.set(rem.caso.id, [...(porCaso.get(rem.caso.id) ?? []), rem]));
+      return { casos, porCaso, vigentes };
     },
     [cliente.id, version],
-    { casos: [], porCaso: new Map() },
+    { casos: [], porCaso: new Map(), vigentes: [] },
   );
-  const { casos, porCaso } = data;
-
-  const totalRemisiones = useMemo(() => [...porCaso.values()].reduce((n, lista) => n + lista.length, 0), [porCaso]);
-  const totalRemitido = useMemo(
-    () => [...porCaso.values()].flat().reduce((suma, rem) => suma + Number(rem.total ?? 0), 0),
-    [porCaso],
-  );
+  const { casos, porCaso, vigentes } = data;
 
   const filtrados = useMemo(
     () =>
@@ -59,6 +55,25 @@ export default function ClienteDetalle({ cliente, onBack, onOpenCase, showToast,
       ),
     [casos, filtro, query],
   );
+
+  const verCuenta = vista === 'Estado de cuenta';
+  // Remisiones del mes elegido (o todas): de aquí salen los totales de la cabecera y la lista
+  const delPeriodo = useMemo(() => {
+    const prefijo = periodo ? `${periodo.anio}-${String(periodo.mes).padStart(2, '0')}` : '';
+    return vigentes.filter((rem) => String(rem.fecha).slice(0, 10).startsWith(prefijo));
+  }, [vigentes, periodo]);
+  const totalRemitido = useMemo(() => delPeriodo.reduce((suma, rem) => suma + Number(rem.total ?? 0), 0), [delPeriodo]);
+  const totalPendiente = useMemo(
+    () => delPeriodo.filter((rem) => !rem.pagada).reduce((suma, rem) => suma + Number(rem.total ?? 0), 0),
+    [delPeriodo],
+  );
+  const sufijoPeriodo = periodo ? ` · ${MESES[periodo.mes - 1].toLowerCase()} ${periodo.anio}` : '';
+  const remisionesFiltradas = useMemo(() => {
+    return delPeriodo
+      .filter((rem) =>
+        matchesSearch(query, [formatRemisionNumber(rem), rem.noOrden, rem.caso?.codigo, rem.pacienteNombre ?? rem.caso?.pacienteNombre, rem.doctorNombre ?? rem.caso?.doctorNombre]))
+      .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)) || b.numero - a.numero);
+  }, [delPeriodo, query]);
 
   return (
     <>
@@ -71,7 +86,7 @@ export default function ClienteDetalle({ cliente, onBack, onOpenCase, showToast,
             {cliente.nombre}
           </span>
         )}
-        meta={contar(filtrados.length, 'caso', 'casos', loading)}
+        meta={verCuenta ? contar(remisionesFiltradas.length, 'remisión', 'remisiones', loading) : contar(filtrados.length, 'caso', 'casos', loading)}
       >
         <div className={styles.caseBody}>
           <div className={styles.clienteHeader}>
@@ -82,30 +97,66 @@ export default function ClienteDetalle({ cliente, onBack, onOpenCase, showToast,
                 <span className={styles.clienteStatLabel}>Casos</span>
               </div>
               <div className={styles.clienteStat}>
-                <span className={styles.clienteStatValue}>{loading ? '…' : totalRemisiones}</span>
-                <span className={styles.clienteStatLabel}>Remisiones</span>
+                <span className={styles.clienteStatValue}>{loading ? '…' : delPeriodo.length}</span>
+                <span className={styles.clienteStatLabel}>Remisiones{sufijoPeriodo}</span>
               </div>
               <div className={styles.clienteStat}>
                 <span className={styles.clienteStatValue}>{loading ? '…' : formatMoney(totalRemitido)}</span>
-                <span className={styles.clienteStatLabel}>Total remitido</span>
+                <span className={styles.clienteStatLabel}>Total remitido{sufijoPeriodo}</span>
+              </div>
+              <div className={styles.clienteStat}>
+                <span className={styles.clienteStatValue}>{loading ? '…' : formatMoney(totalPendiente)}</span>
+                <span className={styles.clienteStatLabel}>Pendiente a cobrar{sufijoPeriodo}</span>
               </div>
             </div>
           </div>
 
           <FilterBar>
-            <SearchField value={query} onChange={setQuery} placeholder="Buscar código, paciente o doctor" label="Buscar casos del cliente" />
+            <SearchField value={query} onChange={setQuery} placeholder={verCuenta ? 'Buscar en el estado de cuenta: número, orden, paciente…' : 'Buscar código, paciente o doctor'} label={verCuenta ? 'Buscar en el estado de cuenta del cliente' : 'Buscar casos del cliente'} />
           </FilterBar>
-          <ChipGroup options={FILTROS} value={filtro} onChange={setFiltro} label="Filtrar casos por estado" />
+          <div className={styles.filtersRow}>
+            <SelectFilter value={vista} onChange={setVista} options={VISTAS} label="Ver casos o remisiones" />
+            <MonthFilter periodo={periodo} onChange={setPeriodo} />
+            {!verCuenta && <SelectFilter value={filtro} onChange={setFiltro} options={FILTROS.map((f) => ({ value: f, label: f === 'Todos' ? 'Todos los estados' : f }))} label="Filtrar casos por estado" />}
+          </div>
 
-          {error && <ErrorBanner onRetry={reload}>{error}</ErrorBanner>}
-          {loading && casos.length === 0 && !error && <LoadingState>Cargando casos…</LoadingState>}
-          {!loading && !error && filtrados.length === 0 && (
+          {verCuenta && (
+            <>
+              {error && <ErrorBanner onRetry={reload}>{error}</ErrorBanner>}
+              {loading && vigentes.length === 0 && !error && <LoadingState>Cargando estado de cuenta…</LoadingState>}
+              {!loading && !error && remisionesFiltradas.length === 0 && (
+                <EmptyState title={vigentes.length ? 'No hay remisiones para estos filtros' : 'Este cliente aún no tiene remisiones'}>
+                  {vigentes.length ? 'Cambia la búsqueda o el mes.' : 'Se crean desde la sección Remisiones.'}
+                </EmptyState>
+              )}
+              {remisionesFiltradas.length > 0 && (
+                <ul className={styles.clienteRemisiones}>
+                  {remisionesFiltradas.map((rem) => (
+                    <li key={rem.id}>
+                      <button type="button" className={styles.remisionRow} onClick={() => setRemisionAbierta(rem)} aria-label={`Ver remisión N° ${formatRemisionNumber(rem)}`}>
+                        <span className={styles.remisionRowNumero}>N° {formatRemisionNumber(rem)}</span>
+                        <span className={styles.remisionRowFecha}>{formatEstimatedDate(rem.fecha)}</span>
+                        <span className={styles.remisionRowFecha}>Orden {rem.caso?.codigo}</span>
+                        <Badge tone={rem.pagada ? 'done' : 'lab'}>{rem.pagada ? 'Pagada' : 'Pendiente'}</Badge>
+                        <span className={styles.remisionRowTotal}>{formatMoney(rem.total)}</span>
+                        <span className={styles.remisionRowChevron}><Icon name="chevronRight" size={16} /></span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
+          )}
+
+          {!verCuenta && error && <ErrorBanner onRetry={reload}>{error}</ErrorBanner>}
+          {!verCuenta && loading && casos.length === 0 && !error && <LoadingState>Cargando casos…</LoadingState>}
+          {!verCuenta && !loading && !error && filtrados.length === 0 && (
             <EmptyState title={casos.length ? 'No hay casos para estos filtros' : 'Este cliente aún no tiene casos'}>
               {casos.length ? 'Cambia la búsqueda o el estado.' : 'Se le asignan al registrar un caso.'}
             </EmptyState>
           )}
 
-          {filtrados.length > 0 && (
+          {!verCuenta && filtrados.length > 0 && (
             <div className={styles.caseGrid}>
               {filtrados.map((caso) => {
                 const image = coverImage(caso);

@@ -365,6 +365,96 @@
   width: 92px;
 }
 
+.filtersRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.filtersRow > .tableFilters {
+  padding: 0;
+  border-bottom: 0;
+}
+
+.monthFilter {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.monthBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.monthBtn:hover,
+.monthBtnActive {
+  border-color: var(--reagent);
+  background: var(--reagent-soft);
+  color: var(--reagent-dark);
+}
+
+.monthBtn:focus-visible {
+  outline: 2px solid var(--reagent);
+  outline-offset: 2px;
+}
+
+.monthClear {
+  border: 0;
+  background: transparent;
+  color: var(--ink-faint);
+  font-size: 13px;
+  padding: 4px;
+}
+
+.monthClear:hover {
+  color: var(--ink);
+}
+
+.monthPanel {
+  position: fixed;
+  z-index: 60;
+  display: grid;
+  gap: 10px;
+  min-width: 250px;
+  padding: 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+}
+
+.monthYear {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.monthYear input {
+  width: 90px;
+  text-align: center;
+}
+
+.monthGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
 .caseSearch {
   position: relative;
   display: flex;
@@ -639,13 +729,15 @@
 }
 
 .panelFill > .tableWrap,
-.panelFill .caseGrid {
+.panelFill .caseGrid,
+.panelFill .clienteRemisiones {
   flex: 1 1 0;
   min-height: 0;
   overflow: auto;
 }
 
-.panelFill .caseGrid {
+.panelFill .caseGrid,
+.panelFill .clienteRemisiones {
   align-content: start;
   /* sin esto las tarjetas se encogen para caber en la altura disponible en vez de desplazarse */
   grid-auto-rows: max-content;
@@ -1597,7 +1689,8 @@
     min-height: 0;
     overflow: auto;
   }
-  .panelFill > .caseBody .caseGrid {
+  .panelFill > .caseBody .caseGrid,
+  .panelFill > .caseBody .clienteRemisiones {
     overflow: visible;
   }
   .productActions {
@@ -1723,6 +1816,7 @@
 /* Fila de remisión: toda la fila es un botón, así un clic en cualquier parte la abre */
 .remisionRow {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 12px;
   width: 100%;
@@ -2888,4 +2982,16 @@ input[type='checkbox'] {
 .editLineBtnError:hover {
   background: var(--danger-soft);
   color: var(--danger);
+}
+
+.clienteRemisiones {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 20px 20px;
+  list-style: none;
+}
+
+.filtersRow > select {
+  width: auto;
 }

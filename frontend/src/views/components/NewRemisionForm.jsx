@@ -186,6 +186,7 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
       infOn: (i.cantidadInferior ?? 0) > 0,
     })) ?? [],
   ); // [{ productoId, cantidad, sup, inf, supOn, infOn }] en el orden en que se eligieron (sup/inf solo cuentan en las prótesis)
+  const [productosCambiados, setProductosCambiados] = useState(false); // al corregir, si no se tocan los productos no se validan ni se reenvían
   const [repartoAbierto, setRepartoAbierto] = useState(null); // línea del resumen cuyo reparto sup/inf se está editando
   const [query, setQuery] = useState('');
   const [categoria, setCategoria] = useState('');
@@ -257,6 +258,7 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
 
   const setCantidad = (productoId, valor) => {
     const cantidad = Math.max(0, Math.min(MAX_CANTIDAD, valor));
+    setProductosCambiados(true);
     setLineas((prev) => {
       const existe = prev.some((l) => l.productoId === productoId);
       if (cantidad === 0) return prev.filter((l) => l.productoId !== productoId);
@@ -265,8 +267,10 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
     });
   };
 
-  const cambiarLinea = (productoId, cambio) =>
+  const cambiarLinea = (productoId, cambio) => {
+    setProductosCambiados(true);
     setLineas((prev) => prev.map((l) => (l.productoId === productoId ? cambio(l) : l)));
+  };
 
   /** Marca o desmarca superior (lado 'sup') o inferior (lado 'inf') de una prótesis */
   const marcarLado = (productoId, lado, activo) =>
@@ -317,8 +321,12 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
   const numeroValido = Number.isInteger(Number(numero)) && Number(numero) >= 1 && Number(numero) <= 2147483647;
   // El reparto es opcional, pero si en una prótesis se marcó una casilla, superiores + inferiores deben dar la cantidad
   const repartoInvalido = (l) => l.protesis && (l.supOn || l.infOn) && l.sup + l.inf !== l.cantidad;
-  const repartoIncompleto = detalle.some(repartoInvalido);
-  const puedeGuardar = Boolean(caso) && lineas.length > 0 && Boolean(fecha) && numeroValido && !repartoIncompleto && !saving;
+  // Corrigiendo solo datos (fecha, número, nombres…) no se exige nada de los productos: se conservan tal cual
+  const soloDatos = editando && !productosCambiados;
+  const repartoIncompleto = !soloDatos && detalle.some(repartoInvalido);
+  const puedeGuardar = soloDatos
+    ? Boolean(caso) && Boolean(fecha) && numeroValido && !saving
+    : Boolean(caso) && lineas.length > 0 && Boolean(fecha) && numeroValido && !repartoIncompleto && !saving;
 
   const itemsPayload = detalle.map((l) => ({
     productoId: l.productoId,
@@ -338,7 +346,7 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
         noOrden: noOrden.trim() || undefined,
         doctorNombre,
         pacienteNombre,
-        items: itemsPayload,
+        ...(soloDatos ? {} : { items: itemsPayload }),
       });
       return;
     }

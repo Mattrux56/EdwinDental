@@ -14,14 +14,21 @@ class PagosDto {
 export class CuentasCobroController {
   constructor(private readonly cuentas: CuentasCobroService) {}
 
-  /** GET /cuentas-cobro?anio=2026&mes=10 */
+  /** GET /cuentas-cobro?anio=2026&mes=10 · GET /cuentas-cobro?todas=1 (todos los meses) */
   @Get()
-  listar(@Query('anio') anio: string, @Query('mes') mes: string) {
+  listar(@Query('anio') anio: string, @Query('mes') mes: string, @Query('todas') todas?: string) {
+    if (todas === '1') return this.cuentas.listar();
     const hoy = new Date();
     return this.cuentas.listar(
       anio ? Number(anio) : hoy.getFullYear(),
       mes ? Number(mes) : hoy.getMonth() + 1,
     );
+  }
+
+  /** PATCH /cuentas-cobro/:clienteId/pagos — igual, pero con las remisiones de todos los meses */
+  @Patch(':clienteId/pagos')
+  pagosTodas(@Param('clienteId', ParseIntPipe) clienteId: number, @Body() dto: PagosDto) {
+    return this.cuentas.guardarPagos(clienteId, undefined, undefined, dto.pagadas);
   }
 
   /** PATCH /cuentas-cobro/:clienteId/:anio/:mes/pagos — guarda cuáles remisiones del mes están pagadas */

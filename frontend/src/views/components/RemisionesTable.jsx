@@ -3,7 +3,7 @@ import styles from '../../styles/app.module.css';
 import { formatEstimatedDate, formatMoney, formatRemisionNumber } from '../../utils/format.js';
 import { matchesSearch } from '../../utils/search.js';
 import DataTable from './DataTable.jsx';
-import { FilterBar, PeriodFilter, SearchField } from './filters.jsx';
+import { FilterBar, MonthFilter, SearchField } from './filters.jsx';
 import PrintRemisionButton from './PrintRemisionButton.jsx';
 import { contar, Panel } from './ui.jsx';
 
@@ -11,9 +11,7 @@ const TIPOS = { NORMAL: 'Cuentas de cobro', ELECTRONICA: 'Electrónicas' };
 
 export default function RemisionesTable({ remisiones, loading, error, onRetry, onView, showToast, actions }) {
   const [query, setQuery] = useState('');
-  const hoy = new Date();
-  const [periodo, setPeriodo] = useState({ anio: hoy.getFullYear(), mes: hoy.getMonth() + 1 }); // mes 0 = todo el año
-  const { anio, mes } = periodo;
+  const [periodo, setPeriodo] = useState(null); // null = todas las remisiones
   // Las dos series no se mezclan: se ve una a la vez y se cambia con un clic en el encabezado «N°»
   const [tipo, setTipo] = useState('NORMAL');
   const [recientesPrimero, setRecientesPrimero] = useState(true);
@@ -24,7 +22,7 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
     const coincide = (rem) => {
       if ((rem.tipo === 'ELECTRONICA' ? 'ELECTRONICA' : 'NORMAL') !== tipo) return false;
       const fecha = String(rem.fecha).slice(0, 10);
-      if (!fecha.startsWith(`${anio}-${mes ? String(mes).padStart(2, '0') : ''}`)) return false;
+      if (periodo && !fecha.startsWith(`${periodo.anio}-${String(periodo.mes).padStart(2, '0')}`)) return false;
       return matchesSearch(query, [formatRemisionNumber(rem), rem.noOrden, rem.caso?.codigo, rem.caso?.cliente?.nombre, rem.caso?.pacienteNombre]);
     };
     const coincidentes = remisiones.filter(coincide);
@@ -32,7 +30,7 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
     const sentido = recientesPrimero ? -1 : 1;
     lista.sort((a, b) => sentido * (String(a.fecha).localeCompare(String(b.fecha)) || a.numero - b.numero));
     return { filtered: lista, totalAnuladas: coincidentes.filter((rem) => rem.anulada).length };
-  }, [remisiones, query, mes, anio, tipo, recientesPrimero, verAnuladas]);
+  }, [remisiones, query, periodo, tipo, recientesPrimero, verAnuladas]);
 
   const otroTipo = tipo === 'NORMAL' ? 'ELECTRONICA' : 'NORMAL';
   const contador = verAnuladas ? contar(filtered.length, 'anulada', 'anuladas', loading) : contar(filtered.length, 'remisión', 'remisiones', loading);
@@ -150,7 +148,7 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
     <Panel title={verAnuladas ? 'Remisiones anuladas' : 'Remisiones emitidas'} actions={actions} meta={contador}>
       <FilterBar>
         <SearchField value={query} onChange={setQuery} placeholder="Buscar por número, caso, cliente o paciente" label="Buscar remisiones" />
-        <PeriodFilter anio={anio} mes={mes} onChange={(a, m) => setPeriodo({ anio: a, mes: m })} todoElAnio flechas />
+        <MonthFilter periodo={periodo} onChange={setPeriodo} textoTodos="Todas las remisiones" />
       </FilterBar>
 
       <DataTable

@@ -11,6 +11,11 @@ import { Badge } from './ui.jsx';
 export default function CuentaCobroModal({ cuenta, periodo, saving, onClose, onConfirm, onOpenCase, showToast }) {
   const [remisionAbierta, setRemisionAbierta] = useState(null);
   const [cargandoId, setCargandoId] = useState(null);
+  const [recientesPrimero, setRecientesPrimero] = useState(false);
+  const filas = useMemo(() => {
+    const sentido = recientesPrimero ? -1 : 1;
+    return [...cuenta.remisiones].sort((a, b) => sentido * (String(a.fecha).localeCompare(String(b.fecha)) || a.numero - b.numero));
+  }, [cuenta.remisiones, recientesPrimero]);
   const original = useMemo(() => new Set(cuenta.remisiones.filter((x) => x.pagada).map((x) => x.id)), [cuenta]);
   const [pagadas, setPagadas] = useState(() => new Set(original));
 
@@ -72,7 +77,20 @@ export default function CuentaCobroModal({ cuenta, periodo, saving, onClose, onC
       render: (x) => <Badge tone={pagadas.has(x.id) ? 'done' : 'lab'}>{pagadas.has(x.id) ? 'Pagada' : 'Pendiente'}</Badge>,
     },
     { key: 'remision', header: 'Remisión', render: (x) => (cargandoId === x.id ? 'Abriendo…' : formatRemisionNumber(x)) },
-    { key: 'fecha', header: 'Fecha', render: (x) => formatEstimatedDate(x.fecha) },
+    {
+      key: 'fecha',
+      headerProps: { 'aria-sort': recientesPrimero ? 'descending' : 'ascending' },
+      header: (
+        <button
+          type="button"
+          className={styles.thBtn}
+          onClick={() => setRecientesPrimero((valor) => !valor)}
+          title={recientesPrimero ? 'Más recientes primero. Clic para ver primero las más antiguas' : 'Más antiguas primero. Clic para ver primero las más recientes'}
+        >
+          Fecha <span aria-hidden="true">{recientesPrimero ? '▼' : '▲'}</span>
+        </button>
+      ),
+      render: (x) => formatEstimatedDate(x.fecha) },
     { key: 'doctor', header: 'Doctor', render: (x) => x.doctor || '—' },
     { key: 'paciente', header: 'Paciente', render: (x) => x.paciente || '—' },
     { key: 'orden', header: 'Orden de trabajo', render: (x) => x.ordenTrabajo || x.noOrden || '—' },
@@ -90,7 +108,7 @@ export default function CuentaCobroModal({ cuenta, periodo, saving, onClose, onC
       <DataTable
         variant="mini"
         columns={columnas}
-        rows={cuenta.remisiones}
+        rows={filas}
         onRowClick={(x) => verRemision(x.id)}
         rowLabel={(x) => `Ver remisión ${formatRemisionNumber(x)}`}
       />

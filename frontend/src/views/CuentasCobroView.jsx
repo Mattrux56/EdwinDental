@@ -6,7 +6,8 @@ import { formatMoney } from '../utils/format.js';
 import { matchesSearch } from '../utils/search.js';
 import CuentaCobroModal from './components/CuentaCobroModal.jsx';
 import DataTable from './components/DataTable.jsx';
-import { FilterBar, MESES, PeriodFilter, SearchField, SelectFilter } from './components/filters.jsx';
+import { FilterBar, MESES, MonthFilter, SearchField, SelectFilter } from './components/filters.jsx';
+import { Icon } from './components/Icon.jsx';
 import { Badge, contar, Panel } from './components/ui.jsx';
 
 const ESTADOS_PAGO = ['Todos', 'Pendiente', 'Pago parcial', 'Pagada'];
@@ -16,25 +17,18 @@ const TONO_ESTADO = { Pagada: 'done', 'Pago parcial': 'progress', Pendiente: 'la
 
 /** Cuenta de estado = remisiones (no anuladas) de cada cliente en el mes. Al abrir un cliente se marca cuáles están pagadas. */
 export default function CuentasCobroView({ showToast, onOpenCase }) {
-  const hoy = new Date();
-  const [periodo, setPeriodo] = useState({ anio: hoy.getFullYear(), mes: hoy.getMonth() + 1 });
-  const { anio, mes } = periodo;
-  const { data: cuentas, loading, error, reload: load } = useResource(() => cuentasService.list(anio, mes), [anio, mes]);
+  const [periodo, setPeriodo] = useState(null); // null = todas las cuentas (todos los meses)
+  const nombrePeriodo = periodo ? `${MESES[periodo.mes - 1]} ${periodo.anio}` : 'Todas las cuentas';
+  const { data: cuentas, loading, error, reload: load } = useResource(() => cuentasService.list(periodo), [periodo?.anio, periodo?.mes]);
   const [guardando, setGuardando] = useState(false);
   const [abierta, setAbierta] = useState(null); // clienteId de la cuenta abierta en el modal
   const [busqueda, setBusqueda] = useState('');
   const [estadoPago, setEstadoPago] = useState('Todos');
 
-  const cambiarPeriodo = (nuevoAnio, nuevoMes) => {
-    setPeriodo({ anio: nuevoAnio, mes: nuevoMes });
+  const cambiarPeriodo = (nuevo) => {
+    setPeriodo(nuevo);
     setAbierta(null);
   };
-
-  const resumen = useMemo(() => {
-    const total = cuentas.reduce((a, c) => a + c.total, 0);
-    const pagado = cuentas.reduce((a, c) => a + c.totalPagado, 0);
-    return { total, pagado, pendiente: total - pagado };
-  }, [cuentas]);
 
   const visibles = useMemo(
     () => cuentas.filter((c) => (estadoPago === 'Todos' || estadoDe(c) === estadoPago) && matchesSearch(busqueda, [c.cliente])),
@@ -46,7 +40,7 @@ export default function CuentasCobroView({ showToast, onOpenCase }) {
   const confirmar = async (pagadas) => {
     setGuardando(true);
     try {
-      await cuentasService.guardarPagos(cuentaAbierta.clienteId, anio, mes, pagadas);
+      await cuentasService.guardarPagos(cuentaAbierta.clienteId, periodo, pagadas);
       showToast('success', `Pagos de ${cuentaAbierta.cliente} guardados`);
       setAbierta(null);
     } catch (reason) {
@@ -82,16 +76,18 @@ export default function CuentasCobroView({ showToast, onOpenCase }) {
 
   return (
     <>
-      <div className={styles.kpis}>
-        <div className={styles.kpi}><span>Total de remisiones en {MESES[mes - 1].toLowerCase()}</span><strong>{formatMoney(resumen.total)}</strong></div>
-        <div className={styles.kpi}><span>Pagado</span><strong>{formatMoney(resumen.pagado)}</strong></div>
-        <div className={styles.kpi}><span>Pendiente de cobro</span><strong>{formatMoney(resumen.pendiente)}</strong></div>
-      </div>
-
-      <Panel title={`Cuenta de estado · ${MESES[mes - 1]} ${anio}`} meta={contar(visibles.length, 'cliente', 'clientes', loading)}>
+      <Panel
+        title={`Cuenta de estado · ${nombrePeriodo}`}
+        meta={contar(visibles.length, 'cliente', 'clientes', loading)}
+        actions={(
+          <button type="button" className={styles.secondaryBtn} onClick={() => showToast('error', 'El formato del Excel aún no está definido')}>
+            <Icon name="download" size={15} /> Guardar Excel
+          </button>
+        )}
+      >
         <FilterBar>
           <SearchField value={busqueda} onChange={setBusqueda} placeholder="Buscar cliente" label="Buscar cliente" />
-          <PeriodFilter anio={anio} mes={mes} onChange={cambiarPeriodo} flechas />
+          <MonthFilter periodo={periodo} onChange={cambiarPeriodo} textoTodos="Todas las cuentas" />
           <SelectFilter
             value={estadoPago}
             onChange={setEstadoPago}
@@ -111,7 +107,7 @@ export default function CuentasCobroView({ showToast, onOpenCase }) {
           error={error}
           onRetry={load}
           empty={cuentas.length === 0
-            ? { title: 'No hay remisiones en este mes', children: 'Cambia de mes con las flechas.' }
+            ? { title: periodo ? 'No hay remisiones en este mes' : 'Aún no hay remisiones', children: periodo ? 'Cambia el mes o elige «Todas las cuentas».' : 'Aparecerán al crear remisiones.' }
             : { title: 'Ningún cliente coincide', children: 'Cambia la búsqueda o el estado de pago.' }}
         />
       </Panel>
@@ -120,7 +116,7 @@ export default function CuentasCobroView({ showToast, onOpenCase }) {
         <CuentaCobroModal
           key={cuentaAbierta.clienteId}
           cuenta={cuentaAbierta}
-          periodo={`${MESES[mes - 1].toLowerCase()} de ${anio}`}
+          periodo={periodo ? `${MESES[periodo.mes - 1].toLowerCase()} de ${periodo.anio}` : 'todos los meses'}
           saving={guardando}
           onClose={() => setAbierta(null)}
           onConfirm={confirmar}

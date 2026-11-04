@@ -16,7 +16,7 @@ Necesita internet (la base de datos y las fotos estan en Supabase).
 - Si algo falla al abrir: menu **Archivo > Abrir carpeta de registros** (`labtrace.log`).
 
 ## Primera instalacion de la 1.1.2 (una sola vez por PC)
-Las versiones anteriores (1.0.x y 1.1.x) solo sabian actualizarse con un instalador, y Windows SmartScreen lo bloquea porque no esta firmado. **Por unica vez** hay que instalar a mano `LabTrace-Setup-1.1.2.exe` (o mas nuevo) en cada PC, desde https://github.com/Mattrux56/EdwinDental/releases. A partir de ahi las actualizaciones normales llegan solas, sin instalador. Si SmartScreen lo bloquea:
+Las versiones 1.1.1 y anteriores solo sabian actualizarse con un instalador, y Windows SmartScreen lo bloquea porque no esta firmado. **Por unica vez** hay que instalar a mano `LabTrace-Setup-1.1.2.exe` (o mas nuevo) en cada PC, desde https://github.com/Mattrux56/EdwinDental/releases. A partir de ahi las actualizaciones normales llegan solas, sin instalador. Si SmartScreen lo bloquea:
 1. Clic derecho al `.exe` > **Propiedades** > marcar **Desbloquear** > Aceptar, y abrirlo de nuevo.
 2. En el aviso azul: **Mas informacion** > **Ejecutar de todas formas**.
 3. Si no aparece ese boton, es **Smart App Control** de Windows 11, que bloquea programas sin firma sin dejar ejecutarlos: Seguridad de Windows > Control de aplicaciones y del navegador > Smart App Control > **Desactivado**.
