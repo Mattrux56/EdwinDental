@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import styles from '../../styles/app.module.css';
-import { deliverySla, formatDateTime, formatEstimatedDate, lastMovement, portadaCaso, totalMovimientos } from '../../utils/format.js';
+import { deliverySla, formatDateTime, formatEstimatedDate, ingresoDate, lastMovement, portadaCaso, totalMovimientos } from '../../utils/format.js';
 import { ESTADOS, normalizeEstado } from '../../constants.js';
 import { matchesSearch } from '../../utils/search.js';
 import { ChipGroup, DateFilter, FilterBar, SearchField } from './filters.jsx';
@@ -12,15 +12,6 @@ const FILTERS = ['Todos', ...ESTADOS];
 const PAGE_SIZES = [9, 18, 36];
 
 export const coverImage = portadaCaso;
-
-function ingresoDate(caso) {
-  if (caso.fechaIngreso) return String(caso.fechaIngreso).slice(0, 10);
-  const date = new Date(caso.creadoEn);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
 
 export default function CasesTable({
   casos,
@@ -47,7 +38,7 @@ export default function CasesTable({
     return casos.filter((caso) =>
       (filter === 'Todos' || normalizeEstado(caso.estado) === filter) &&
       (!fecha || ingresoDate(caso) === fecha) &&
-      matchesSearch(query, [caso.codigo, caso.doctorNombre, caso.cliente?.nombre, caso.pacienteNombre]),
+      matchesSearch(query, [caso.codigo, caso.doctorNombre, caso.cliente?.nombre, caso.pacienteNombre, caso.id]),
     );
   }, [casos, fecha, filter, query]);
 
@@ -114,7 +105,7 @@ export default function CasesTable({
         <div className={styles.caseGrid}>
           {shown.map((caso) => {
             const image = coverImage(caso);
-            const sla = deliverySla(caso.fechaEntregaEstimada);
+            const sla = deliverySla(caso.fechaEntregaEstimada, caso.estado);
             return (
               <article key={caso.id} className={styles.caseCard}>
                 <button type="button" className={styles.caseCardMain} onClick={() => onOpen(caso)}>

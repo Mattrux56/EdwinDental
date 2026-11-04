@@ -59,6 +59,14 @@ const CASO_LISTA = {
 
 const LIMITE_MAXIMO = 500;
 
+/** Estado normalizado (en minúsculas) → todas las formas con que puede estar guardado */
+const VARIANTES_ESTADO: Record<string, string[]> = {
+  'en prueba': ['En prueba', 'En Proceso'],
+  'en proceso': ['En prueba', 'En Proceso'],
+  'devolución': ['Devolución', 'Devolucion'],
+  'devolucion': ['Devolución', 'Devolucion'],
+};
+
 export interface FiltrosCasos {
   clienteId?: number;
   estado?: string;
@@ -80,7 +88,11 @@ export class CasesService {
     const term = search?.trim();
     const where: Prisma.CasoWhereInput = { archivado: archivados };
     if (filtros.clienteId) where.clienteId = filtros.clienteId;
-    if (filtros.estado) where.estado = { equals: filtros.estado, mode: 'insensitive' };
+    if (filtros.estado) {
+      // Los estados legados (En Proceso, Devolucion sin tilde) cuentan como su estado actual, igual que en stats()
+      const variantes = VARIANTES_ESTADO[filtros.estado.toLocaleLowerCase('es')] ?? [filtros.estado];
+      where.OR = variantes.map((estado) => ({ estado: { equals: estado, mode: 'insensitive' as const } }));
+    }
 
     if (term) {
       const or: Prisma.CasoWhereInput[] = [
@@ -92,7 +104,7 @@ export class CasesService {
       if (/^\d{1,9}$/.test(term)) {
         or.push({ id: Number(term) });
       }
-      where.OR = or;
+      where.AND = [{ OR: or }];
     }
 
     const casos = await this.prisma.caso.findMany({
@@ -147,15 +159,18 @@ export class CasesService {
         },
       }),
     ]);
-    const count = (estado: string) =>
-      grouped
-        .filter((g) => g.estado.toLocaleLowerCase('es') === estado.toLocaleLowerCase('es'))
-        .reduce((total, g) => total + g._count._all, 0);
+    // Cada grupo se normaliza (mayúsculas, tildes, estados legados) para que Devolucion = Devolución y En Proceso = En prueba
+    const clave = (estado: string) =>
+      estado.toLocaleLowerCase('es').normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+    const count = (...estados: string[]) => {
+      const claves = new Set(estados.map(clave));
+      return grouped.filter((g) => claves.has(clave(g.estado))).reduce((total, g) => total + g._count._all, 0);
+    };
 
     return {
       total: grouped.reduce((acc, g) => acc + g._count._all, 0),
       enLaboratorio: count('En laboratorio'), // la comparación ya ignora mayúsculas: sumar dos variantes contaba el doble
-      enPrueba: count('En prueba') + count('En Proceso'),
+      enPrueba: count('En prueba', 'En Proceso'),
       finalizados: count('Finalizado'),
       arreglos: count('arreglo'),
       devoluciones: count('Devolución'),

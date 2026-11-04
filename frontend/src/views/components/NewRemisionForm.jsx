@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import styles from '../../styles/app.module.css';
-import { formatMoney } from '../../utils/format.js';
+import { formatMoney, ingresoDate } from '../../utils/format.js';
 import { Icon } from './Icon.jsx';
 import StatusBadge from './StatusBadge.jsx';
 import { DateFilter, SearchField } from './filters.jsx';
@@ -25,7 +25,7 @@ function CasePicker({ casos, selected, onSelect, locked = false }) {
 
   const matches = useMemo(() => {
     const list = casos.filter((c) => {
-      const fecha = String(c.fechaIngreso ?? c.creadoEn ?? '').slice(0, 10);
+      const fecha = ingresoDate(c);
       return (!fechaIngreso || fecha === fechaIngreso) &&
         matchesSearch(query, [c.codigo, c.doctorNombre, c.cliente?.nombre, c.pacienteNombre]);
     });

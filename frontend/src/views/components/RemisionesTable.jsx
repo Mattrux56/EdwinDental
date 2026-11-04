@@ -23,7 +23,7 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
       if ((rem.tipo === 'ELECTRONICA' ? 'ELECTRONICA' : 'NORMAL') !== tipo) return false;
       const fecha = String(rem.fecha).slice(0, 10);
       if (periodo && !fecha.startsWith(`${periodo.anio}-${String(periodo.mes).padStart(2, '0')}`)) return false;
-      return matchesSearch(query, [formatRemisionNumber(rem), rem.noOrden, rem.caso?.codigo, rem.caso?.cliente?.nombre, rem.caso?.pacienteNombre]);
+      return matchesSearch(query, [formatRemisionNumber(rem), rem.noOrden, rem.caso?.codigo, rem.caso?.cliente?.nombre, rem.pacienteNombre, rem.caso?.pacienteNombre, rem.doctorNombre, rem.caso?.doctorNombre]);
     };
     const coincidentes = remisiones.filter(coincide);
     const lista = coincidentes.filter((rem) => Boolean(rem.anulada) === verAnuladas);

@@ -46,8 +46,8 @@ const TONOS = {
 };
 
 /** Etiqueta de color: tone = lab | proc | progress | done | repair | return | default */
-export function Badge({ tone = 'default', children }) {
-  return <span className={`${styles.badge} ${TONOS[tone] ?? TONOS.default}`}>{children}</span>;
+export function Badge({ tone = 'default', children, ...rest }) {
+  return <span className={`${styles.badge} ${TONOS[tone] ?? TONOS.default}`} {...rest}>{children}</span>;
 }
 
 export function ErrorBanner({ children, onRetry }) {

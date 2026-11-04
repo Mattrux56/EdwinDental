@@ -129,6 +129,7 @@ export function useCasesController() {
         invalidarClientes(); // el caso pudo crear un cliente nuevo
         showToast('success', `Orden de trabajo ${created.codigo} registrada correctamente`);
         setActiveView('casos');
+        setVerArchivados(false); // el caso nuevo está activo: si se veían archivados no aparecería
         await Promise.all([loadCases(), loadStats()]);
         return created;
       } catch (e) {
