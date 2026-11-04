@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Patch, Query, StreamableFile } from '@nestjs/common';
 import { ArrayMaxSize, IsArray, IsInt } from 'class-validator';
 import { CuentasCobroService } from './cuentas-cobro.service';
 
@@ -23,6 +23,16 @@ export class CuentasCobroController {
       anio ? Number(anio) : hoy.getFullYear(),
       mes ? Number(mes) : hoy.getMonth() + 1,
     );
+  }
+
+  /** GET /cuentas-cobro/excel: todas las remisiones vigentes y su estado de pago en un .xlsx (una hoja por cliente) */
+  @Get('excel')
+  async excel() {
+    const { buffer, filename } = await this.cuentas.excel();
+    return new StreamableFile(buffer, {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      disposition: `attachment; filename="${filename}"`,
+    });
   }
 
   /** PATCH /cuentas-cobro/:clienteId/pagos — igual, pero con las remisiones de todos los meses */

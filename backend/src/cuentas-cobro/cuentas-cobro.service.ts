@@ -1,5 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { todayLocal } from '../common/date-only';
 import { PrismaService } from '../prisma/prisma.service';
+import { generarCuentasExcel } from './cuentas-excel';
 
 export function validarPeriodo(anio: number, mes: number) {
   if (!Number.isInteger(anio) || anio < 2000 || anio > 2100) throw new BadRequestException('El año no es válido');
@@ -63,6 +65,12 @@ export class CuentasCobroService {
         };
       })
       .sort((a, b) => a.cliente.localeCompare(b.cliente, 'es'));
+  }
+
+  /** Excel con todas las remisiones vigentes (todos los meses): una hoja por cliente y un RESUMEN */
+  async excel() {
+    const cuentas = await this.listar();
+    return { buffer: await generarCuentasExcel(cuentas), filename: `CUENTAS_${todayLocal()}.xlsx` };
   }
 
   /**
