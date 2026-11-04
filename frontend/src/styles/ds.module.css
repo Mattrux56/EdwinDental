@@ -1,0 +1,337 @@
+/* =====================================================================
+   Sistema de diseño: controles compartidos (Segmented, Tabs, ActionMenu,
+   SortHeader, Field, Switch). Solo usan los tokens de index.css.
+   ===================================================================== */
+
+/* ---------- Field: etiqueta visible + control ---------- */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+
+.fieldLabel {
+  color: var(--ink-soft);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+/* ---------- Segmented: elegir una opción visible (con conteos) ---------- */
+.segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--paper);
+}
+
+.segment {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.segment:hover:not(:disabled) {
+  color: var(--ink);
+}
+
+.segmentActive {
+  background: var(--surface);
+  color: var(--reagent-dark);
+  box-shadow: var(--shadow-1), 0 0 0 1px var(--line);
+}
+
+.segmentCount {
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: var(--r-pill);
+  background: var(--line);
+  color: var(--ink-soft);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+}
+
+.segmentActive .segmentCount {
+  background: var(--reagent-soft);
+  color: var(--reagent-dark);
+}
+
+.segment:focus-visible,
+.tab:focus-visible,
+.menuItem:focus-visible,
+.sortHeader:focus-visible,
+.menuTrigger:focus-visible {
+  outline: 2px solid var(--reagent);
+  outline-offset: 2px;
+}
+
+/* ---------- Tabs: cambiar de sección dentro de una pantalla ---------- */
+.tabs {
+  display: flex;
+  gap: var(--sp-1);
+  border-bottom: 1px solid var(--line);
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: -1px;
+  padding: 10px var(--sp-4);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: var(--fs-md);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.tab:hover {
+  color: var(--ink);
+}
+
+.tabActive {
+  border-bottom-color: var(--reagent);
+  color: var(--reagent-dark);
+}
+
+/* ---------- SortHeader: encabezado que ordena ---------- */
+.sortHeader {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.sortHeader:hover {
+  color: var(--ink);
+}
+
+.sortIcon {
+  display: inline-flex;
+  color: var(--ink-faint);
+}
+
+.sortHeaderActive .sortIcon {
+  color: var(--reagent);
+}
+
+/* ---------- ActionMenu: «Más acciones» ---------- */
+.menuWrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.menuTrigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: var(--h-sm);
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.menuTrigger:hover:not(:disabled) {
+  background: var(--paper);
+}
+
+.menuTriggerIcon {
+  width: var(--h-sm);
+  padding: 0;
+}
+
+.menuPanel {
+  position: fixed;
+  z-index: 60;
+  min-width: 210px;
+  padding: var(--sp-1);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px var(--sp-3);
+  border: 0;
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--ink);
+  font-size: var(--fs-md);
+  text-align: left;
+  cursor: pointer;
+}
+
+.menuItem:hover:not(:disabled),
+.menuItem:focus-visible {
+  background: var(--paper);
+}
+
+.menuItem:disabled {
+  color: var(--ink-faint);
+  cursor: not-allowed;
+}
+
+.menuItemDanger {
+  color: var(--danger);
+}
+
+.menuItemDanger:hover:not(:disabled),
+.menuItemDanger:focus-visible {
+  background: var(--danger-soft);
+}
+
+.menuItemWarn {
+  color: var(--warn);
+}
+
+.menuItemWarn:hover:not(:disabled) {
+  background: var(--warn-soft);
+}
+
+.menuSeparator {
+  height: 1px;
+  margin: var(--sp-1) 0;
+  background: var(--line);
+}
+
+.menuNote {
+  display: block;
+  color: var(--ink-faint);
+  font-size: var(--fs-xs);
+}
+
+/* ---------- Switch: activar / desactivar con etiqueta ---------- */
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.switch:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.switch:focus-visible {
+  outline: 2px solid var(--reagent);
+  outline-offset: 3px;
+  border-radius: var(--r-pill);
+}
+
+.switchTrack {
+  position: relative;
+  flex: none;
+  width: 36px;
+  height: 20px;
+  border-radius: var(--r-pill);
+  background: var(--line-strong);
+  transition: background 0.15s;
+}
+
+.switchTrack::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: var(--shadow-1);
+  transition: transform 0.15s;
+}
+
+.switchOn .switchTrack {
+  background: var(--done);
+}
+
+.switchOn .switchTrack::after {
+  transform: translateX(16px);
+}
+
+.switchOn {
+  color: var(--done);
+}
+
+/* ---------- Barra de filtros: controles con etiqueta ---------- */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--sp-3) var(--sp-4);
+}
+
+.toolbarGrow {
+  flex: 1 1 260px;
+  min-width: 220px;
+}
+
+.toolbarEnd {
+  margin-left: auto;
+}
+
+/* Estados de pago: color propio, distinto del de los estados de caso */
+.pagoPagada {
+  background: var(--done-soft);
+  color: var(--done);
+}
+
+.pagoPendiente {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.pagoParcial {
+  background: var(--proc-soft);
+  color: var(--proc);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .segment,
+  .switchTrack,
+  .switchTrack::after {
+    transition: none;
+  }
+}

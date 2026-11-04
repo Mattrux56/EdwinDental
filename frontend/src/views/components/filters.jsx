@@ -122,15 +122,15 @@ export function MonthFilter({ periodo, onChange, textoTodos = 'Todos los meses' 
         aria-haspopup="dialog"
         aria-expanded={abierto}
       >
-        {texto} <span aria-hidden="true">▾</span>
+        <Icon name="calendar" size={15} /> {texto} <Icon name="chevronDown" size={14} />
       </button>
       {periodo && (
-        <button type="button" className={styles.monthClear} onClick={() => elegir(null)} aria-label="Quitar el filtro de mes">✕</button>
+        <button type="button" className={styles.monthClear} onClick={() => elegir(null)} aria-label="Quitar el filtro de mes" title="Quitar el filtro de mes"><Icon name="close" size={14} /></button>
       )}
       {abierto && (
         <div className={styles.monthPanel} style={posicion} role="dialog" aria-label="Elegir mes y año">
           <div className={styles.monthYear}>
-            <button type="button" className={styles.secondaryBtn} onClick={() => setAnioVista((a) => Math.max(2000, a - 1))} aria-label="Año anterior">‹</button>
+            <button type="button" className={styles.secondaryBtn} onClick={() => setAnioVista((a) => Math.max(2000, a - 1))} aria-label="Año anterior"><Icon name="chevronLeft" size={16} /></button>
             <input
               className={styles.input}
               type="number"
@@ -140,7 +140,7 @@ export function MonthFilter({ periodo, onChange, textoTodos = 'Todos los meses' 
               onChange={(e) => { const v = Number(e.target.value); if (anioValido(v)) setAnioVista(v); }}
               aria-label="Año"
             />
-            <button type="button" className={styles.secondaryBtn} onClick={() => setAnioVista((a) => Math.min(2100, a + 1))} aria-label="Año siguiente">›</button>
+            <button type="button" className={styles.secondaryBtn} onClick={() => setAnioVista((a) => Math.min(2100, a + 1))} aria-label="Año siguiente"><Icon name="chevronRight" size={16} /></button>
           </div>
           <div className={styles.monthGrid}>
             {MESES.map((nombre, i) => (
@@ -176,7 +176,7 @@ export function PeriodFilter({ anio, mes, onChange, todoElAnio = false, flechas 
 
   return (
     <div className={styles.periodFilter}>
-      {flechas && <button type="button" className={styles.secondaryBtn} onClick={() => mover(-1)} aria-label="Mes anterior">‹</button>}
+      {flechas && <button type="button" className={styles.secondaryBtn} onClick={() => mover(-1)} aria-label="Mes anterior"><Icon name="chevronLeft" size={16} /></button>}
       <SelectFilter value={mes} onChange={(valor) => onChange(anio, Number(valor))} options={opciones} label="Mes" />
       <input
         className={styles.input}
@@ -192,7 +192,7 @@ export function PeriodFilter({ anio, mes, onChange, todoElAnio = false, flechas 
         onBlur={() => setAnioTexto(String(anio))}
         aria-label="Año"
       />
-      {flechas && <button type="button" className={styles.secondaryBtn} onClick={() => mover(1)} aria-label="Mes siguiente">›</button>}
+      {flechas && <button type="button" className={styles.secondaryBtn} onClick={() => mover(1)} aria-label="Mes siguiente"><Icon name="chevronRight" size={16} /></button>}
     </div>
   );
 }

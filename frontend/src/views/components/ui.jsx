@@ -1,4 +1,5 @@
 import styles from '../../styles/app.module.css';
+import ds from '../../styles/ds.module.css';
 import { Icon } from './Icon.jsx';
 
 /** Piezas básicas de las pantallas. Las de filtros están en filters.jsx y la tabla en DataTable.jsx */
@@ -13,6 +14,38 @@ export function PageHeader({ title, subtitle, children }) {
       </div>
       {children}
     </header>
+  );
+}
+
+const VARIANTES_BOTON = {
+  primary: styles.primaryBtn,
+  secondary: styles.secondaryBtn,
+  danger: styles.dangerBtn,
+  'danger-outline': styles.deleteBtn,
+  accent: styles.traceBtn,
+};
+
+/** Botón del sistema: siempre con texto; `icon` opcional. variant: primary | secondary | danger | danger-outline | accent; size: md | sm */
+export function Button({ variant = 'secondary', size = 'md', icon, children, className = '', type = 'button', ...rest }) {
+  return (
+    <button
+      type={type}
+      className={`${VARIANTES_BOTON[variant] ?? VARIANTES_BOTON.secondary} ${size === 'sm' ? styles.btnSm : ''} ${className}`}
+      {...rest}
+    >
+      {icon && <Icon name={icon} size={size === 'sm' ? 15 : 16} />}
+      {children}
+    </button>
+  );
+}
+
+/** Estado de pago de una remisión o cuenta: Pagada (verde) · Pendiente (rojo suave) · Pago parcial (azul) */
+export function PagoBadge({ estado, ...rest }) {
+  const clase = estado === 'Pagada' ? ds.pagoPagada : estado === 'Pago parcial' ? ds.pagoParcial : ds.pagoPendiente;
+  return (
+    <span className={`${styles.badge} ${clase}`} aria-label={`Estado de pago: ${estado}`} {...rest}>
+      {estado}
+    </span>
   );
 }
 
@@ -55,9 +88,7 @@ export function ErrorBanner({ children, onRetry }) {
     <div className={styles.errorBanner} role="alert">
       <span>{children}</span>
       {onRetry && (
-        <button type="button" className={styles.secondaryBtn} onClick={onRetry}>
-          <Icon name="refresh" size={16} /> Reintentar
-        </button>
+        <Button icon="refresh" onClick={onRetry}>Reintentar</Button>
       )}
     </div>
   );
@@ -93,12 +124,12 @@ export function Pagination({ page, pageCount, pageSize, pageSizes, onPage, onPag
       </label>
       <span className={styles.panelMeta}>Página {page + 1} de {pageCount}</span>
       <div className={styles.paginationButtons}>
-        <button type="button" className={styles.secondaryBtn} onClick={() => onPage(Math.max(0, page - 1))} disabled={page === 0}>
+        <Button size="sm" icon="chevronLeft" onClick={() => onPage(Math.max(0, page - 1))} disabled={page === 0}>
           Anterior
-        </button>
-        <button type="button" className={styles.secondaryBtn} onClick={() => onPage(Math.min(pageCount - 1, page + 1))} disabled={page >= pageCount - 1}>
-          Siguiente
-        </button>
+        </Button>
+        <Button size="sm" onClick={() => onPage(Math.min(pageCount - 1, page + 1))} disabled={page >= pageCount - 1}>
+          Siguiente <Icon name="chevronRight" size={15} />
+        </Button>
       </div>
     </div>
   );

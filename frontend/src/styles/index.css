@@ -32,6 +32,41 @@
   --return: #6b3fa0;
   --return-soft: #ece3f7;
 
+  /* Variantes de superficie y bordes que antes estaban sueltas en el CSS */
+  --surface-2: #f8fafb;
+  --surface-hover: #f4f8fa;
+  --danger-line: #efc3bf;
+  --warn: var(--lab);
+  --warn-soft: var(--lab-soft);
+
+  /* Espaciado (escala de 4) */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+
+  /* Radios */
+  --r-sm: 6px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-pill: 999px;
+
+  /* Tipografía */
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 14px;
+  --fs-lg: 16px;
+  --fs-xl: 20px;
+  --fs-2xl: 24px;
+
+  /* Sombras y alturas de control */
+  --shadow-1: 0 1px 2px rgba(17, 36, 55, 0.06);
+  --shadow-2: 0 8px 24px rgba(17, 36, 55, 0.14);
+  --h-sm: 32px;
+  --h-md: 40px;
+
   --font: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
 }

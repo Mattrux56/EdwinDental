@@ -174,65 +174,6 @@
   color: var(--ink-soft);
 }
 
-.primaryBtn,
-.secondaryBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 10px 16px;
-  border-radius: 9px;
-  font-weight: 500;
-  border: 1px solid transparent;
-  transition: background 0.15s, border-color 0.15s;
-}
-
-.primaryBtn {
-  background: var(--reagent);
-  color: #fff;
-}
-
-.primaryBtn:hover:not(:disabled) {
-  background: var(--reagent-dark);
-}
-
-.secondaryBtn {
-  background: var(--surface);
-  border-color: var(--line-strong);
-  color: var(--ink);
-}
-
-.secondaryBtn:hover:not(:disabled) {
-  background: var(--paper);
-}
-
-.dangerBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 10px 16px;
-  border: 1px solid transparent;
-  border-radius: 9px;
-  background: var(--danger);
-  color: #fff;
-  font-weight: 500;
-}
-
-.dangerBtn:hover:not(:disabled) {
-  filter: brightness(0.92);
-}
-
-.dangerBtn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.primaryBtn:disabled,
-.secondaryBtn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
 /* ===================================================== Métricas (franja única) */
 .metrics {
   display: grid;
@@ -642,24 +583,6 @@
   font-size: 12px;
 }
 
-.deleteBtn {
-  padding: 5px 9px;
-  border: 1px solid var(--danger-soft);
-  border-radius: 7px;
-  background: #fff;
-  color: var(--danger);
-  font-size: 12px;
-}
-
-.deleteBtn:hover:not(:disabled) {
-  background: var(--danger-soft);
-}
-
-.deleteBtn:disabled {
-  opacity: 0.65;
-  cursor: wait;
-}
-
 .pagination {
   flex-wrap: wrap;
   padding: 14px 20px;
@@ -834,26 +757,6 @@
   color: var(--ink-soft);
   font-size: 14px;
   white-space: nowrap;
-}
-
-.traceBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--reagent);
-  background: transparent;
-  color: var(--reagent-dark);
-  font-weight: 500;
-  font-size: 14px;
-  white-space: nowrap;
-  transition: background 0.15s, color 0.15s;
-}
-
-.traceBtn:hover {
-  background: var(--reagent);
-  color: #fff;
 }
 
 .productActions {
@@ -2101,6 +2004,13 @@
 .traceBtn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.btnSm {
+  min-height: var(--h-sm);
+  padding: 0 12px;
+  border-radius: var(--r-md);
+  font-size: var(--fs-sm);
 }
 
 /* Botones dentro de tablas y tarjetas: un solo tamaño compacto en todo el programa */
