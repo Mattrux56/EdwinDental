@@ -1,19 +1,18 @@
 import { useMemo, useState } from 'react';
 import styles from '../styles/app.module.css';
+import ds from '../styles/ds.module.css';
 import { useResource } from '../hooks/useResource.js';
 import { cuentasService } from '../services/cuentas.service.js';
 import { formatMoney } from '../utils/format.js';
 import { matchesSearch } from '../utils/search.js';
 import CuentaCobroModal from './components/CuentaCobroModal.jsx';
 import DataTable from './components/DataTable.jsx';
-import { FilterBar, MESES, MonthFilter, SearchField, SelectFilter } from './components/filters.jsx';
-import { Icon } from './components/Icon.jsx';
-import { Badge, contar, Panel } from './components/ui.jsx';
+import { Field, Segmented } from './components/controls.jsx';
+import { MESES, MonthFilter, SearchField } from './components/filters.jsx';
+import { Button, contar, PagoBadge, Panel } from './components/ui.jsx';
 
-const ESTADOS_PAGO = ['Todos', 'Pendiente', 'Pago parcial', 'Pagada'];
 
 const estadoDe = (c) => (c.pagada ? 'Pagada' : c.pagadas > 0 ? 'Pago parcial' : 'Pendiente');
-const TONO_ESTADO = { Pagada: 'done', 'Pago parcial': 'progress', Pendiente: 'lab' };
 
 /** Cuenta de estado = remisiones (no anuladas) de cada cliente en el mes. Al abrir un cliente se marca cuáles están pagadas. */
 export default function CuentasCobroView({ showToast, onOpenCase }) {
@@ -35,6 +34,13 @@ export default function CuentasCobroView({ showToast, onOpenCase }) {
     [cuentas, busqueda, estadoPago],
   );
 
+  const resumen = useMemo(() => {
+    const total = cuentas.reduce((a, c) => a + c.total, 0);
+    const pagado = cuentas.reduce((a, c) => a + c.totalPagado, 0);
+    return { total, pagado, pendiente: total - pagado };
+  }, [cuentas]);
+  const conteo = (estado) => cuentas.filter((c) => estadoDe(c) === estado).length;
+
   const cuentaAbierta = cuentas.find((c) => c.clienteId === abierta) ?? null;
 
   const confirmar = async (pagadas) => {
@@ -55,23 +61,24 @@ export default function CuentasCobroView({ showToast, onOpenCase }) {
     {
       key: 'cliente',
       header: 'Cliente',
-      render: (c) => (
-        <button
-          type="button"
-          className={styles.linkBtn}
-          onClick={(e) => { e.stopPropagation(); setAbierta(c.clienteId); }}
-          aria-label={`Ver remisiones de ${c.cliente}`}
-        >
-          {c.cliente}
-        </button>
-      ),
+      render: (c) => <span className={styles.clientName}>{c.cliente}</span>,
     },
     { key: 'remisiones', header: 'Remisiones', align: 'right', render: (c) => c.remisiones.length },
     { key: 'pendiente', header: 'Pendiente', align: 'right', className: styles.moneyCell, render: (c) => formatMoney(c.total - c.totalPagado) },
     { key: 'pagado', header: 'Pagado', align: 'right', className: styles.moneyCell, render: (c) => formatMoney(c.totalPagado) },
     { key: 'total', header: 'Total', align: 'right', className: styles.moneyCell, render: (c) => formatMoney(c.total) },
     { key: 'pagadas', header: 'Pagadas', render: (c) => `${c.pagadas} de ${c.remisiones.length}` },
-    { key: 'estado', header: 'Estado', render: (c) => <Badge tone={TONO_ESTADO[estadoDe(c)]}>{estadoDe(c)}</Badge> },
+    { key: 'estado', header: 'Estado', render: (c) => <PagoBadge estado={estadoDe(c)} /> },
+    {
+      key: 'acciones',
+      header: '',
+      headerProps: { 'aria-label': 'Acciones', className: styles.actionsTh },
+      render: (c) => (
+        <div className={styles.rowActions}>
+          <Button size="sm" variant="accent" icon="chevronRight" onClick={(e) => { e.stopPropagation(); setAbierta(c.clienteId); }}>Ver cuenta</Button>
+        </div>
+      ),
+    },
   ];
 
   return (
@@ -79,22 +86,34 @@ export default function CuentasCobroView({ showToast, onOpenCase }) {
       <Panel
         title={`Cuentas de estado · ${nombrePeriodo}`}
         meta={contar(visibles.length, 'cliente', 'clientes', loading)}
-        actions={(
-          <button type="button" className={styles.secondaryBtn} onClick={() => showToast('error', 'El formato del Excel aún no está definido')}>
-            <Icon name="download" size={15} /> Guardar Excel
-          </button>
-        )}
       >
-        <FilterBar>
-          <SearchField value={busqueda} onChange={setBusqueda} placeholder="Buscar cliente" label="Buscar cliente" />
-          <MonthFilter periodo={periodo} onChange={cambiarPeriodo} textoTodos="Todas las cuentas" />
-          <SelectFilter
-            value={estadoPago}
-            onChange={setEstadoPago}
-            options={ESTADOS_PAGO.map((e) => ({ value: e, label: e === 'Todos' ? 'Todos los estados' : e }))}
-            label="Filtrar por estado de pago"
-          />
-        </FilterBar>
+        <div className={ds.summaryBar}>
+          <div className={styles.kpis}>
+            <div className={styles.kpi}><span>Total facturado</span><strong>{loading ? '…' : formatMoney(resumen.total)}</strong></div>
+            <div className={styles.kpi}><span>Pagado</span><strong>{loading ? '…' : formatMoney(resumen.pagado)}</strong></div>
+            <div className={styles.kpi}><span>Pendiente de cobro</span><strong>{loading ? '…' : formatMoney(resumen.pendiente)}</strong></div>
+          </div>
+        </div>
+
+        <div className={ds.toolbar}>
+          <SearchField className={`${styles.caseSearch} ${ds.toolbarGrow}`} value={busqueda} onChange={setBusqueda} placeholder="Buscar cliente" label="Buscar cliente" />
+          <Field label="Mes">
+            <MonthFilter periodo={periodo} onChange={cambiarPeriodo} textoTodos="Todas las cuentas" />
+          </Field>
+          <Field label="Estado de pago">
+            <Segmented
+              label="Filtrar por estado de pago"
+              value={estadoPago}
+              onChange={setEstadoPago}
+              options={[
+                { value: 'Todos', label: 'Todas', count: cuentas.length },
+                { value: 'Pendiente', label: 'Pendientes', count: conteo('Pendiente') },
+                { value: 'Pago parcial', label: 'Pago parcial', count: conteo('Pago parcial') },
+                { value: 'Pagada', label: 'Pagadas', count: conteo('Pagada') },
+              ]}
+            />
+          </Field>
+        </div>
 
         <DataTable
           columns={columnas}

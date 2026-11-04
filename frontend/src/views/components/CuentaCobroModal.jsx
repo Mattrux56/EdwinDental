@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react';
 import styles from '../../styles/app.module.css';
+import ds from '../../styles/ds.module.css';
 import { formatEstimatedDate, formatMoney, formatRemisionNumber } from '../../utils/format.js';
 import { remisionesService } from '../../services/remisiones.service.js';
 import DataTable from './DataTable.jsx';
 import Modal from './Modal.jsx';
 import RemisionDetailModal from './RemisionDetailModal.jsx';
-import { Badge } from './ui.jsx';
+import { ariaSort, Field, Segmented, SortHeader } from './controls.jsx';
+import { Button, PagoBadge } from './ui.jsx';
 
 /** Remisiones de un cliente en el mes: se marca cuáles están pagadas y se guarda con «Confirmar remisiones» */
 export default function CuentaCobroModal({ cuenta, periodo, saving, onClose, onConfirm, onOpenCase, showToast }) {
@@ -52,17 +54,7 @@ export default function CuentaCobroModal({ cuenta, periodo, saving, onClose, onC
   const columnas = [
     {
       key: 'marca',
-      header: (
-        <input
-          type="checkbox"
-          className={styles.checkPago}
-          checked={todas}
-          onChange={(e) => setPagadas(e.target.checked ? new Set(cuenta.remisiones.map((x) => x.id)) : new Set())}
-          disabled={saving}
-          aria-label="Marcar todas las remisiones como pagadas"
-          title="Marcar todas"
-        />
-      ),
+      header: <span className={ds.srOnly}>Pagada</span>,
       render: (x) => (
         <input
           type="checkbox"
@@ -77,35 +69,24 @@ export default function CuentaCobroModal({ cuenta, periodo, saving, onClose, onC
     },
     {
       key: 'pagada',
-      header: (
-        <select
-          className={styles.select}
-          value={filtroPago}
-          onChange={(e) => setFiltroPago(e.target.value)}
-          aria-label="Filtrar remisiones por estado de pago"
-        >
-          <option value="Todas">Todas</option>
-          <option value="Pagadas">Pagadas</option>
-          <option value="Pendientes">Pendientes</option>
-        </select>
-      ),
-      render: (x) => <Badge tone={pagadas.has(x.id) ? 'done' : 'lab'}>{pagadas.has(x.id) ? 'Pagada' : 'Pendiente'}</Badge>,
+      header: 'Estado de pago',
+      render: (x) => <PagoBadge estado={pagadas.has(x.id) ? 'Pagada' : 'Pendiente'} />,
     },
     { key: 'remision', header: 'Remisión', render: (x) => (cargandoId === x.id ? 'Abriendo…' : formatRemisionNumber(x)) },
     {
       key: 'fecha',
-      headerProps: { 'aria-sort': recientesPrimero ? 'descending' : 'ascending' },
+      headerProps: { 'aria-sort': ariaSort(recientesPrimero ? 'desc' : 'asc') },
       header: (
-        <button
-          type="button"
-          className={styles.thBtn}
+        <SortHeader
+          direccion={recientesPrimero ? 'desc' : 'asc'}
           onClick={() => setRecientesPrimero((valor) => !valor)}
-          title={recientesPrimero ? 'Más recientes primero. Clic para ver primero las más antiguas' : 'Más antiguas primero. Clic para ver primero las más recientes'}
+          title={recientesPrimero ? 'Más recientes primero. Clic para ordenar de la más antigua' : 'Más antiguas primero. Clic para ordenar de la más reciente'}
         >
-          Fecha <span aria-hidden="true">{recientesPrimero ? '▼' : '▲'}</span>
-        </button>
+          Fecha
+        </SortHeader>
       ),
-      render: (x) => formatEstimatedDate(x.fecha) },
+      render: (x) => formatEstimatedDate(x.fecha),
+    },
     { key: 'doctor', header: 'Doctor', render: (x) => x.doctor || '—' },
     { key: 'paciente', header: 'Paciente', render: (x) => x.paciente || '—' },
     { key: 'orden', header: 'Orden de trabajo', render: (x) => x.ordenTrabajo || x.noOrden || '—' },
@@ -120,6 +101,31 @@ export default function CuentaCobroModal({ cuenta, periodo, saving, onClose, onC
       busy={saving}
       className={styles.wideModal}
     >
+      <div className={ds.toolbar} style={{ padding: '0 0 12px', borderBottom: 0 }}>
+        <Field label="Mostrar remisiones">
+          <Segmented
+            label="Filtrar remisiones por estado de pago"
+            value={filtroPago}
+            onChange={setFiltroPago}
+            options={[
+              { value: 'Todas', label: 'Todas', count: cuenta.remisiones.length },
+              { value: 'Pendientes', label: 'Pendientes', count: cuenta.remisiones.length - pagadas.size },
+              { value: 'Pagadas', label: 'Pagadas', count: pagadas.size },
+            ]}
+          />
+        </Field>
+        <label className={ds.toolbarEnd} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
+          <input
+            type="checkbox"
+            className={styles.checkPago}
+            checked={todas}
+            onChange={(e) => setPagadas(e.target.checked ? new Set(cuenta.remisiones.map((x) => x.id)) : new Set())}
+            disabled={saving}
+          />
+          Marcar todas como pagadas
+        </label>
+      </div>
+
       <DataTable
         variant="mini"
         columns={columnas}
@@ -138,10 +144,10 @@ export default function CuentaCobroModal({ cuenta, periodo, saving, onClose, onC
           {' · '}{pagadas.size} de {cuenta.remisiones.length} {cuenta.remisiones.length === 1 ? 'remisión' : 'remisiones'}
         </span>
         <div className={styles.formActions} style={{ margin: 0 }}>
-          <button type="button" className={styles.secondaryBtn} onClick={onClose} disabled={saving}>Cancelar</button>
-          <button type="button" className={styles.primaryBtn} onClick={() => onConfirm([...pagadas])} disabled={saving || !cambios}>
-            {saving ? 'Guardando…' : 'Confirmar remisiones'}
-          </button>
+          <Button onClick={onClose} disabled={saving}>Cancelar</Button>
+          <Button variant="primary" icon="check" onClick={() => onConfirm([...pagadas])} disabled={saving || !cambios}>
+            {saving ? 'Guardando…' : 'Guardar pagos'}
+          </Button>
         </div>
       </div>
 

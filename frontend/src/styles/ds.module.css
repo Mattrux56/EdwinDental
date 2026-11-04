@@ -86,6 +86,7 @@
 .tabs {
   display: flex;
   gap: var(--sp-1);
+  padding: 0 20px;
   border-bottom: 1px solid var(--line);
 }
 
@@ -301,6 +302,12 @@
   flex-wrap: wrap;
   align-items: flex-end;
   gap: var(--sp-3) var(--sp-4);
+  padding: var(--sp-4) 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.summaryBar {
+  padding: var(--sp-4) 20px 0;
 }
 
 .toolbarGrow {
@@ -334,4 +341,14 @@
   .switchTrack::after {
     transition: none;
   }
+}
+
+/* Texto solo para lectores de pantalla */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
