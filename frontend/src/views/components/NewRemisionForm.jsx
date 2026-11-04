@@ -374,7 +374,7 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
             }
           }}>
             <option value="NORMAL">Cuenta de cobro</option>
-            <option value="ELECTRONICA">Electrónica (FE-)</option>
+            <option value="ELECTRONICA">Electrónica (factura, prefijo FE-)</option>
           </select>
         </div>
         <div className={styles.field}>
@@ -576,7 +576,7 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
           disabled={!puedeGuardar}
           title={repartoIncompleto ? 'Revisa las prótesis: superiores más inferiores deben sumar la cantidad' : undefined}
         >
-          <Icon name="download" size={16} />{' '}
+          <Icon name={editando ? "check" : "plus"} size={16} />{' '}
           {saving ? (editando ? 'Guardando…' : 'Generando…') : editando ? 'Guardar corrección' : 'Crear remisión'}
         </button>
       </div>

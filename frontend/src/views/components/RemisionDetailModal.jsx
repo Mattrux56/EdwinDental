@@ -1,9 +1,10 @@
 import styles from '../../styles/app.module.css';
 import { formatDateTime, formatEstimatedDate, formatMoney, formatRemisionNumber } from '../../utils/format.js';
-import { Icon } from './Icon.jsx';
+import { ActionMenu } from './controls.jsx';
 import DataTable from './DataTable.jsx';
 import Modal from './Modal.jsx';
-import PrintRemisionButton from './PrintRemisionButton.jsx';
+import { useRemisionAcciones } from './PrintRemisionButton.jsx';
+import { Button } from './ui.jsx';
 
 /** Detalle de una remisión: encabezado, líneas con cantidades y precios, total. Editar/anular solo si se pasan los callbacks. */
 const COLUMNAS = [
@@ -29,6 +30,15 @@ const COLUMNAS = [
 export default function RemisionDetailModal({ remision, onClose, onEdit, onAnular, onEliminar, onReactivar, reactivando, onVerCaso, showToast }) {
   const doctor = remision.doctorNombre ?? remision.caso?.doctorNombre;
   const paciente = remision.pacienteNombre ?? remision.caso?.pacienteNombre;
+  const { imprimir, guardar, imprimiendo, guardando } = useRemisionAcciones(remision, showToast);
+
+  // Lo menos frecuente y lo destructivo va en «Más acciones», separado y con color propio
+  const mas = [
+    { label: guardando ? 'Guardando…' : 'Guardar como Excel', icon: 'download', onClick: guardar, disabled: guardando },
+    onReactivar && remision.anulada && { label: reactivando ? 'Reactivando…' : 'Quitar anulación', icon: 'refresh', onClick: () => onReactivar(remision), disabled: reactivando },
+    onAnular && !remision.anulada && { label: 'Anular remisión', icon: 'close', tone: 'warn', separator: true, note: 'El número no se reutiliza; se puede reactivar', onClick: () => onAnular(remision) },
+    onEliminar && remision.anulada && { label: 'Eliminar definitivamente', icon: 'trash', tone: 'danger', separator: true, note: 'No se puede deshacer', onClick: () => onEliminar(remision) },
+  ].filter(Boolean);
 
   return (
     <Modal
@@ -40,7 +50,7 @@ export default function RemisionDetailModal({ remision, onClose, onEdit, onAnula
       <div className={styles.infoGrid}>
         <div><div className={styles.infoLabel}>Fecha</div><div className={styles.infoValue}>{formatEstimatedDate(remision.fecha)}</div></div>
         <div><div className={styles.infoLabel}>Orden de trabajo</div><div className={styles.infoValue}>{remision.caso?.codigo}</div></div>
-        <div><div className={styles.infoLabel}>Tipo</div><div className={styles.infoValue}>{remision.tipo === 'ELECTRONICA' ? 'Electrónica' : 'Cuenta de cobro'}</div></div>
+        <div><div className={styles.infoLabel}>Tipo</div><div className={styles.infoValue}>{remision.tipo === 'ELECTRONICA' ? 'Electrónica (FE-)' : 'Cuenta de cobro'}</div></div>
         <div><div className={styles.infoLabel}>Clínica</div><div className={styles.infoValue}>{remision.caso?.cliente?.nombre || '—'}</div></div>
         <div><div className={styles.infoLabel}>Doctor(a)</div><div className={styles.infoValue}>{doctor || '—'}</div></div>
         <div><div className={styles.infoLabel}>Paciente</div><div className={styles.infoValue}>{paciente || '—'}</div></div>
@@ -64,26 +74,16 @@ export default function RemisionDetailModal({ remision, onClose, onEdit, onAnula
       />
 
       <div className={styles.formActions}>
+        <ActionMenu label="Más acciones" items={mas} />
         {onVerCaso && remision.caso && (
-          <button type="button" className={styles.secondaryBtn} onClick={() => onVerCaso(remision.caso)}>
-            <Icon name="layers" size={15} /> Ver caso
-          </button>
-        )}
-        {onAnular && !remision.anulada && (
-          <button type="button" className={styles.deleteBtn} onClick={() => onAnular(remision)}>Anular</button>
-        )}
-        {onEliminar && remision.anulada && (
-          <button type="button" className={styles.deleteBtn} onClick={() => onEliminar(remision)}><Icon name="trash" size={15} /> Eliminar</button>
-        )}
-        {onReactivar && remision.anulada && (
-          <button type="button" className={styles.secondaryBtn} onClick={() => onReactivar(remision)} disabled={reactivando}>
-            {reactivando ? 'Reactivando…' : 'Quitar anulación'}
-          </button>
+          <Button icon="layers" onClick={() => onVerCaso(remision.caso)}>Ver caso</Button>
         )}
         {onEdit && !remision.anulada && (
-          <button type="button" className={styles.secondaryBtn} onClick={() => onEdit(remision)}><Icon name="edit" size={15} /> Corregir</button>
+          <Button icon="edit" onClick={() => onEdit(remision)}>Editar remisión</Button>
         )}
-        <PrintRemisionButton remision={remision} showToast={showToast} className={styles.primaryBtn} saveClassName={styles.secondaryBtn} iconSize={16} busyLabel="Guardando…" />
+        <Button variant="primary" icon="printer" onClick={imprimir} disabled={imprimiendo}>
+          {imprimiendo ? 'Preparando…' : 'Imprimir'}
+        </Button>
       </div>
     </Modal>
   );

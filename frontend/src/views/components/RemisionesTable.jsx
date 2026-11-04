@@ -1,13 +1,34 @@
 import { useMemo, useState } from 'react';
 import styles from '../../styles/app.module.css';
+import ds from '../../styles/ds.module.css';
 import { formatEstimatedDate, formatMoney, formatRemisionNumber } from '../../utils/format.js';
 import { matchesSearch } from '../../utils/search.js';
 import DataTable from './DataTable.jsx';
-import { FilterBar, MonthFilter, SearchField } from './filters.jsx';
-import PrintRemisionButton from './PrintRemisionButton.jsx';
-import { contar, Panel } from './ui.jsx';
+import { ActionMenu, ariaSort, Field, Segmented, SortHeader } from './controls.jsx';
+import { MonthFilter, SearchField } from './filters.jsx';
+import { useRemisionAcciones } from './PrintRemisionButton.jsx';
+import { Button, contar, Panel } from './ui.jsx';
 
 const TIPOS = { NORMAL: 'Cuentas de cobro', ELECTRONICA: 'Electrónicas' };
+
+/** Acciones de una fila: Imprimir a la vista y el resto en «Más acciones» */
+function AccionesRemision({ remision, onView, showToast }) {
+  const { imprimir, guardar, imprimiendo, guardando } = useRemisionAcciones(remision, showToast);
+  return (
+    <div className={styles.rowActions}>
+      <Button size="sm" variant="accent" icon="printer" onClick={imprimir} disabled={imprimiendo}>
+        {imprimiendo ? 'Preparando…' : 'Imprimir'}
+      </Button>
+      <ActionMenu
+        ariaLabel={`Más acciones de la remisión ${formatRemisionNumber(remision)}`}
+        items={[
+          { label: 'Ver detalle', icon: 'search', onClick: () => onView(remision) },
+          { label: guardando ? 'Guardando…' : 'Guardar como Excel', icon: 'download', onClick: guardar, disabled: guardando },
+        ]}
+      />
+    </div>
+  );
+}
 
 export default function RemisionesTable({ remisiones, loading, error, onRetry, onView, showToast, actions }) {
   const [query, setQuery] = useState('');
@@ -18,7 +39,7 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
   // Las anuladas se ven aparte, con el botón «Anuladas» del encabezado
   const [verAnuladas, setVerAnuladas] = useState(false);
 
-  const { filtered, totalAnuladas } = useMemo(() => {
+  const { filtered, totalAnuladas, totalVigentes } = useMemo(() => {
     const coincide = (rem) => {
       if ((rem.tipo === 'ELECTRONICA' ? 'ELECTRONICA' : 'NORMAL') !== tipo) return false;
       const fecha = String(rem.fecha).slice(0, 10);
@@ -29,8 +50,20 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
     const lista = coincidentes.filter((rem) => Boolean(rem.anulada) === verAnuladas);
     const sentido = recientesPrimero ? -1 : 1;
     lista.sort((a, b) => sentido * (String(a.fecha).localeCompare(String(b.fecha)) || a.numero - b.numero));
-    return { filtered: lista, totalAnuladas: coincidentes.filter((rem) => rem.anulada).length };
+    return { filtered: lista, totalAnuladas: coincidentes.filter((rem) => rem.anulada).length, totalVigentes: coincidentes.filter((rem) => !rem.anulada).length };
   }, [remisiones, query, periodo, tipo, recientesPrimero, verAnuladas]);
+
+  // Cuántas remisiones tiene cada serie con los demás filtros aplicados
+  const porTipo = useMemo(() => {
+    const cuenta = { NORMAL: 0, ELECTRONICA: 0 };
+    remisiones.forEach((rem) => {
+      if (Boolean(rem.anulada) !== verAnuladas) return;
+      if (periodo && !String(rem.fecha).slice(0, 7).startsWith(`${periodo.anio}-${String(periodo.mes).padStart(2, '0')}`)) return;
+      if (!matchesSearch(query, [formatRemisionNumber(rem), rem.noOrden, rem.caso?.codigo, rem.caso?.cliente?.nombre, rem.pacienteNombre, rem.caso?.pacienteNombre, rem.doctorNombre, rem.caso?.doctorNombre])) return;
+      cuenta[rem.tipo === 'ELECTRONICA' ? 'ELECTRONICA' : 'NORMAL'] += 1;
+    });
+    return cuenta;
+  }, [remisiones, query, periodo, verAnuladas]);
 
   const otroTipo = tipo === 'NORMAL' ? 'ELECTRONICA' : 'NORMAL';
   const contador = verAnuladas ? contar(filtered.length, 'anulada', 'anuladas', loading) : contar(filtered.length, 'remisión', 'remisiones', loading);
@@ -39,16 +72,7 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
     {
       key: 'numero',
       className: styles.numberCell,
-      header: (
-        <button
-          type="button"
-          className={styles.thBtn}
-          onClick={() => setTipo(otroTipo)}
-          title={`Viendo ${TIPOS[tipo].toLowerCase()}. Clic para ver ${TIPOS[otroTipo].toLowerCase()}`}
-        >
-          N° · {TIPOS[tipo]} <span aria-hidden="true">⇄</span>
-        </button>
-      ),
+      header: 'N°',
       render: (rem) => (
         <>
           {formatRemisionNumber(rem)}
@@ -59,16 +83,15 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
     {
       key: 'fecha',
       className: styles.mutedText,
-      headerProps: { 'aria-sort': recientesPrimero ? 'descending' : 'ascending' },
+      headerProps: { 'aria-sort': ariaSort(recientesPrimero ? 'desc' : 'asc') },
       header: (
-        <button
-          type="button"
-          className={styles.thBtn}
+        <SortHeader
+          direccion={recientesPrimero ? 'desc' : 'asc'}
           onClick={() => setRecientesPrimero((valor) => !valor)}
-          title={recientesPrimero ? 'Más recientes primero. Clic para ver primero las más antiguas' : 'Más antiguas primero. Clic para ver primero las más recientes'}
+          title={recientesPrimero ? 'Más recientes primero. Clic para ordenar de la más antigua' : 'Más antiguas primero. Clic para ordenar de la más reciente'}
         >
-          Fecha <span aria-hidden="true">{recientesPrimero ? '▼' : '▲'}</span>
-        </button>
+          Fecha
+        </SortHeader>
       ),
       render: (rem) => formatEstimatedDate(rem.fecha),
     },
@@ -96,23 +119,9 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
     { key: 'total', header: 'Total', align: 'right', className: styles.moneyCell, render: (rem) => formatMoney(rem.total) },
     {
       key: 'acciones',
-      headerProps: { className: styles.actionsTh },
-      header: (
-        <button
-          type="button"
-          className={styles.thBtn}
-          onClick={() => setVerAnuladas((valor) => !valor)}
-          aria-pressed={verAnuladas}
-          title={verAnuladas ? 'Volver a las remisiones vigentes' : 'Ver las remisiones anuladas'}
-        >
-          {verAnuladas ? '← Vigentes' : `Anuladas (${totalAnuladas})`}
-        </button>
-      ),
-      render: (rem) => (
-        <div className={styles.rowActions}>
-          <PrintRemisionButton remision={rem} showToast={showToast} className={styles.traceBtn} />
-        </div>
-      ),
+      headerProps: { className: styles.actionsTh, 'aria-label': 'Acciones' },
+      header: '',
+      render: (rem) => <AccionesRemision remision={rem} onView={onView} showToast={showToast} />,
     },
   ];
 
@@ -146,10 +155,34 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
 
   return (
     <Panel title={verAnuladas ? 'Remisiones anuladas' : 'Remisiones emitidas'} actions={actions} meta={contador}>
-      <FilterBar>
-        <SearchField value={query} onChange={setQuery} placeholder="Buscar por número, caso, cliente o paciente" label="Buscar remisiones" />
-        <MonthFilter periodo={periodo} onChange={setPeriodo} textoTodos="Todas las remisiones" />
-      </FilterBar>
+      <div className={ds.toolbar}>
+        <SearchField className={`${styles.caseSearch} ${ds.toolbarGrow}`} value={query} onChange={setQuery} placeholder="Buscar por número, caso, cliente o paciente" label="Buscar remisiones" />
+        <Field label="Mes">
+          <MonthFilter periodo={periodo} onChange={setPeriodo} textoTodos="Todas las remisiones" />
+        </Field>
+        <Field label="Tipo de remisión">
+          <Segmented
+            label="Tipo de remisión"
+            value={tipo}
+            onChange={setTipo}
+            options={[
+              { value: 'NORMAL', label: TIPOS.NORMAL, count: porTipo.NORMAL },
+              { value: 'ELECTRONICA', label: TIPOS.ELECTRONICA, count: porTipo.ELECTRONICA },
+            ]}
+          />
+        </Field>
+        <Field label="Estado">
+          <Segmented
+            label="Remisiones vigentes o anuladas"
+            value={verAnuladas ? 'anuladas' : 'vigentes'}
+            onChange={(v) => setVerAnuladas(v === 'anuladas')}
+            options={[
+              { value: 'vigentes', label: 'Vigentes', count: totalVigentes },
+              { value: 'anuladas', label: 'Anuladas', count: totalAnuladas },
+            ]}
+          />
+        </Field>
+      </div>
 
       <DataTable
         columns={columnas}
