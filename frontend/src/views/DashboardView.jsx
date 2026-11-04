@@ -25,6 +25,8 @@ export default function DashboardView({ controller, remisionesController }) {
     error,
     activeView,
     verArchivados,
+    estadoCasos,
+    irACasos,
     setVerArchivados,
     updateCase,
     archiveCase,
@@ -99,7 +101,7 @@ export default function DashboardView({ controller, remisionesController }) {
                   <PageHeader title="Resumen de casos" subtitle="Estadísticas generales y los últimos casos registrados.">
                     <div className={styles.headerActions}>{registrarCaso}</div>
                   </PageHeader>
-                  <MetricCards stats={stats} />
+                  <MetricCards stats={stats} onSelect={irACasos} />
                   <CasesTable
                     casos={casos.slice(0, 3)}
                     loading={loading}
@@ -111,6 +113,8 @@ export default function DashboardView({ controller, remisionesController }) {
                 </>
               ) : (
                 <CasesTable
+                  key={estadoCasos}
+                  initialFilter={estadoCasos}
                   casos={casos}
                   loading={loading}
                   error={error}

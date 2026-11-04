@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react';
 import styles from '../../styles/app.module.css';
+import ds from '../../styles/ds.module.css';
 import { deliverySla, formatDateTime, formatEstimatedDate, ingresoDate, lastMovement, portadaCaso, totalMovimientos } from '../../utils/format.js';
 import { ESTADOS, normalizeEstado } from '../../constants.js';
 import { matchesSearch } from '../../utils/search.js';
-import { ChipGroup, DateFilter, FilterBar, SearchField } from './filters.jsx';
+import { Field, Segmented } from './controls.jsx';
+import { ChipGroup, DateFilter, SearchField } from './filters.jsx';
 import { Icon } from './Icon.jsx';
 import StatusBadge from './StatusBadge.jsx';
-import { contar, EmptyState, ErrorBanner, LoadingState, Pagination, Panel } from './ui.jsx';
+import { Button, contar, EmptyState, ErrorBanner, LoadingState, Pagination, Panel } from './ui.jsx';
 
 const FILTERS = ['Todos', ...ESTADOS];
 const PAGE_SIZES = [9, 18, 36];
@@ -27,9 +29,10 @@ export default function CasesTable({
   archivadosCount = 0,
   compact = false,
   actions,
+  initialFilter = 'Todos',
 }) {
   const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState('Todos');
+  const [filter, setFilter] = useState(initialFilter);
   const [fecha, setFecha] = useState('');
   const [pageSize, setPageSize] = useState(9);
   const [page, setPage] = useState(0);
@@ -69,20 +72,29 @@ export default function CasesTable({
       <div className={styles.caseBody}>
       {!compact && (
         <>
-          <FilterBar>
+          <div className={ds.toolbar}>
             <SearchField
+              className={`${styles.caseSearch} ${ds.toolbarGrow}`}
               value={query}
               onChange={conPagina(setQuery)}
-              placeholder="Buscar código, caso, cliente o paciente"
+              placeholder="Buscar por código, cliente, doctor o paciente"
               label="Buscar casos"
             />
-            {onToggleArchivados && (verArchivados || archivadosCount > 0) && (
-              <button type="button" className={styles.secondaryBtn} onClick={onToggleArchivados}>
-                <Icon name="archive" size={15} /> {verArchivados ? 'Volver a los casos activos' : `Ver archivados (${archivadosCount})`}
-              </button>
-            )}
             <DateFilter label="Fecha de ingreso" value={fecha} onChange={conPagina(setFecha)} ariaLabel="Filtrar por fecha de ingreso" />
-          </FilterBar>
+            {onToggleArchivados && (verArchivados || archivadosCount > 0) && (
+              <Field label="Mostrar">
+                <Segmented
+                  label="Casos activos o archivados"
+                  value={verArchivados ? 'archivados' : 'activos'}
+                  onChange={(v) => { if ((v === 'archivados') !== verArchivados) onToggleArchivados(); }}
+                  options={[
+                    { value: 'activos', label: 'Activos' },
+                    { value: 'archivados', label: 'Archivados', count: archivadosCount },
+                  ]}
+                />
+              </Field>
+            )}
+          </div>
           <ChipGroup options={FILTERS} value={filter} onChange={conPagina(setFilter)} label="Filtrar casos por estado" />
         </>
       )}
@@ -143,9 +155,9 @@ export default function CasesTable({
                   <div className={styles.caseCardActions}>
                     <span>{totalMovimientos(caso)} {totalMovimientos(caso) === 1 ? 'movimiento' : 'movimientos'}</span>
                     <div className={styles.cardButtons}>
-                      <button
-                        type="button"
-                        className={styles.secondaryBtn}
+                      <Button
+                        size="sm"
+                        icon={verArchivados ? 'undo' : 'archive'}
                         onClick={(event) => {
                           event.stopPropagation();
                           onArchive(caso, !verArchivados);
@@ -153,17 +165,18 @@ export default function CasesTable({
                         aria-label={`${verArchivados ? 'Restaurar' : 'Archivar'} caso ${caso.codigo}`}
                       >
                         {verArchivados ? 'Restaurar' : 'Archivar'}
-                      </button>
+                      </Button>
                       {verArchivados && (
-                        <button
-                          type="button"
-                          className={styles.deleteBtn}
+                        <Button
+                          size="sm"
+                          variant="danger-outline"
+                          icon="trash"
                           onClick={(event) => remove(event, caso)}
                           disabled={deletingId === caso.id}
                           aria-label={`Eliminar caso ${caso.codigo}`}
                         >
                           {deletingId === caso.id ? 'Eliminando…' : 'Eliminar'}
-                        </button>
+                        </Button>
                       )}
                     </div>
                   </div>

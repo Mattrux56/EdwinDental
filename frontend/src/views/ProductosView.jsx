@@ -1,15 +1,16 @@
 import { useMemo, useRef, useState } from 'react';
 import styles from '../styles/app.module.css';
+import ds from '../styles/ds.module.css';
 import { useResource } from '../hooks/useResource.js';
 import { downloadListaPrecios, remisionesService } from '../services/remisiones.service.js';
 import { formatMoney } from '../utils/format.js';
 import { matchesSearch } from '../utils/search.js';
 import DataTable from './components/DataTable.jsx';
-import { FilterBar, SearchField, SelectFilter } from './components/filters.jsx';
-import { Icon } from './components/Icon.jsx';
+import { ActionMenu, ariaSort, Field, SortHeader, Switch } from './components/controls.jsx';
+import { SearchField, SelectFilter } from './components/filters.jsx';
 import Modal, { ConfirmModal } from './components/Modal.jsx';
 import ProductoForm from './components/ProductoForm.jsx';
-import { Badge, contar, Panel } from './components/ui.jsx';
+import { Button, contar, Panel } from './components/ui.jsx';
 
 export default function ProductosView({ showToast }) {
   const { data: productos, loading, error, reload: load } = useResource(() => remisionesService.productosAdmin());
@@ -123,16 +124,15 @@ export default function ProductosView({ showToast }) {
     {
       key: 'codigo',
       header: (
-        <button
-          type="button"
-          className={styles.sortBtn}
+        <SortHeader
+          direccion={orden}
           onClick={() => setOrden((actual) => (actual === 'asc' ? 'desc' : 'asc'))}
           title={orden === 'asc' ? 'Del código más bajo al más alto; clic para invertir' : 'Del código más alto al más bajo; clic para invertir'}
         >
-          Código <span aria-hidden="true">{orden === 'asc' ? '▲' : '▼'}</span>
-        </button>
+          Código
+        </SortHeader>
       ),
-      headerProps: { 'aria-sort': orden === 'asc' ? 'ascending' : 'descending' },
+      headerProps: { 'aria-sort': ariaSort(orden) },
       className: styles.codeCell,
       render: (p) => p.codigo,
     },
@@ -143,15 +143,13 @@ export default function ProductosView({ showToast }) {
       key: 'estado',
       header: 'Estado',
       render: (p) => (
-        <button
-          type="button"
-          className={styles.statusBtn}
-          onClick={() => setConfirmar({ accion: 'estado', producto: p })}
+        <Switch
+          checked={p.activo}
+          label={p.activo ? 'Activo' : 'Inactivo'}
+          onChange={() => setConfirmar({ accion: 'estado', producto: p })}
           disabled={saving}
-          title={p.activo ? 'Clic para desactivar' : 'Clic para activar'}
-        >
-          <Badge tone={p.activo ? 'lab' : 'default'}>{p.activo ? 'Activo' : 'Inactivo'}</Badge>
-        </button>
+          title={p.activo ? 'Desactivar: dejará de aparecer en nuevas remisiones' : 'Activar: volverá a aparecer en nuevas remisiones'}
+        />
       ),
     },
     {
@@ -160,10 +158,12 @@ export default function ProductosView({ showToast }) {
       headerProps: { 'aria-label': 'Acciones' },
       render: (p) => (
         <div className={styles.productActions}>
-          <button type="button" className={styles.secondaryBtn} onClick={() => setModal({ producto: p })} disabled={saving}>Editar</button>
-          <button type="button" className={styles.deleteBtn} onClick={() => setConfirmar({ accion: 'eliminar', producto: p })} disabled={saving}>
-            <Icon name="trash" size={15} /> Eliminar
-          </button>
+          <Button size="sm" icon="edit" onClick={() => setModal({ producto: p })} disabled={saving}>Editar</Button>
+          <ActionMenu
+            ariaLabel={`Más acciones de ${p.codigo}`}
+            disabled={saving}
+            items={[{ label: 'Eliminar producto', icon: 'trash', tone: 'danger', note: 'Si está en una remisión, desactívalo', onClick: () => setConfirmar({ accion: 'eliminar', producto: p }) }]}
+          />
         </div>
       ),
     },
@@ -177,22 +177,24 @@ export default function ProductosView({ showToast }) {
         actions={(
         <>
           <input ref={archivoRef} type="file" accept=".xlsx" className={styles.hiddenInput} onChange={importar} />
-          <button type="button" className={styles.secondaryBtn} onClick={exportar} title="Descarga la lista de precios actual en Excel">
-            <Icon name="download" size={16} /> Exportar
-          </button>
-          <button type="button" className={styles.secondaryBtn} onClick={() => archivoRef.current?.click()} disabled={importando} title="Actualiza precios y agrega productos desde un Excel (Código, Categoría, Descripción, Valor)">
-            <Icon name="upload" size={16} /> {importando ? 'Importando…' : 'Importar Excel'}
-          </button>
-          <button type="button" className={styles.primaryBtn} onClick={() => setModal({ producto: null })}>
-            <Icon name="plus" size={16} /> Nuevo producto
-          </button>
+          <ActionMenu
+            label="Excel"
+            icon="file"
+            items={[
+              { label: 'Exportar lista de precios', icon: 'download', note: 'Descarga el catálogo actual en Excel', onClick: exportar },
+              { label: importando ? 'Importando…' : 'Importar desde Excel', icon: 'upload', note: 'Columnas: Código, Categoría, Descripción, Valor', disabled: importando, onClick: () => archivoRef.current?.click() },
+            ]}
+          />
+          <Button variant="primary" icon="plus" onClick={() => setModal({ producto: null })}>Nuevo producto</Button>
         </>
         )}
       >
-        <FilterBar>
-          <SelectFilter value={categoria} onChange={setCategoriaElegida} options={opcionesCategoria} label="Filtrar por categoría" />
-          <SearchField value={query} onChange={setQuery} placeholder="Buscar por código, categoría o descripción" label="Buscar productos" />
-        </FilterBar>
+        <div className={ds.toolbar}>
+          <SearchField className={`${styles.caseSearch} ${ds.toolbarGrow}`} value={query} onChange={setQuery} placeholder="Buscar por código, categoría o descripción" label="Buscar productos" />
+          <Field label="Categoría">
+            <SelectFilter value={categoria} onChange={setCategoriaElegida} options={opcionesCategoria} label="Filtrar por categoría" />
+          </Field>
+        </div>
 
         <DataTable
           columns={columnas}

@@ -33,6 +33,7 @@ export function useCasesController() {
 
   const [activeView, setActiveViewRaw] = useState('resumen');
   const [verArchivados, setVerArchivados] = useState(false);
+  const [estadoCasos, setEstadoCasos] = useState('Todos'); // estado con que se abre el Panel de casos (desde las tarjetas del Resumen)
   const [selectedCase, setSelectedCase] = useState(null);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
@@ -41,7 +42,15 @@ export function useCasesController() {
   // Al salir del Panel de casos se vuelve a la lista normal (los archivados no deben colarse en Remisiones ni en el Resumen)
   const setActiveView = useCallback((view) => {
     setActiveViewRaw(view);
+    setEstadoCasos('Todos'); // entrar desde el menú abre el Panel sin filtro de estado
     if (view !== 'casos') setVerArchivados(false);
+  }, []);
+
+  /** Abre el Panel de casos ya filtrado por un estado */
+  const irACasos = useCallback((estado = 'Todos') => {
+    setEstadoCasos(estado);
+    setActiveViewRaw('casos');
+    setVerArchivados(false);
   }, []);
 
   const listRequest = useRef(0); // evita que una respuesta lenta pise a una más reciente
@@ -289,12 +298,14 @@ export function useCasesController() {
     error,
     activeView,
     verArchivados,
+    estadoCasos,
     selectedCase,
     saving,
     deletingId,
     toast,
     // acciones
     setActiveView,
+    irACasos,
     setVerArchivados,
     updateCase,
     archiveCase,

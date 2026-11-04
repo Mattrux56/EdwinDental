@@ -208,6 +208,25 @@
   padding: 20px 24px;
 }
 
+button.metricCard {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+button.metricCard:hover {
+  background: var(--surface-2);
+}
+
+button.metricCard:focus-visible {
+  outline: 2px solid var(--reagent);
+  outline-offset: -2px;
+}
+
 .metricCard + .metricCard {
   border-left: 1px solid var(--line);
 }
