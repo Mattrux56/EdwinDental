@@ -20,6 +20,7 @@ export default function CuentasCobroView({ showToast, onOpenCase }) {
   const nombrePeriodo = periodo ? `${MESES[periodo.mes - 1]} ${periodo.anio}` : 'Todas las cuentas';
   const { data: cuentas, loading, error, reload: load } = useResource(() => cuentasService.list(periodo), [periodo?.anio, periodo?.mes]);
   const [guardando, setGuardando] = useState(false);
+  const [exportando, setExportando] = useState(false);
   const [abierta, setAbierta] = useState(null); // clienteId de la cuenta abierta en el modal
   const [busqueda, setBusqueda] = useState('');
   const [estadoPago, setEstadoPago] = useState('Todos');
@@ -42,6 +43,18 @@ export default function CuentasCobroView({ showToast, onOpenCase }) {
   const conteo = (estado) => cuentas.filter((c) => estadoDe(c) === estado).length;
 
   const cuentaAbierta = cuentas.find((c) => c.clienteId === abierta) ?? null;
+
+  /** Todas las remisiones vigentes (de todos los meses) en un Excel; no depende del mes ni de los filtros de la pantalla */
+  const guardarExcel = async () => {
+    setExportando(true);
+    try {
+      if (await cuentasService.exportar()) showToast('success', 'Excel de cuentas guardado');
+    } catch (reason) {
+      showToast('error', reason.message);
+    } finally {
+      setExportando(false);
+    }
+  };
 
   const confirmar = async (pagadas) => {
     setGuardando(true);
@@ -86,6 +99,11 @@ export default function CuentasCobroView({ showToast, onOpenCase }) {
       <Panel
         title={`Cuentas de estado · ${nombrePeriodo}`}
         meta={contar(visibles.length, 'cliente', 'clientes', loading)}
+        actions={(
+          <Button icon="download" onClick={guardarExcel} disabled={exportando} title="Descarga un Excel con todas las remisiones vigentes de todos los meses: una hoja por cliente y un resumen">
+            {exportando ? 'Generando…' : 'Guardar Excel'}
+          </Button>
+        )}
       >
         <div className={ds.summaryBar}>
           <div className={styles.kpis}>
