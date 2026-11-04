@@ -2719,64 +2719,8 @@ input[type='checkbox'] {
   padding-top: 4px;
 }
 
-/* Encabezado de tabla que ordena o filtra al hacer clic */
-.thBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-}
-
-.thBtn:hover {
-  color: var(--ink);
-}
-
-.thBtn[aria-pressed='true'] {
-  color: var(--reagent);
-}
-
 .actionsTh {
   text-align: right;
-}
-
-/* Catálogo: orden por código, estado clicable y barra al empezar cada categoría */
-.sortBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-
-.sortBtn:hover {
-  color: var(--ink);
-}
-
-.sortBtn:focus-visible,
-.statusBtn:focus-visible {
-  outline: 2px solid var(--reagent);
-  outline-offset: 2px;
-}
-
-.statusBtn {
-  padding: 0;
-  border: 0;
-  background: transparent;
-  cursor: pointer;
-}
-
-.statusBtn:disabled {
-  cursor: wait;
-  opacity: 0.65;
 }
 
 .table .groupRow th {
