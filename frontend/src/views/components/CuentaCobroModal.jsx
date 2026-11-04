@@ -12,12 +12,16 @@ export default function CuentaCobroModal({ cuenta, periodo, saving, onClose, onC
   const [remisionAbierta, setRemisionAbierta] = useState(null);
   const [cargandoId, setCargandoId] = useState(null);
   const [recientesPrimero, setRecientesPrimero] = useState(false);
-  const filas = useMemo(() => {
-    const sentido = recientesPrimero ? -1 : 1;
-    return [...cuenta.remisiones].sort((a, b) => sentido * (String(a.fecha).localeCompare(String(b.fecha)) || a.numero - b.numero));
-  }, [cuenta.remisiones, recientesPrimero]);
+  const [filtroPago, setFiltroPago] = useState('Todas'); // Todas | Pagadas | Pendientes
   const original = useMemo(() => new Set(cuenta.remisiones.filter((x) => x.pagada).map((x) => x.id)), [cuenta]);
   const [pagadas, setPagadas] = useState(() => new Set(original));
+  // El filtro usa el estado que muestra cada fila (incluidas las marcas aún sin confirmar)
+  const filas = useMemo(() => {
+    const sentido = recientesPrimero ? -1 : 1;
+    return cuenta.remisiones
+      .filter((x) => filtroPago === 'Todas' || (filtroPago === 'Pagadas') === pagadas.has(x.id))
+      .sort((a, b) => sentido * (String(a.fecha).localeCompare(String(b.fecha)) || a.numero - b.numero));
+  }, [cuenta.remisiones, recientesPrimero, filtroPago, pagadas]);
 
   const todas = pagadas.size === cuenta.remisiones.length;
   const cambios = pagadas.size !== original.size || [...pagadas].some((id) => !original.has(id));
@@ -73,7 +77,18 @@ export default function CuentaCobroModal({ cuenta, periodo, saving, onClose, onC
     },
     {
       key: 'pagada',
-      header: 'Pagada',
+      header: (
+        <select
+          className={styles.select}
+          value={filtroPago}
+          onChange={(e) => setFiltroPago(e.target.value)}
+          aria-label="Filtrar remisiones por estado de pago"
+        >
+          <option value="Todas">Todas</option>
+          <option value="Pagadas">Pagadas</option>
+          <option value="Pendientes">Pendientes</option>
+        </select>
+      ),
       render: (x) => <Badge tone={pagadas.has(x.id) ? 'done' : 'lab'}>{pagadas.has(x.id) ? 'Pagada' : 'Pendiente'}</Badge>,
     },
     { key: 'remision', header: 'Remisión', render: (x) => (cargandoId === x.id ? 'Abriendo…' : formatRemisionNumber(x)) },
@@ -111,6 +126,10 @@ export default function CuentaCobroModal({ cuenta, periodo, saving, onClose, onC
         rows={filas}
         onRowClick={(x) => verRemision(x.id)}
         rowLabel={(x) => `Ver remisión ${formatRemisionNumber(x)}`}
+        empty={{
+          title: `No hay remisiones ${filtroPago.toLowerCase()}`,
+          children: <button type="button" className={styles.linkBtn} onClick={() => setFiltroPago('Todas')}>Mostrar todas</button>,
+        }}
       />
 
       <div className={styles.cuentaFooter}>
