@@ -8,9 +8,10 @@ import { Button } from './ui.jsx';
 
 /** Detalle de una remisión: encabezado, líneas con cantidades y precios, total. Editar/anular solo si se pasan los callbacks. */
 const COLUMNAS = [
-  { key: 'cantidad', header: 'Cant.', render: (item) => item.cantidad },
+  { key: 'cantidad', width: 80, header: 'Cant.', align: 'right', render: (item) => item.cantidad },
   {
     key: 'descripcion',
+    wrap: true,
     header: 'Descripción',
     render: (item) => (
       <>
@@ -23,8 +24,8 @@ const COLUMNAS = [
       </>
     ),
   },
-  { key: 'unitario', header: 'Valor unitario', align: 'right', render: (item) => formatMoney(item.valorUnitario) },
-  { key: 'subtotal', header: 'Subtotal', align: 'right', render: (item) => formatMoney(item.cantidad * item.valorUnitario) },
+  { key: 'unitario', width: 150, header: 'Valor unitario', align: 'right', render: (item) => formatMoney(item.valorUnitario) },
+  { key: 'subtotal', width: 150, header: 'Subtotal', align: 'right', render: (item) => formatMoney(item.cantidad * item.valorUnitario) },
 ];
 
 export default function RemisionDetailModal({ remision, onClose, onEdit, onAnular, onEliminar, onReactivar, reactivando, onVerCaso, showToast }) {

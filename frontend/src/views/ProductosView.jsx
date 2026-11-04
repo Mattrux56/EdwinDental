@@ -122,7 +122,7 @@ export default function ProductosView({ showToast }) {
 
   const columnas = [
     {
-      key: 'codigo',
+      key: 'codigo', width: 110,
       header: (
         <SortHeader
           direccion={orden}
@@ -136,11 +136,11 @@ export default function ProductosView({ showToast }) {
       className: styles.codeCell,
       render: (p) => p.codigo,
     },
-    { key: 'categoria', header: 'Categoría', render: (p) => p.categoria },
+    { key: 'categoria', width: 220, header: 'Categoría', render: (p) => p.categoria },
     { key: 'descripcion', header: 'Descripción', render: (p) => p.descripcion },
-    { key: 'valor', header: 'Valor', render: (p) => formatMoney(p.valor) },
+    { key: 'valor', width: 130, header: 'Valor', align: 'right', render: (p) => formatMoney(p.valor) },
     {
-      key: 'estado',
+      key: 'estado', width: 150,
       header: 'Estado',
       render: (p) => (
         <Switch
@@ -153,7 +153,7 @@ export default function ProductosView({ showToast }) {
       ),
     },
     {
-      key: 'acciones',
+      key: 'acciones', width: 190,
       header: '',
       headerProps: { 'aria-label': 'Acciones' },
       render: (p) => (

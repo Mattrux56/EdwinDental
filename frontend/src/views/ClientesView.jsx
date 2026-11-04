@@ -67,15 +67,14 @@ export default function ClientesView({ showToast, onChanged, onOpenCase, casosVe
         </>
       ),
     },
-    { key: 'casos', header: 'Casos', align: 'right', render: (c) => c._count.casos },
-    { key: 'remisiones', header: 'Remisiones', align: 'right', headerProps: { title: 'Remisiones vigentes (sin las anuladas)' }, render: (c) => c.remisiones },
+    { key: 'casos', width: 90, header: 'Casos', align: 'right', render: (c) => c._count.casos },
+    { key: 'remisiones', width: 110, header: 'Remisiones', align: 'right', headerProps: { title: 'Remisiones vigentes (sin las anuladas)' }, render: (c) => c.remisiones },
     {
-      key: 'acciones',
+      key: 'acciones', width: 250,
       header: '',
       headerProps: { 'aria-label': 'Acciones', className: styles.actionsTh },
       render: (c) => (
         <div className={styles.rowActions}>
-          {c._count.casos > 0 && <span className={styles.mutedText}>Con casos: no se puede eliminar</span>}
           <Button size="sm" variant="accent" icon="chevronRight" onClick={(e) => { e.stopPropagation(); setClienteAbierto(c); }}>
             Ver casos y cuenta
           </Button>

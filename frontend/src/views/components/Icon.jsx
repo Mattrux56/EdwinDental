@@ -184,9 +184,9 @@ const PATHS = {
   ),
   more: (
     <>
-      <circle cx="5" cy="12" r="1.4" />
-      <circle cx="12" cy="12" r="1.4" />
-      <circle cx="19" cy="12" r="1.4" />
+      <circle cx="5" cy="12" r="2.2" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none" />
+      <circle cx="19" cy="12" r="2.2" fill="currentColor" stroke="none" />
     </>
   ),
   filter: <polygon points="22 3 2 3 10 12.5 10 19 14 21 14 12.5 22 3" />,

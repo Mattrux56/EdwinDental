@@ -728,13 +728,56 @@ button.metricCard:focus-visible {
 
 .tableWrap {
   overflow-x: auto;
+  overflow-y: auto;
+  scrollbar-gutter: stable; /* la barra vertical no mueve las columnas al aparecer o desaparecer */
   -webkit-overflow-scrolling: touch;
 }
 
+/* Anchos fijos: las columnas no dependen del contenido (los anchos salen de <colgroup> en DataTable) */
 .table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 820px;
+  table-layout: fixed;
+}
+
+.table td,
+.miniTable td,
+.table th:not([colspan]),
+.miniTable th {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.table td > div,
+.miniTable td > div {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Cifras: dígitos de ancho uniforme y alineadas a la derecha (con align: 'right') */
+.numCell {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Columna que permite salto de línea en vez de cortar con «…» */
+.table td.cellWrap,
+.miniTable td.cellWrap {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* Fila de «Sin resultados» / «Cargando…»: ocupa todas las columnas y conserva el encabezado */
+.table td.emptyCell,
+.miniTable td.emptyCell {
+  padding: 0;
+  border-bottom: 0;
+  white-space: normal;
+  overflow: visible;
+  text-align: center;
+}
+
+.emptyRow:hover {
+  background: transparent;
 }
 
 .table th {
@@ -742,8 +785,8 @@ button.metricCard:focus-visible {
   font-weight: 500;
   font-size: 13px;
   color: var(--ink-soft);
-  background: #f8fafb;
-  padding: 10px 20px;
+  background: var(--surface-2);
+  padding: 10px 12px;
   border-bottom: 1px solid var(--line);
   white-space: nowrap;
   /* El encabezado se queda fijo mientras se desplazan las filas */
@@ -754,9 +797,21 @@ button.metricCard:focus-visible {
 }
 
 .table td {
-  padding: 14px 20px;
+  padding: 14px 12px;
   border-bottom: 1px solid var(--line);
   vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* Los extremos de la fila conservan el margen de 20px del panel */
+.table th:first-child,
+.table td:first-child {
+  padding-left: 20px;
+}
+
+.table th:last-child,
+.table td:last-child {
+  padding-right: 20px;
 }
 
 .table tbody tr:last-child td {
@@ -1753,8 +1808,7 @@ button.metricCard:focus-visible {
 
 /* Fila de remisión: toda la fila es un botón, así un clic en cualquier parte la abre */
 .remisionRow {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   align-items: center;
   gap: 12px;
   width: 100%;
@@ -1768,6 +1822,22 @@ button.metricCard:focus-visible {
   text-align: left;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+/* Estado de cuenta: N° · Fecha · Orden · Pago · Total · flecha */
+.remisionRowCuenta {
+  grid-template-columns: 90px 120px minmax(0, 1fr) 110px 130px 20px;
+}
+
+/* Dentro de la tarjeta de un caso: N° · Fecha · Pago · Total · flecha */
+.remisionRowCaso {
+  grid-template-columns: 80px 110px 100px minmax(0, 1fr) 20px;
+}
+
+.remisionRow > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .remisionRow:hover {
@@ -1793,8 +1863,9 @@ button.metricCard:focus-visible {
 }
 
 .remisionRowTotal {
-  margin-left: auto;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
   white-space: nowrap;
 }
 
@@ -1843,7 +1914,7 @@ button.metricCard:focus-visible {
 
 .clienteStats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   flex: 1;
   min-width: 0;
@@ -2593,11 +2664,11 @@ input[type='checkbox'] {
 
 .rowActions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
-  min-width: 190px;
+  min-width: 0;
 }
 
 .rowActions a,
@@ -2664,6 +2735,7 @@ input[type='checkbox'] {
 .miniTable {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
   font-size: 14px;
 }
 
@@ -2679,6 +2751,7 @@ input[type='checkbox'] {
 .miniTable td {
   padding: 7px 10px;
   border-bottom: 1px solid var(--line);
+  white-space: nowrap;
 }
 
 .miniTable tfoot td {
@@ -2689,6 +2762,7 @@ input[type='checkbox'] {
   margin: 18px 0 16px;
   max-height: 40vh;
   overflow: auto;
+  scrollbar-gutter: stable;
   border: 1px solid var(--line);
   border-radius: 10px;
 }
@@ -2833,4 +2907,11 @@ input[type='checkbox'] {
 
 .filtersRow > select {
   width: auto;
+}
+
+/* «Página x de y» con ancho fijo: los botones de paginación no se mueven */
+.pageInfo {
+  min-width: 112px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }

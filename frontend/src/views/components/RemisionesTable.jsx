@@ -70,7 +70,7 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
 
   const columnas = [
     {
-      key: 'numero',
+      key: 'numero', width: 120,
       className: styles.numberCell,
       header: 'N°',
       render: (rem) => (
@@ -81,7 +81,7 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
       ),
     },
     {
-      key: 'fecha',
+      key: 'fecha', width: 130,
       className: styles.mutedText,
       headerProps: { 'aria-sort': ariaSort(recientesPrimero ? 'desc' : 'asc') },
       header: (
@@ -96,7 +96,7 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
       render: (rem) => formatEstimatedDate(rem.fecha),
     },
     {
-      key: 'caso',
+      key: 'caso', width: 140,
       header: 'Caso',
       render: (rem) => (
         <>
@@ -115,10 +115,10 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
         </>
       ),
     },
-    { key: 'productos', header: 'Productos', className: styles.mutedText, render: (rem) => rem.items.length },
-    { key: 'total', header: 'Total', align: 'right', className: styles.moneyCell, render: (rem) => formatMoney(rem.total) },
+    { key: 'productos', width: 115, header: 'Productos', align: 'right', className: styles.mutedText, render: (rem) => rem.items.length },
+    { key: 'total', width: 140, header: 'Total', align: 'right', className: styles.moneyCell, render: (rem) => formatMoney(rem.total) },
     {
-      key: 'acciones',
+      key: 'acciones', width: 210,
       headerProps: { className: styles.actionsTh, 'aria-label': 'Acciones' },
       header: '',
       render: (rem) => <AccionesRemision remision={rem} onView={onView} showToast={showToast} />,

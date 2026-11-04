@@ -122,7 +122,7 @@ export function Pagination({ page, pageCount, pageSize, pageSizes, onPage, onPag
         </select>
         por página
       </label>
-      <span className={styles.panelMeta}>Página {page + 1} de {pageCount}</span>
+      <span className={`${styles.panelMeta} ${styles.pageInfo}`}>Página {page + 1} de {pageCount}</span>
       <div className={styles.paginationButtons}>
         <Button size="sm" icon="chevronLeft" onClick={() => onPage(Math.max(0, page - 1))} disabled={page === 0}>
           Anterior

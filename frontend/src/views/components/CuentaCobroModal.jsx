@@ -53,7 +53,7 @@ export default function CuentaCobroModal({ cuenta, periodo, saving, onClose, onC
 
   const columnas = [
     {
-      key: 'marca',
+      key: 'marca', width: 44,
       header: <span className={ds.srOnly}>Pagada</span>,
       render: (x) => (
         <input
@@ -68,13 +68,13 @@ export default function CuentaCobroModal({ cuenta, periodo, saving, onClose, onC
       ),
     },
     {
-      key: 'pagada',
+      key: 'pagada', width: 130,
       header: 'Estado de pago',
       render: (x) => <PagoBadge estado={pagadas.has(x.id) ? 'Pagada' : 'Pendiente'} />,
     },
-    { key: 'remision', header: 'Remisión', render: (x) => (cargandoId === x.id ? 'Abriendo…' : formatRemisionNumber(x)) },
+    { key: 'remision', width: 100, header: 'Remisión', render: (x) => (cargandoId === x.id ? 'Abriendo…' : formatRemisionNumber(x)) },
     {
-      key: 'fecha',
+      key: 'fecha', width: 130,
       headerProps: { 'aria-sort': ariaSort(recientesPrimero ? 'desc' : 'asc') },
       header: (
         <SortHeader
@@ -89,8 +89,8 @@ export default function CuentaCobroModal({ cuenta, periodo, saving, onClose, onC
     },
     { key: 'doctor', header: 'Doctor', render: (x) => x.doctor || '—' },
     { key: 'paciente', header: 'Paciente', render: (x) => x.paciente || '—' },
-    { key: 'orden', header: 'Orden de trabajo', render: (x) => x.ordenTrabajo || x.noOrden || '—' },
-    { key: 'valor', header: 'Valor', align: 'right', className: styles.moneyCell, render: (x) => formatMoney(x.total) },
+    { key: 'orden', width: 150, header: 'Orden de trabajo', render: (x) => x.ordenTrabajo || x.noOrden || '—' },
+    { key: 'valor', width: 120, header: 'Valor', align: 'right', className: styles.moneyCell, render: (x) => formatMoney(x.total) },
   ];
 
   return (

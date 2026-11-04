@@ -199,7 +199,7 @@ export default function ClienteDetalle({ cliente, onBack, onOpenCase, showToast,
                 <ul className={styles.clienteRemisiones}>
                   {remisionesFiltradas.map((rem) => (
                     <li key={rem.id}>
-                      <button type="button" className={styles.remisionRow} onClick={() => setRemisionAbierta(rem)} aria-label={`Ver remisión N° ${formatRemisionNumber(rem)}, ${etiquetaPago(rem).toLowerCase()}`}>
+                      <button type="button" className={`${styles.remisionRow} ${styles.remisionRowCuenta}`} onClick={() => setRemisionAbierta(rem)} aria-label={`Ver remisión N° ${formatRemisionNumber(rem)}, ${etiquetaPago(rem).toLowerCase()}`}>
                         <span className={styles.remisionRowNumero}>N° {formatRemisionNumber(rem)}</span>
                         <span className={styles.remisionRowFecha}>{formatEstimatedDate(rem.fecha)}</span>
                         <span className={styles.remisionRowFecha}>Orden {rem.caso?.codigo}</span>
@@ -270,7 +270,7 @@ export default function ClienteDetalle({ cliente, onBack, onOpenCase, showToast,
                             <li key={rem.id}>
                               <button
                                 type="button"
-                                className={styles.remisionRow}
+                                className={`${styles.remisionRow} ${styles.remisionRowCaso}`}
                                 onClick={() => setRemisionAbierta(rem)}
                                 aria-label={`Ver remisión N° ${formatRemisionNumber(rem)}, ${etiquetaPago(rem).toLowerCase()}`}
                               >

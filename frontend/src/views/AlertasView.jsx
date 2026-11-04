@@ -15,12 +15,12 @@ const NIVEL = {
 
 const COLUMNAS = [
   {
-    key: 'situacion',
+    key: 'situacion', width: 190,
     header: 'Situación',
     render: (a) => <span className={`${styles.slaBadge} ${styles[NIVEL[a.nivel].cls]}`}>{NIVEL[a.nivel].label(a.dias)}</span>,
   },
   {
-    key: 'caso',
+    key: 'caso', width: 150,
     header: 'Caso',
     render: (a) => (
       <>
@@ -39,8 +39,8 @@ const COLUMNAS = [
       </>
     ),
   },
-  { key: 'estado', header: 'Estado', render: (a) => <StatusBadge estado={a.estado} /> },
-  { key: 'entrega', header: 'Entrega', className: styles.mutedText, render: (a) => formatEstimatedDate(a.fechaEntregaEstimada) },
+  { key: 'estado', width: 175, header: 'Estado', render: (a) => <StatusBadge estado={a.estado} /> },
+  { key: 'entrega', width: 140, header: 'Entrega', className: styles.mutedText, render: (a) => formatEstimatedDate(a.fechaEntregaEstimada) },
 ];
 
 /** Casos sin finalizar con la entrega vencida, para hoy o en los próximos 3 días */
