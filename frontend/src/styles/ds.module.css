@@ -50,6 +50,11 @@
   color: var(--ink);
 }
 
+.segment:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .segmentActive {
   background: var(--surface);
   color: var(--reagent-dark);

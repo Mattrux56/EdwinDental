@@ -18,9 +18,9 @@ export function Field({ label, children, className = '' }) {
 
 /**
  * Elegir una opción entre pocas, todas a la vista.
- * options: [{ value, label, count? }] · onChange(value)
+ * options: [{ value, label, count?, disabled?, title? }] · onChange(value)
  */
-export function Segmented({ options, value, onChange, label }) {
+export function Segmented({ options, value, onChange, label, disabled = false }) {
   return (
     <div className={ds.segmented} role="group" aria-label={label}>
       {options.map((option) => (
@@ -30,6 +30,8 @@ export function Segmented({ options, value, onChange, label }) {
           className={cx(ds.segment, value === option.value && ds.segmentActive)}
           onClick={() => onChange(option.value)}
           aria-pressed={value === option.value}
+          disabled={disabled || option.disabled}
+          title={option.title}
         >
           {option.label}
           {option.count !== undefined && <span className={ds.segmentCount}>{option.count}</span>}

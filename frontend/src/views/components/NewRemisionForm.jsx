@@ -4,6 +4,7 @@ import { formatMoney, ingresoDate } from '../../utils/format.js';
 import { Icon } from './Icon.jsx';
 import StatusBadge from './StatusBadge.jsx';
 import { DateFilter, SearchField } from './filters.jsx';
+import { Segmented } from './controls.jsx';
 import { esProtesis, ordenarPorTipo } from '../../utils/protesis.js';
 import { matchesSearch, normalizeSearchText } from '../../utils/search.js';
 import { remisionesService } from '../../services/remisiones.service.js';
@@ -122,44 +123,62 @@ function QuantityControl({ value, onChange, disabled, label }) {
   );
 }
 
-/** Reparto opcional de una prótesis: dos píldoras (superior / inferior) con su cantidad y su casilla */
-function SplitFields({ linea, descripcion, saving, onMarcar, onValor }) {
-  const invalido = (linea.supOn || linea.infOn) && linea.sup + linea.inf !== linea.cantidad;
+/** Modo de reparto de una línea: none | sup | inf | both */
+const modoDe = (l) => (l.supOn && l.infOn ? 'both' : l.supOn ? 'sup' : l.infOn ? 'inf' : 'none');
+
+/**
+ * Deja el reparto Superior/Inferior de una línea coherente con su cantidad:
+ * un lado lleva todas las unidades; con los dos, cada uno tiene al menos 1 y suman la cantidad.
+ */
+function normalizarReparto(l, cantidad) {
+  const ambos = l.supOn && l.infOn && cantidad >= 2;
+  if (ambos) {
+    const sup = Math.max(1, Math.min(l.sup || 1, cantidad - 1));
+    return { ...l, cantidad, supOn: true, infOn: true, sup, inf: cantidad - sup };
+  }
+  if (l.supOn) return { ...l, cantidad, supOn: true, infOn: false, sup: cantidad, inf: 0 };
+  if (l.infOn) return { ...l, cantidad, supOn: false, infOn: true, sup: 0, inf: cantidad };
+  return { ...l, cantidad, supOn: false, infOn: false, sup: 0, inf: 0 };
+}
+
+/** Reparto opcional de una prótesis: Sin reparto · Superior · Inferior · Ambos (solo con 2 o más unidades) */
+function SplitFields({ linea, descripcion, saving, onModo, onValor }) {
+  const modo = modoDe(linea);
+  const invalido = (linea.supOn || linea.infOn)
+    && (linea.sup + linea.inf !== linea.cantidad || (linea.supOn && linea.sup < 1) || (linea.infOn && linea.inf < 1));
   return (
     <div className={styles.splitFields} role="group" aria-label={`Superiores e inferiores: ${descripcion}`}>
-      {[['sup', 'Superior'], ['inf', 'Inferior']].map(([lado, texto]) => {
-        const marcado = linea[`${lado}On`];
-        const conError = marcado && invalido;
-        return (
-          <label
-            key={lado}
-            className={`${styles.splitItem} ${marcado ? styles.splitItemOn : ''} ${conError ? styles.splitItemError : ''}`}
-            title={conError ? `Superiores más inferiores deben sumar ${linea.cantidad}` : undefined}
-          >
-            <input
-              type="number"
-              min="0"
-              max={linea.cantidad}
-              inputMode="numeric"
-              value={marcado ? linea[lado] : ''}
-              placeholder="0"
-              disabled={!marcado || saving}
-              onChange={(e) => onValor(linea.productoId, lado, Number.parseInt(e.target.value, 10) || 0)}
-              aria-label={`Cantidad ${texto.toLowerCase()}: ${descripcion}`}
-              aria-invalid={conError || undefined}
-            />
-            <span className={styles.splitCheck}>
-              <input
-                type="checkbox"
-                checked={marcado}
-                disabled={saving}
-                onChange={(e) => onMarcar(linea.productoId, lado, e.target.checked)}
-              />
-              {texto}
-            </span>
-          </label>
-        );
-      })}
+      <span className={styles.splitTitle}>Reparto</span>
+      <Segmented
+        label={`Reparto de ${descripcion}`}
+        value={modo}
+        disabled={saving}
+        onChange={(m) => onModo(linea.productoId, m)}
+        options={[
+          { value: 'none', label: 'Sin reparto' },
+          { value: 'sup', label: 'Superior' },
+          { value: 'inf', label: 'Inferior' },
+          { value: 'both', label: 'Ambos', disabled: linea.cantidad < 2, title: linea.cantidad < 2 ? 'Con 1 unidad solo puede ser superior o inferior' : undefined },
+        ]}
+      />
+      {modo === 'both' && [['sup', 'Superior'], ['inf', 'Inferior']].map(([lado, texto]) => (
+        <label key={lado} className={styles.splitNumber}>
+          <span>{texto}</span>
+          <input
+            type="number"
+            min="1"
+            max={linea.cantidad - 1}
+            inputMode="numeric"
+            value={linea[lado]}
+            disabled={saving}
+            onChange={(e) => onValor(linea.productoId, lado, Number.parseInt(e.target.value, 10) || 0)}
+            aria-label={`Cantidad ${texto.toLowerCase()}: ${descripcion}`}
+            aria-invalid={invalido || undefined}
+          />
+        </label>
+      ))}
+      {linea.cantidad < 2 && modo === 'none' && <span className={styles.hint}>Con 1 unidad: superior o inferior</span>}
+      {invalido && <span className={styles.splitError} role="alert">Superiores más inferiores deben sumar {linea.cantidad}</span>}
     </div>
   );
 }
@@ -245,16 +264,7 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
   const cantidadDe = (id) => lineas.find((l) => l.productoId === id)?.cantidad ?? 0;
   const llena = lineas.length >= MAX_LINEAS;
 
-  // Con un solo lado marcado se lleva toda la cantidad; con los dos, lo que sobra del superior va al inferior
-  const repartir = (l, cantidad) => {
-    if (l.supOn && !l.infOn) return { ...l, cantidad, sup: cantidad, inf: 0 };
-    if (l.infOn && !l.supOn) return { ...l, cantidad, sup: 0, inf: cantidad };
-    if (l.supOn && l.infOn) {
-      const sup = Math.min(l.sup, cantidad);
-      return { ...l, cantidad, sup, inf: cantidad - sup };
-    }
-    return { ...l, cantidad, sup: 0, inf: 0 };
-  };
+  const repartir = normalizarReparto;
 
   const setCantidad = (productoId, valor) => {
     const cantidad = Math.max(0, Math.min(MAX_CANTIDAD, valor));
@@ -272,17 +282,18 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
     setLineas((prev) => prev.map((l) => (l.productoId === productoId ? cambio(l) : l)));
   };
 
-  /** Marca o desmarca superior (lado 'sup') o inferior (lado 'inf') de una prótesis */
-  const marcarLado = (productoId, lado, activo) =>
-    cambiarLinea(productoId, (l) => {
-      const otro = lado === 'sup' ? 'inf' : 'sup';
-      const nuevo = { ...l, [`${lado}On`]: activo };
-      if (!activo) return repartir({ ...nuevo, [lado]: 0 }, l.cantidad);
-      return { ...nuevo, [lado]: l[`${otro}On`] ? Math.max(l.cantidad - l[otro], 0) : l.cantidad, [otro]: l[`${otro}On`] ? l[otro] : 0 };
-    });
+  /** Cambia el modo de reparto de una prótesis (sin reparto, superior, inferior o ambos) */
+  const fijarModo = (productoId, modo) =>
+    cambiarLinea(productoId, (l) => normalizarReparto({ ...l, supOn: modo === 'sup' || modo === 'both', infOn: modo === 'inf' || modo === 'both' }, l.cantidad));
 
+  /** Con «Ambos», al editar un lado el otro se completa solo: cada uno entre 1 y cantidad − 1 */
   const setLado = (productoId, lado, valor) =>
-    cambiarLinea(productoId, (l) => ({ ...l, [lado]: Math.max(0, Math.min(l.cantidad, valor)) }));
+    cambiarLinea(productoId, (l) => {
+      if (!(l.supOn && l.infOn)) return l;
+      const propio = Math.max(1, Math.min(l.cantidad - 1, valor));
+      const sup = lado === 'sup' ? propio : l.cantidad - propio;
+      return { ...l, sup, inf: l.cantidad - sup };
+    });
 
   const productosPorId = useMemo(() => new Map(productos.map((p) => [p.id, p])), [productos]);
 
@@ -320,7 +331,7 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
   const total = detalle.reduce((acc, l) => acc + l.subtotal, 0);
   const numeroValido = Number.isInteger(Number(numero)) && Number(numero) >= 1 && Number(numero) <= 2147483647;
   // El reparto es opcional, pero si en una prótesis se marcó una casilla, superiores + inferiores deben dar la cantidad
-  const repartoInvalido = (l) => l.protesis && (l.supOn || l.infOn) && l.sup + l.inf !== l.cantidad;
+  const repartoInvalido = (l) => l.protesis && (l.supOn || l.infOn) && (l.sup + l.inf !== l.cantidad || (l.supOn && l.sup < 1) || (l.infOn && l.inf < 1));
   // Corrigiendo solo datos (fecha, número, nombres…) no se exige nada de los productos: se conservan tal cual
   const soloDatos = editando && !productosCambiados;
   const repartoIncompleto = !soloDatos && detalle.some(repartoInvalido);
@@ -506,13 +517,13 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
                       >
                         <span className={styles.code}>{p.codigo}</span>
                         <span className={styles.productName}>{p.descripcion}</span>
-                        {reparto && (
-                          <SplitFields linea={reparto} descripcion={p.descripcion} saving={saving} onMarcar={marcarLado} onValor={setLado} />
-                        )}
                         <span className={`${styles.price} ${sinPrecio ? styles.noPrice : ''}`}>
                           {sinPrecio ? 'Sin precio en la lista' : formatMoney(precioOriginal.get(p.id) ?? p.valor)}
                         </span>
                         <QuantityControl value={cantidad} onChange={(n) => setCantidad(p.id, n)} disabled={bloqueado} label={p.descripcion} />
+                        {reparto && (
+                          <SplitFields linea={reparto} descripcion={p.descripcion} saving={saving} onModo={fijarModo} onValor={setLado} />
+                        )}
                       </div>
                     );
                   })}
@@ -531,7 +542,9 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
                   <strong>{l.cantidad}×</strong>
                   <span className={styles.productName}>
                     {l.descripcion}
-                    {l.protesis && l.sup + l.inf > 0 && <span className={styles.hint}> · Sup. {l.sup} / Inf. {l.inf}</span>}
+                    {l.protesis && l.sup + l.inf > 0 && (
+                      <span className={styles.hint}> · {[l.sup > 0 && `Sup. ${l.sup}`, l.inf > 0 && `Inf. ${l.inf}`].filter(Boolean).join(' · ')}</span>
+                    )}
                   </span>
                   <span className={styles.price}>{formatMoney(l.subtotal)}</span>
                   <div className={styles.summaryActions}>
@@ -552,7 +565,7 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
                   {editando && l.protesis && repartoAbierto === l.productoId && (
                     <div className={styles.summaryEdit}>
                       <QuantityControl value={l.cantidad} onChange={(n) => setCantidad(l.productoId, n)} disabled={saving} label={l.descripcion} />
-                      <SplitFields linea={l} descripcion={l.descripcion} saving={saving} onMarcar={marcarLado} onValor={setLado} />
+                      <SplitFields linea={l} descripcion={l.descripcion} saving={saving} onModo={fijarModo} onValor={setLado} />
                     </div>
                   )}
                 </div>

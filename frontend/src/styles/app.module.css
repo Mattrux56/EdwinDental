@@ -2739,105 +2739,54 @@ input[type='checkbox'] {
   border-top: 0;
 }
 
-/* Remisión: reparto opcional de una prótesis entre superiores e inferiores (misma familia que .qty) */
+/* Remisión: reparto opcional de una prótesis entre superior e inferior (debajo de su fila) */
 .productRowSplit {
-  grid-template-columns: 56px minmax(0, 1fr) auto auto auto;
+  padding-bottom: 12px;
 }
 
 .splitFields {
+  grid-column: 2 / -1;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-2) var(--sp-3);
 }
 
-.splitItem {
+.splitTitle {
+  color: var(--ink-soft);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.splitNumber {
   display: inline-flex;
   align-items: center;
-  height: 34px;
-  border: 1px solid var(--line-strong);
-  border-radius: 8px;
-  background: var(--surface);
-  overflow: hidden;
-  cursor: pointer;
-  transition: border-color 0.15s, background-color 0.15s;
+  gap: var(--sp-2);
+  color: var(--ink-soft);
+  font-size: var(--fs-sm);
 }
 
-.splitItem input[type='number'] {
-  width: 44px;
-  height: 100%;
-  padding: 0;
-  border: 0;
-  border-right: 1px solid var(--line);
-  background: transparent;
+.splitNumber input {
+  width: 56px;
+  height: var(--h-sm);
+  padding: 0 var(--sp-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-md);
+  background: var(--surface);
   text-align: center;
   font-variant-numeric: tabular-nums;
-  -moz-appearance: textfield;
 }
 
-.splitItem input[type='number']:disabled {
-  background: var(--paper);
-  cursor: not-allowed;
-}
-
-.splitItem input[type='number']::-webkit-outer-spin-button,
-.splitItem input[type='number']::-webkit-inner-spin-button {
-  margin: 0;
-  -webkit-appearance: none;
-}
-
-.splitCheck {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 0 11px 0 9px;
-  color: var(--ink-soft);
-  font-size: 13px;
-  white-space: nowrap;
-}
-
-.splitCheck input {
-  width: 16px;
-  height: 16px;
-  margin: 0;
-  accent-color: var(--reagent);
-  cursor: pointer;
-}
-
-.splitItemOn {
-  border-color: var(--reagent);
-  background: var(--reagent-soft);
-}
-
-.splitItemOn .splitCheck {
-  color: var(--reagent-dark);
-  font-weight: 500;
-}
-
-.splitItemOn input[type='number'] {
-  border-right-color: var(--reagent);
-}
-
-.splitItemError,
-.splitItemError input[type='number'] {
+.splitNumber input[aria-invalid='true'] {
   border-color: var(--danger);
 }
 
-.splitItemError .splitCheck {
+.splitError {
   color: var(--danger);
-}
-
-.splitItem:focus-within {
-  outline: 2px solid var(--reagent);
-  outline-offset: 2px;
-}
-
-@media (max-width: 720px) {
-  .productRowSplit {
-    grid-template-columns: 56px minmax(0, 1fr) auto;
-  }
-  .productRowSplit .splitFields {
-    grid-column: 1 / -1;
-  }
+  font-size: var(--fs-sm);
+  font-weight: 500;
 }
 
 /* Resumen de la remisión: acciones por línea y editor del reparto sup/inf */
