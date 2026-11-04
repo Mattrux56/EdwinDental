@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import styles from '../../styles/app.module.css';
+import ds from '../../styles/ds.module.css';
 import { ESTADOS, normalizeEstado } from '../../constants.js';
 import { useResource } from '../../hooks/useResource.js';
 import { casesService } from '../../services/cases.service.js';
@@ -7,16 +8,14 @@ import { remisionesService } from '../../services/remisiones.service.js';
 import { deliverySla, enPeriodo, formatEstimatedDate, formatMoney, formatRemisionNumber, ingresoDate } from '../../utils/format.js';
 import { matchesSearch } from '../../utils/search.js';
 import { coverImage } from './CasesTable.jsx';
+import { Field, Segmented, Tabs } from './controls.jsx';
 import { FilterBar, MESES, MonthFilter, SearchField, SelectFilter } from './filters.jsx';
 import { Icon } from './Icon.jsx';
 import RemisionDetailModal from './RemisionDetailModal.jsx';
 import StatusBadge from './StatusBadge.jsx';
-import { Badge, contar, EmptyState, ErrorBanner, LoadingState, Panel } from './ui.jsx';
+import { contar, EmptyState, ErrorBanner, LoadingState, PagoBadge, Panel } from './ui.jsx';
 
 const VISTAS = ['Casos', 'Estado de cuenta'];
-const ESTADOS_PAGO = ['Todos', 'Pendiente', 'Pago parcial', 'Pagada'];
-const FILTROS = ['Todos', ...ESTADOS, 'Archivados'];
-const TODOS_LOS_ESTADOS = 'Activos (todos los estados)';
 
 const etiquetaPago = (rem) => (rem.pagada ? 'Pagada' : 'Pendiente');
 
@@ -138,21 +137,53 @@ export default function ClienteDetalle({ cliente, onBack, onOpenCase, showToast,
             </div>
           </div>
 
-          <FilterBar>
-            <SearchField value={query} onChange={setQuery} placeholder={verCuenta ? 'Buscar en el estado de cuenta: número, orden, paciente…' : 'Buscar código, paciente o doctor'} label={verCuenta ? 'Buscar en el estado de cuenta del cliente' : 'Buscar casos del cliente'} />
-          </FilterBar>
-          <div className={styles.filtersRow}>
-            <SelectFilter value={vista} onChange={(v) => { setVista(v); setQuery(''); setEstadoPago('Todos'); }} options={VISTAS} label="Ver casos o remisiones" />
-            <MonthFilter periodo={periodo} onChange={setPeriodo} />
-            {verCuenta && (
-              <SelectFilter
-                value={estadoPago}
-                onChange={setEstadoPago}
-                options={ESTADOS_PAGO.map((e) => ({ value: e, label: e === 'Todos' ? 'Todos los estados' : e }))}
-                label="Filtrar por estado de pago"
-              />
+          <Tabs
+            label="Secciones del cliente"
+            value={vista}
+            onChange={(v) => { setVista(v); setQuery(''); setEstadoPago('Todos'); }}
+            tabs={[
+              { value: 'Casos', label: `Casos (${activosDelPeriodo.length})`, icon: 'layers' },
+              { value: 'Estado de cuenta', label: `Estado de cuenta (${delPeriodo.length})`, icon: 'wallet' },
+            ]}
+          />
+
+          <div className={ds.toolbar}>
+            <SearchField className={`${styles.caseSearch} ${ds.toolbarGrow}`} value={query} onChange={setQuery} placeholder={verCuenta ? 'Buscar por número, orden o paciente' : 'Buscar por código, paciente o doctor'} label={verCuenta ? 'Buscar en el estado de cuenta del cliente' : 'Buscar casos del cliente'} />
+            <Field label="Mes">
+              <MonthFilter periodo={periodo} onChange={setPeriodo} />
+            </Field>
+            {verCuenta ? (
+              <Field label="Estado de pago">
+                <Segmented
+                  label="Filtrar por estado de pago"
+                  value={estadoPago}
+                  onChange={setEstadoPago}
+                  options={[
+                    { value: 'Todos', label: 'Todas', count: delPeriodo.length },
+                    { value: 'Pendiente', label: 'Pendientes', count: delPeriodo.filter((r) => !r.pagada).length },
+                    { value: 'Pago parcial', label: 'Pago parcial', count: delPeriodo.filter((r) => estadoPorMes.get(String(r.fecha).slice(0, 7)) === 'Pago parcial').length },
+                    { value: 'Pagada', label: 'Pagadas', count: delPeriodo.filter((r) => r.pagada).length },
+                  ]}
+                />
+              </Field>
+            ) : (
+              <>
+                <Field label="Estado del caso">
+                  <SelectFilter value={filtro === 'Archivados' ? 'Todos' : filtro} onChange={setFiltro} options={['Todos', ...ESTADOS].map((f) => ({ value: f, label: f === 'Todos' ? 'Todos los estados' : f }))} label="Filtrar casos por estado" />
+                </Field>
+                <Field label="Ver">
+                  <Segmented
+                    label="Casos activos o archivados"
+                    value={filtro === 'Archivados' ? 'archivados' : 'activos'}
+                    onChange={(v) => setFiltro(v === 'archivados' ? 'Archivados' : 'Todos')}
+                    options={[
+                      { value: 'activos', label: 'Activos', count: activosDelPeriodo.length },
+                      { value: 'archivados', label: 'Archivados', count: casosDelPeriodo.length - activosDelPeriodo.length },
+                    ]}
+                  />
+                </Field>
+              </>
             )}
-            {!verCuenta && <SelectFilter value={filtro} onChange={setFiltro} options={FILTROS.map((f) => ({ value: f, label: f === 'Todos' ? TODOS_LOS_ESTADOS : f }))} label="Filtrar casos por estado" />}
           </div>
 
           {verCuenta && (
@@ -172,7 +203,7 @@ export default function ClienteDetalle({ cliente, onBack, onOpenCase, showToast,
                         <span className={styles.remisionRowNumero}>N° {formatRemisionNumber(rem)}</span>
                         <span className={styles.remisionRowFecha}>{formatEstimatedDate(rem.fecha)}</span>
                         <span className={styles.remisionRowFecha}>Orden {rem.caso?.codigo}</span>
-                        <Badge tone={rem.pagada ? 'done' : 'lab'} aria-label={`Estado de pago: ${etiquetaPago(rem)}`}>{etiquetaPago(rem)}</Badge>
+                        <PagoBadge estado={etiquetaPago(rem)} />
                         <span className={styles.remisionRowTotal}>{formatMoney(rem.total)}</span>
                         <span className={styles.remisionRowChevron}><Icon name="chevronRight" size={16} /></span>
                       </button>
@@ -245,7 +276,7 @@ export default function ClienteDetalle({ cliente, onBack, onOpenCase, showToast,
                               >
                                 <span className={styles.remisionRowNumero}>N° {formatRemisionNumber(rem)}</span>
                                 <span className={styles.remisionRowFecha}>{formatEstimatedDate(rem.fecha)}</span>
-                                <Badge tone={rem.pagada ? 'done' : 'lab'} aria-label={`Estado de pago: ${etiquetaPago(rem)}`}>{etiquetaPago(rem)}</Badge>
+                                <PagoBadge estado={etiquetaPago(rem)} />
                                 <span className={styles.remisionRowTotal}>{formatMoney(rem.total)}</span>
                                 <span className={styles.remisionRowChevron}><Icon name="chevronRight" size={16} /></span>
                               </button>

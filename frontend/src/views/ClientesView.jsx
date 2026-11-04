@@ -6,10 +6,10 @@ import { clientesParecidos, idsDuplicados } from '../utils/clientes.js';
 import { matchesSearch } from '../utils/search.js';
 import ClienteDetalle from './components/ClienteDetalle.jsx';
 import DataTable from './components/DataTable.jsx';
-import { Chip, FilterBar, SearchField } from './components/filters.jsx';
-import { Icon } from './components/Icon.jsx';
+import { ActionMenu, Field, Segmented } from './components/controls.jsx';
+import { FilterBar, SearchField } from './components/filters.jsx';
 import Modal, { ConfirmModal } from './components/Modal.jsx';
-import { Badge, contar, Panel } from './components/ui.jsx';
+import { Badge, Button, contar, Panel } from './components/ui.jsx';
 
 function ClienteForm({ cliente, clientes, saving, onSubmit, onCancel }) {
   const [nombre, setNombre] = useState(cliente?.nombre ?? '');
@@ -72,22 +72,29 @@ export default function ClientesView({ showToast, onChanged, onOpenCase, casosVe
     {
       key: 'acciones',
       header: '',
-      headerProps: { 'aria-label': 'Acciones' },
+      headerProps: { 'aria-label': 'Acciones', className: styles.actionsTh },
       render: (c) => (
-        <div className={styles.productActions}>
-          <button type="button" className={styles.secondaryBtn} onClick={(e) => { e.stopPropagation(); setModal({ tipo: 'form', cliente: c }); }} disabled={saving}>Editar</button>
-          <button
-            type="button"
-            className={styles.deleteBtn}
-            onClick={(e) => {
-              e.stopPropagation();
-              setModal({ tipo: 'eliminar', cliente: c });
-            }}
-            disabled={saving || c._count.casos > 0}
-            title={c._count.casos > 0 ? 'Tiene casos: no se puede eliminar' : undefined}
-          >
-            Eliminar
-          </button>
+        <div className={styles.rowActions}>
+          {c._count.casos > 0 && <span className={styles.mutedText}>Con casos: no se puede eliminar</span>}
+          <Button size="sm" variant="accent" icon="chevronRight" onClick={(e) => { e.stopPropagation(); setClienteAbierto(c); }}>
+            Ver casos y cuenta
+          </Button>
+          <ActionMenu
+            ariaLabel={`Más acciones de ${c.nombre}`}
+            disabled={saving}
+            items={[
+              { label: 'Editar cliente', icon: 'edit', onClick: () => setModal({ tipo: 'form', cliente: c }) },
+              {
+                label: 'Eliminar cliente',
+                icon: 'trash',
+                tone: 'danger',
+                separator: true,
+                disabled: c._count.casos > 0,
+                note: c._count.casos > 0 ? `Tiene ${c._count.casos} ${c._count.casos === 1 ? 'caso' : 'casos'}` : undefined,
+                onClick: () => setModal({ tipo: 'eliminar', cliente: c }),
+              },
+            ]}
+          />
         </div>
       ),
     },
@@ -133,17 +140,25 @@ export default function ClientesView({ showToast, onChanged, onOpenCase, casosVe
         title="Clientes"
         meta={contar(filtered.length, 'cliente', 'clientes', loading)}
         actions={(
-          <button type="button" className={styles.primaryBtn} onClick={() => setModal({ tipo: 'form', cliente: null })}>
-            <Icon name="plus" size={16} /> Nuevo cliente
-          </button>
+          <Button variant="primary" icon="plus" onClick={() => setModal({ tipo: 'form', cliente: null })}>
+            Nuevo cliente
+          </Button>
         )}
       >
         <FilterBar>
-          <SearchField value={query} onChange={setQuery} placeholder="Buscar por nombre" label="Buscar clientes" />
+          <SearchField value={query} onChange={setQuery} placeholder="Buscar cliente por nombre" label="Buscar clientes" />
           {duplicados.size > 0 && (
-            <Chip active={filtrarDuplicados} onClick={() => setSoloDuplicados((v) => !v)}>
-              Posibles duplicados ({duplicados.size})
-            </Chip>
+            <Field label="Mostrar">
+              <Segmented
+                label="Filtrar clientes"
+                value={filtrarDuplicados ? 'duplicados' : 'todos'}
+                onChange={(v) => setSoloDuplicados(v === 'duplicados')}
+                options={[
+                  { value: 'todos', label: 'Todos', count: clientes.length },
+                  { value: 'duplicados', label: 'Posibles duplicados', count: duplicados.size },
+                ]}
+              />
+            </Field>
           )}
         </FilterBar>
 
