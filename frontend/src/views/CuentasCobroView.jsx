@@ -77,7 +77,7 @@ export default function CuentasCobroView({ showToast, onOpenCase }) {
   return (
     <>
       <Panel
-        title={`Cuenta de estado · ${nombrePeriodo}`}
+        title={`Cuentas de estado · ${nombrePeriodo}`}
         meta={contar(visibles.length, 'cliente', 'clientes', loading)}
         actions={(
           <button type="button" className={styles.secondaryBtn} onClick={() => showToast('error', 'El formato del Excel aún no está definido')}>
