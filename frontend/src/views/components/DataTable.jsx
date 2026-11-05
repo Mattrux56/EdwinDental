@@ -15,7 +15,11 @@ function anchoMinimo(columns) {
   return total;
 }
 
-const px = (valor) => (typeof valor === 'number' ? `${valor}px` : valor);
+/* Los anchos en px se multiplican por --escala-tabla (1 en pantallas grandes, menos en portátiles; ver app.module.css) */
+const px = (valor) => {
+  const n = typeof valor === 'number' ? valor : /^\d+(\.\d+)?px$/.test(valor) ? Number.parseFloat(valor) : null;
+  return n === null ? valor : `calc(${n}px * var(--escala-tabla, 1))`;
+};
 
 /**
  * Tabla de datos con sus estados: error (con «Reintentar»), cargando y vacía.
@@ -59,7 +63,7 @@ export default function DataTable({
 
   return (
     <div className={mini ? styles.detailTableWrap : styles.tableWrap}>
-      <table className={mini ? styles.miniTable : styles.table} style={{ minWidth: anchoMinimo(columns) }}>
+      <table className={mini ? styles.miniTable : styles.table} style={{ minWidth: `calc(${anchoMinimo(columns)}px * var(--escala-tabla, 1))` }}>
         <colgroup>
           {columns.map((col) => (
             <col key={col.key} style={col.width ? { width: px(col.width) } : undefined} />

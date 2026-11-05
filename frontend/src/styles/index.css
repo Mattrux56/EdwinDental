@@ -114,3 +114,20 @@ button {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Escala de los anchos de columna de las tablas (ver DataTable.jsx): más estrechas en pantallas de portátil */
+:root {
+  --escala-tabla: 1;
+}
+
+@media (max-width: 1400px) {
+  :root {
+    --escala-tabla: 0.88;
+  }
+}
+
+@media (max-width: 1180px) {
+  :root {
+    --escala-tabla: 0.78;
+  }
+}
