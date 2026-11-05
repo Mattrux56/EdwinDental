@@ -31,6 +31,7 @@ const PRIMERA = FILA_ENCABEZADO + 1;
 /** Las sumas del resumen usan un rango amplio (no filas fijas) para que no se rompan al agregar filas */
 const LIMITE = 5000;
 
+/** Solo verde (pagado) y naranja/rojo (pendiente), más grises y el verde oscuro de la marca */
 const C = {
   encabezado: 'FF0B5E54',
   borde: 'FFE1E5E9',
@@ -40,18 +41,17 @@ const C = {
   grisSuave: 'FF6B7780',
   verdeFondo: 'FFD8F0DF',
   verdeTexto: 'FF1B5E20',
-  amarilloFondo: 'FFFFF1B8',
-  amarilloTexto: 'FF7A5B00',
   pendienteFondo: 'FFE8590C',
   filaPendiente: 'FFFFF0E3',
-  filaPago: 'FFEEF5FC',
   rojo: 'FFB3261E',
   verde: 'FF17713A',
   enlace: 'FF0B5E54',
 } as const;
 
-/** Letras de las columnas de cada hoja de cliente */
-const COL = { fecha: 'A', paciente: 'B', orden: 'C', cc: 'D', debe: 'E', haber: 'F', saldo: 'G', estado: 'H' } as const;
+/** Letras de las columnas de cada hoja de cliente: una fila por remisión */
+const COL = { fecha: 'A', paciente: 'B', orden: 'C', cc: 'D', valor: 'E', estado: 'F', pago: 'G' } as const;
+type Clave = keyof typeof COL;
+const CLAVES = ['fecha', 'paciente', 'orden', 'cc', 'valor', 'estado', 'pago'] as const;
 
 // ------------------------------------------------------------------ Utilidades
 /** Nombre de hoja válido para Excel: sin \ / ? * [ ] : ni apóstrofes rectos, hasta 31 caracteres y sin repetirse (ni con RESUMEN) */
@@ -99,8 +99,8 @@ const regla = (formula: string, estilo: Estilo): ExcelJS.ConditionalFormattingRu
   },
 });
 
-/** Rojo y negrita si el saldo es mayor que 0 (hay deuda) y verde si es 0 o menor */
-const reglasSaldo = (celda: string): ExcelJS.ConditionalFormattingRule[] => [
+/** Rojo y negrita si lo que falta por cobrar es mayor que 0 y verde si es 0 */
+const reglasPorCobrar = (celda: string): ExcelJS.ConditionalFormattingRule[] => [
   regla(`AND(ISNUMBER(${celda}),${celda}>0)`, { texto: C.rojo, negrita: true }),
   regla(`AND(ISNUMBER(${celda}),${celda}<=0)`, { texto: C.verde, negrita: true }),
 ];
@@ -138,33 +138,20 @@ function paginaImpresion(ws: ExcelJS.Worksheet, filaEncabezado: number, ultimaFi
   ws.headerFooter.oddFooter = '&L&8&A&C&8Página &P de &N&R&8&D';
 }
 
-// ------------------------------------------------------------------ Movimientos
-interface Movimiento {
-  fecha: Date;
-  orden: 0 | 1; // 0 = remisión (REMITIDO), 1 = pago (PAGADO); el mismo día la remisión va antes que su pago
-  numero: number;
-  linea: LineaCuenta;
-}
-
+// ------------------------------------------------------------------ Filas
 const etiquetaRemision = (l: LineaCuenta) => (l.tipo === 'ELECTRONICA' ? `FE-${l.numero}` : String(l.numero));
 
-function movimientos(remisiones: LineaCuenta[]): Movimiento[] {
-  const lista: Movimiento[] = [];
-  for (const linea of remisiones) {
-    const dia = soloDia(linea.fecha);
-    lista.push({ fecha: dia, orden: 0, numero: linea.numero, linea });
-    if (linea.pagada) {
-      // El pago no puede ser anterior a la remisión que paga
-      const pagoEn = linea.pagadaEn ? diaLocal(linea.pagadaEn) : dia;
-      lista.push({ fecha: pagoEn < dia ? dia : pagoEn, orden: 1, numero: linea.numero, linea });
-    }
-  }
-  return lista.sort((a, b) => a.fecha.getTime() - b.fecha.getTime() || a.orden - b.orden || a.numero - b.numero);
-}
+/**
+ * Fecha de pago de una remisión: el día en que se marcó pagada. Si está pagada y por alguna razón no tiene fecha,
+ * la de la propia remisión. Sin pagar: sin fecha (queda PENDIENTE).
+ */
+const fechaDePago = (l: LineaCuenta): Date | null => {
+  if (!l.pagada) return null;
+  return l.pagadaEn ? diaLocal(l.pagadaEn) : soloDia(l.fecha);
+};
 
-/** Estado de una remisión según los pagos acumulados frente a lo remitido acumulado (los pagos cubren lo más antiguo primero) */
-const estadoAcumulado = (remitidoAcum: number, debe: number, pagosTotales: number) =>
-  pagosTotales >= remitidoAcum ? 'PAGADA' : pagosTotales > remitidoAcum - debe ? 'ABONADA' : 'PENDIENTE';
+const ordenadas = (remisiones: LineaCuenta[]) =>
+  [...remisiones].sort((a, b) => a.fecha.getTime() - b.fecha.getTime() || a.numero - b.numero);
 
 interface ResumenHoja {
   hoja: string;
@@ -176,8 +163,7 @@ interface ResumenHoja {
 
 // ------------------------------------------------------------------ Hoja de cliente
 function hojaCliente(wb: ExcelJS.Workbook, nombreHoja: string, cuenta: ClienteCuenta, generadoEn: Date): ResumenHoja {
-  const filas = movimientos(cuenta.remisiones);
-  const pagosTotales = filas.filter((m) => m.orden === 1).reduce((a, m) => a + m.linea.total, 0);
+  const filas = ordenadas(cuenta.remisiones);
   const ultimaDato = FILA_ENCABEZADO + filas.length;
   const ultima = ultimaDato + FILAS_LIBRES;
 
@@ -187,32 +173,23 @@ function hojaCliente(wb: ExcelJS.Workbook, nombreHoja: string, cuenta: ClienteCu
   });
 
   // Anchos según los datos reales de este cliente
-  const etiquetas = filas.map((m) => (m.orden === 0 ? etiquetaRemision(m.linea) : `PAGO REM. N° ${etiquetaRemision(m.linea)}`));
-  const mayorMonto = filas.reduce((a, m) => Math.max(a, m.linea.total), 0);
-  const mayorSaldo = filas.reduce((a, m) => a + (m.orden === 0 ? m.linea.total : 0), 0);
-  const montos = [textoMoneda(mayorMonto), textoMoneda(mayorSaldo)];
-  const anchos = {
+  const anchos: Record<Clave, number> = {
     fecha: 15, // deja sitio a la flecha del filtro
-    paciente: ancho('PACIENTE', filas.map((m) => m.linea.paciente ?? ''), 24, 42),
-    orden: ancho('ORDEN', filas.map((m) => m.linea.ordenTrabajo ?? m.linea.noOrden ?? ''), 14, 24),
-    cc: ancho('C. DE C.', etiquetas, 14, 28),
-    debe: ancho('REMITIDO', montos, 16, 22),
-    haber: ancho('PAGADO', montos, 16, 22),
-    saldo: ancho('SALDO', montos, 16, 22),
-    estado: ancho('ESTADO', ['PENDIENTE'], 14, 16),
+    paciente: ancho('PACIENTE', filas.map((l) => l.paciente ?? ''), 24, 42),
+    orden: ancho('ORDEN', filas.map((l) => l.ordenTrabajo ?? l.noOrden ?? ''), 14, 24),
+    cc: ancho('C. DE C.', filas.map(etiquetaRemision), 12, 16),
+    valor: ancho('VALOR', [textoMoneda(filas.reduce((a, l) => Math.max(a, l.total), 0))], 16, 22),
+    estado: 14,
+    pago: 18,
   };
-  ws.columns = (['fecha', 'paciente', 'orden', 'cc', 'debe', 'haber', 'saldo', 'estado'] as const).map((key) => ({
-    key,
-    width: anchos[key],
-    style: { font: { name: FUENTE, size: 10 } },
-  }));
+  ws.columns = CLAVES.map((key) => ({ key, width: anchos[key], style: { font: { name: FUENTE, size: 10 } } }));
 
   // --- Título y enlace
-  ws.mergeCells('A1:F1');
+  ws.mergeCells('A1:E1');
   const titulo = ws.getCell('A1');
   titulo.value = cuenta.cliente;
   titulo.font = { name: FUENTE, size: 16, bold: true, color: { argb: C.encabezado } };
-  titulo.alignment = { vertical: 'middle', horizontal: 'left', shrinkToFit: cuenta.cliente.length > 48 };
+  titulo.alignment = { vertical: 'middle', horizontal: 'left', shrinkToFit: cuenta.cliente.length > 44 };
   ws.getRow(1).height = 28;
 
   ws.mergeCells('A2:D2');
@@ -220,42 +197,32 @@ function hojaCliente(wb: ExcelJS.Workbook, nombreHoja: string, cuenta: ClienteCu
   generado.value = `Estado de cuenta · generado el ${fechaTexto(generadoEn)}`;
   generado.font = { name: FUENTE, size: 10, color: { argb: C.grisSuave } };
   generado.alignment = { vertical: 'middle' };
-  ws.mergeCells('G2:H2');
-  const volver = ws.getCell('G2');
+  ws.mergeCells('F2:G2');
+  const volver = ws.getCell('F2');
   volver.value = { text: '← Volver al resumen', hyperlink: `#${referencia(NOMBRE_RESUMEN)}!A1` };
   volver.font = { name: FUENTE, size: 10, underline: true, color: { argb: C.enlace } };
   volver.alignment = { vertical: 'middle', horizontal: 'right' };
 
-  // --- Tarjetas de resumen (fórmulas sobre rangos amplios de la tabla)
+  // --- Tarjetas de resumen: fórmulas sobre un rango amplio de la tabla (no filas fijas)
   const rango = (col: string) => `${col}${PRIMERA}:${col}${LIMITE}`;
-  const remitido = filas.reduce((a, m) => a + (m.orden === 0 ? m.linea.total : 0), 0);
-  let acum = 0;
-  let pendientes = 0;
-  for (const m of filas) {
-    if (m.orden !== 0) continue;
-    acum += m.linea.total;
-    if (estadoAcumulado(acum, m.linea.total, pagosTotales) !== 'PAGADA') pendientes += 1;
-  }
-  const tarjetas: { desde: string; hasta: string; etiqueta: string; formula: string; result: number; moneda: boolean }[] = [
-    { desde: 'A', hasta: 'B', etiqueta: 'TOTAL REMITIDO', formula: `SUM(${rango(COL.debe)})`, result: remitido, moneda: true },
-    { desde: 'C', hasta: 'D', etiqueta: 'TOTAL PAGADO', formula: `SUM(${rango(COL.haber)})`, result: pagosTotales, moneda: true },
-    { desde: 'E', hasta: 'F', etiqueta: 'SALDO POR COBRAR', formula: 'A4-C4', result: remitido - pagosTotales, moneda: true },
-    {
-      desde: 'G',
-      hasta: 'H',
-      etiqueta: 'REMISIONES PENDIENTES',
-      formula: `COUNTIF(${rango(COL.estado)},"PENDIENTE")+COUNTIF(${rango(COL.estado)},"ABONADA")`,
-      result: pendientes,
-      moneda: false,
-    },
+  const remitido = filas.reduce((a, l) => a + l.total, 0);
+  const pagado = filas.filter((l) => l.pagada).reduce((a, l) => a + l.total, 0);
+  const pendientes = filas.filter((l) => !l.pagada).length;
+  const tarjetas = [
+    { desde: 'A', hasta: 'B', etiqueta: 'TOTAL REMITIDO', formula: `SUM(${rango(COL.valor)})`, result: remitido, moneda: true },
+    { desde: 'C', hasta: 'D', etiqueta: 'TOTAL PAGADO', formula: `SUMIF(${rango(COL.estado)},"PAGADA",${rango(COL.valor)})`, result: pagado, moneda: true },
+    { desde: 'E', hasta: 'F', etiqueta: 'POR COBRAR', formula: `SUMIF(${rango(COL.estado)},"PENDIENTE",${rango(COL.valor)})`, result: remitido - pagado, moneda: true },
+    { desde: 'G', hasta: 'G', etiqueta: 'REMISIONES PENDIENTES', formula: `COUNTIF(${rango(COL.estado)},"PENDIENTE")`, result: pendientes, moneda: false },
   ];
   for (const t of tarjetas) {
-    ws.mergeCells(`${t.desde}3:${t.hasta}3`);
-    ws.mergeCells(`${t.desde}4:${t.hasta}4`);
+    if (t.desde !== t.hasta) {
+      ws.mergeCells(`${t.desde}3:${t.hasta}3`);
+      ws.mergeCells(`${t.desde}4:${t.hasta}4`);
+    }
     const etiqueta = ws.getCell(`${t.desde}3`);
     etiqueta.value = t.etiqueta;
-    etiqueta.font = { name: FUENTE, size: 9, bold: true, color: { argb: C.grisSuave } };
-    etiqueta.alignment = { vertical: 'bottom', horizontal: 'center' };
+    etiqueta.font = { name: FUENTE, size: t.desde === t.hasta ? 8 : 9, bold: true, color: { argb: C.grisSuave } };
+    etiqueta.alignment = { vertical: 'bottom', horizontal: 'center', wrapText: true };
     const valor = ws.getCell(`${t.desde}4`);
     valor.value = { formula: t.formula, result: t.result };
     valor.font = { name: FUENTE, size: 15, bold: true, color: { argb: C.gris } };
@@ -263,14 +230,14 @@ function hojaCliente(wb: ExcelJS.Workbook, nombreHoja: string, cuenta: ClienteCu
     valor.numFmt = t.moneda ? MONEDA : '0';
     caja(ws, [3, ws.getColumn(t.desde).number], [4, ws.getColumn(t.hasta).number], C.tarjeta);
   }
-  ws.getRow(3).height = 20;
+  ws.getRow(3).height = 26;
   ws.getRow(4).height = 32;
   ws.getRow(5).height = 10;
-  ws.addConditionalFormatting({ ref: 'E4', rules: reglasSaldo('$E$4') });
+  ws.addConditionalFormatting({ ref: 'E4', rules: reglasPorCobrar('$E$4') });
 
   // --- Encabezado de la tabla
-  const encabezados = ['FECHA', 'PACIENTE', 'ORDEN', 'C. DE C.', 'REMITIDO', 'PAGADO', 'SALDO', 'ESTADO'];
-  const alineacion: ExcelJS.Alignment['horizontal'][] = ['center', 'left', 'center', 'center', 'right', 'right', 'right', 'center'];
+  const encabezados = ['FECHA', 'PACIENTE', 'ORDEN', 'C. DE C.', 'VALOR', 'ESTADO', 'FECHA DE PAGO'];
+  const alineacion: ExcelJS.Alignment['horizontal'][] = ['center', 'left', 'center', 'center', 'right', 'center', 'center'];
   const filaEnc = ws.getRow(FILA_ENCABEZADO);
   filaEnc.height = 24;
   encabezados.forEach((texto, i) => {
@@ -281,53 +248,47 @@ function hojaCliente(wb: ExcelJS.Workbook, nombreHoja: string, cuenta: ClienteCu
     celda.alignment = { vertical: 'middle', horizontal: alineacion[i], indent: i === 1 ? 1 : 0 };
   });
 
-  // --- Datos y filas libres (mismas fórmulas y formato)
+  // --- Una fila por remisión, más las filas libres (mismas fórmulas, formato y validación)
   const borde = { bottom: { style: 'thin' as const, color: { argb: C.borde } } };
-  let debeAcum = 0;
-  let haberAcum = 0;
   for (let i = 0; i < filas.length + FILAS_LIBRES; i += 1) {
     const n = PRIMERA + i;
-    const m = filas[i];
+    const l = filas[i];
     const fila = ws.getRow(n);
     fila.height = 18;
 
-    if (m) {
-      const l = m.linea;
-      fila.getCell(COL.fecha).value = m.fecha;
+    const pago = l ? fechaDePago(l) : null;
+    if (l) {
+      fila.getCell(COL.fecha).value = soloDia(l.fecha);
       fila.getCell(COL.paciente).value = l.paciente ?? '';
       fila.getCell(COL.orden).value = l.ordenTrabajo ?? l.noOrden ?? '';
-      if (m.orden === 0) {
-        // El número de remisión va como número (no como texto): así Excel no marca la celda con el triángulo verde
-        fila.getCell(COL.cc).value = l.tipo === 'ELECTRONICA' ? etiquetaRemision(l) : l.numero;
-        fila.getCell(COL.debe).value = l.total;
-        debeAcum += l.total;
-      } else {
-        fila.getCell(COL.cc).value = `PAGO REM. N° ${etiquetaRemision(l)}`;
-        fila.getCell(COL.haber).value = l.total;
-        haberAcum += l.total;
-      }
+      // El número de remisión va como número (no como texto): así Excel no marca la celda con el triángulo verde
+      fila.getCell(COL.cc).value = l.tipo === 'ELECTRONICA' ? etiquetaRemision(l) : l.numero;
+      fila.getCell(COL.valor).value = l.total;
+      if (pago) fila.getCell(COL.pago).value = pago;
     }
 
-    const vacia = !m;
-    const esDebe = m?.orden === 0;
-    // Acumulado desde la primera fila de datos. INDEX(...) evita el triángulo verde de Excel («omite celdas adyacentes»)
-    const acumulado = (col: string) => `SUM(INDEX(${col}:${col},${PRIMERA}):${col}${n})`;
-    const pagosTotal = `SUM(INDEX(${COL.haber}:${COL.haber},${PRIMERA}):${COL.haber}$${LIMITE})`;
-    fila.getCell(COL.saldo).value = {
-      formula: `IF(AND(${COL.debe}${n}="",${COL.haber}${n}=""),"",${acumulado(COL.debe)}-${acumulado(COL.haber)})`,
-      result: vacia ? '' : debeAcum - haberAcum,
-    };
+    // Al escribir una fecha de pago la fila pasa a PAGADA; al borrarla vuelve a PENDIENTE (vacía si no hay nada en la fila)
     fila.getCell(COL.estado).value = {
-      formula:
-        `IF(${COL.debe}${n}="","",IF(${pagosTotal}>=${acumulado(COL.debe)},"PAGADA",` +
-        `IF(${pagosTotal}>${acumulado(COL.debe)}-${COL.debe}${n},"ABONADA","PENDIENTE")))`,
-      result: esDebe ? estadoAcumulado(debeAcum, m.linea.total, pagosTotales) : '',
+      formula: `IF(AND(${COL.valor}${n}="",${COL.pago}${n}=""),"",IF(${COL.pago}${n}<>"","PAGADA","PENDIENTE"))`,
+      result: !l ? '' : pago ? 'PAGADA' : 'PENDIENTE',
+    };
+    fila.getCell(COL.pago).dataValidation = {
+      type: 'date',
+      operator: 'between',
+      allowBlank: true,
+      formulae: [new Date(Date.UTC(2000, 0, 1)), new Date(Date.UTC(2100, 11, 31))],
+      showInputMessage: true,
+      promptTitle: 'Fecha de pago',
+      prompt: 'Escribe la fecha de pago (dd/mm/aaaa) para marcarla como PAGADA. Bórrala para volver a PENDIENTE.',
+      showErrorMessage: true,
+      errorStyle: 'stop',
+      errorTitle: 'Fecha no válida',
+      error: 'Escribe una fecha (por ejemplo 25/11/2026) o deja la celda vacía.',
     };
 
-    // Formato fijo de la fila (los colores de estado van como formato condicional)
-    (['fecha', 'paciente', 'orden', 'cc', 'debe', 'haber', 'saldo', 'estado'] as const).forEach((key, k) => {
+    CLAVES.forEach((key, k) => {
       const celda = fila.getCell(COL[key]);
-      celda.font = { name: FUENTE, size: 10, ...(key === 'estado' ? { bold: true } : {}), ...(key === 'saldo' ? { color: { argb: C.gris } } : {}) };
+      celda.font = { name: FUENTE, size: 10, ...(key === 'estado' ? { bold: true } : {}) };
       celda.alignment = {
         vertical: 'middle',
         horizontal: alineacion[k],
@@ -336,9 +297,9 @@ function hojaCliente(wb: ExcelJS.Workbook, nombreHoja: string, cuenta: ClienteCu
         shrinkToFit: key === 'paciente' && String(celda.value ?? '').length > anchos.paciente - 2,
       };
       celda.border = borde;
-      if (key === 'fecha') celda.numFmt = FECHA;
+      if (key === 'fecha' || key === 'pago') celda.numFmt = FECHA;
       if (key === 'cc') celda.numFmt = '0';
-      if (key === 'debe' || key === 'haber' || key === 'saldo') celda.numFmt = MONEDA;
+      if (key === 'valor') celda.numFmt = MONEDA;
     });
   }
 
@@ -350,26 +311,22 @@ function hojaCliente(wb: ExcelJS.Workbook, nombreHoja: string, cuenta: ClienteCu
     ref: `${COL.estado}${PRIMERA}:${COL.estado}${ultima}`,
     rules: [
       regla(`$${COL.estado}${PRIMERA}="PENDIENTE"`, { fondo: C.pendienteFondo, texto: 'FFFFFFFF', negrita: true }),
-      regla(`$${COL.estado}${PRIMERA}="ABONADA"`, { fondo: C.amarilloFondo, texto: C.amarilloTexto }),
-      regla(`$${COL.estado}${PRIMERA}="PAGADA"`, { fondo: C.verdeFondo, texto: C.verdeTexto }),
+      regla(`$${COL.estado}${PRIMERA}="PAGADA"`, { fondo: C.verdeFondo, texto: C.verdeTexto, negrita: true }),
     ],
   });
   ws.addConditionalFormatting({
-    ref: `A${PRIMERA}:H${ultima}`,
-    rules: [
-      regla(`$${COL.estado}${PRIMERA}="PENDIENTE"`, { fondo: C.filaPendiente }),
-      regla(`$${COL.haber}${PRIMERA}<>""`, { fondo: C.filaPago }),
-    ],
+    ref: `A${PRIMERA}:G${ultima}`,
+    rules: [regla(`$${COL.estado}${PRIMERA}="PENDIENTE"`, { fondo: C.filaPendiente })],
   });
 
-  paginaImpresion(ws, FILA_ENCABEZADO, ultimaDato + 5, 'H');
-  return { hoja: nombreHoja, cliente: cuenta.cliente, remitido: debeAcum, pagado: haberAcum, pendientes };
+  paginaImpresion(ws, FILA_ENCABEZADO, ultimaDato + 5, 'G');
+  return { hoja: nombreHoja, cliente: cuenta.cliente, remitido, pagado, pendientes };
 }
 
 // ------------------------------------------------------------------ Libro
 /**
- * Excel de las cuentas de estado: hoja RESUMEN al inicio y una hoja por cliente.
- * Todo lo calculado (SALDO, ESTADO, tarjetas y totales) son fórmulas, así que se actualiza al editar el archivo.
+ * Excel de las cuentas de estado: hoja RESUMEN al inicio y una hoja por cliente, con una fila por remisión.
+ * ESTADO sale de FECHA DE PAGO y los totales son fórmulas, así que todo se actualiza al editar el archivo.
  */
 export async function generarCuentasExcel(clientes: ClienteCuenta[], generadoEn: Date = new Date()): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
@@ -384,7 +341,7 @@ export async function generarCuentasExcel(clientes: ClienteCuenta[], generadoEn:
 
   const conRemisiones = clientes.filter((c) => c.remisiones.length > 0);
   const hojas = conRemisiones.map((cuenta) => hojaCliente(wb, nombreDeHoja(cuenta.cliente, usados), cuenta, generadoEn));
-  // Clientes con más saldo por cobrar primero
+  // Clientes con más por cobrar primero
   hojas.sort((a, b) => b.remitido - b.pagado - (a.remitido - a.pagado) || a.cliente.localeCompare(b.cliente, 'es'));
 
   const fuente = { font: { name: FUENTE, size: 10 } };
@@ -393,7 +350,7 @@ export async function generarCuentasExcel(clientes: ClienteCuenta[], generadoEn:
     { key: 'cliente', width: anchoCliente, style: fuente },
     { key: 'remitido', width: 20, style: fuente },
     { key: 'pagado', width: 20, style: fuente },
-    { key: 'saldo', width: 20, style: fuente },
+    { key: 'porCobrar', width: 20, style: fuente },
     { key: 'pendientes', width: 18, style: fuente },
   ];
 
@@ -409,7 +366,7 @@ export async function generarCuentasExcel(clientes: ClienteCuenta[], generadoEn:
   generado.font = { name: FUENTE, size: 10, color: { argb: C.grisSuave } };
   resumen.getRow(3).height = 8;
 
-  const encabezados = ['CLIENTE', 'TOTAL REMITIDO', 'TOTAL PAGADO', 'SALDO POR COBRAR', 'REM. PENDIENTES'];
+  const encabezados = ['CLIENTE', 'TOTAL REMITIDO', 'TOTAL PAGADO', 'POR COBRAR', 'REM. PENDIENTES'];
   const filaEnc = resumen.getRow(4);
   filaEnc.height = 24;
   encabezados.forEach((texto, i) => {
@@ -425,18 +382,16 @@ export async function generarCuentasExcel(clientes: ClienteCuenta[], generadoEn:
   hojas.forEach((h, i) => {
     const n = primera + i;
     const ref = referencia(h.hoja);
+    const rango = (col: string) => `${ref}!$${col}$${PRIMERA}:$${col}$${LIMITE}`;
     const fila = resumen.getRow(n);
     fila.height = 18;
     fila.getCell(1).value = { text: h.cliente, hyperlink: `#${ref}!A1` };
     fila.getCell(1).font = { name: FUENTE, size: 10, underline: true, color: { argb: C.enlace } };
     fila.getCell(1).alignment = { vertical: 'middle', horizontal: 'left', indent: 1, shrinkToFit: h.cliente.length > anchoCliente - 3 };
-    fila.getCell(2).value = { formula: `SUMIF(${ref}!$${COL.debe}$${PRIMERA}:$${COL.debe}$${LIMITE},">0")`, result: h.remitido };
-    fila.getCell(3).value = { formula: `SUMIF(${ref}!$${COL.haber}$${PRIMERA}:$${COL.haber}$${LIMITE},">0")`, result: h.pagado };
-    fila.getCell(4).value = { formula: `B${n}-C${n}`, result: h.remitido - h.pagado };
-    fila.getCell(5).value = {
-      formula: `COUNTIF(${ref}!$${COL.estado}$${PRIMERA}:$${COL.estado}$${LIMITE},"PENDIENTE")+COUNTIF(${ref}!$${COL.estado}$${PRIMERA}:$${COL.estado}$${LIMITE},"ABONADA")`,
-      result: h.pendientes,
-    };
+    fila.getCell(2).value = { formula: `SUM(${rango(COL.valor)})`, result: h.remitido };
+    fila.getCell(3).value = { formula: `SUMIF(${rango(COL.estado)},"PAGADA",${rango(COL.valor)})`, result: h.pagado };
+    fila.getCell(4).value = { formula: `SUMIF(${rango(COL.estado)},"PENDIENTE",${rango(COL.valor)})`, result: h.remitido - h.pagado };
+    fila.getCell(5).value = { formula: `COUNTIF(${rango(COL.estado)},"PENDIENTE")`, result: h.pendientes };
     for (let c = 1; c <= 5; c += 1) {
       const celda = fila.getCell(c);
       celda.border = borde;
@@ -471,8 +426,8 @@ export async function generarCuentasExcel(clientes: ClienteCuenta[], generadoEn:
     }
     ultima = t;
   }
-  // El saldo por cobrar se pinta según su signo: rojo si hay deuda, verde si no
-  resumen.addConditionalFormatting({ ref: `D${primera}:D${Math.max(ultima, primera)}`, rules: reglasSaldo(`$D${primera}`) });
+  // Lo que falta por cobrar se pinta según su valor: rojo si es mayor que 0, verde si es 0
+  resumen.addConditionalFormatting({ ref: `D${primera}:D${Math.max(ultima, primera)}`, rules: reglasPorCobrar(`$D${primera}`) });
 
   paginaImpresion(resumen, 4, Math.max(ultima, primera) + 1, 'E');
   return Buffer.from(await wb.xlsx.writeBuffer());
