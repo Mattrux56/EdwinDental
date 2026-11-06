@@ -12,7 +12,7 @@ import { Button, contar, Panel } from './ui.jsx';
 const TIPOS = { NORMAL: 'Cuentas de cobro', ELECTRONICA: 'Electrónicas' };
 
 /** Acciones de una fila: Imprimir a la vista y el resto en «Más acciones» */
-function AccionesRemision({ remision, onView, showToast }) {
+function AccionesRemision({ remision, onView, onEliminar, showToast }) {
   const { imprimir, guardar, imprimiendo, guardando } = useRemisionAcciones(remision, showToast);
   return (
     <div className={styles.rowActions}>
@@ -24,13 +24,16 @@ function AccionesRemision({ remision, onView, showToast }) {
         items={[
           { label: 'Ver detalle', icon: 'search', onClick: () => onView(remision) },
           { label: guardando ? 'Guardando…' : 'Guardar como Excel', icon: 'download', onClick: guardar, disabled: guardando },
+          ...(remision.anulada && onEliminar
+            ? [{ label: 'Eliminar definitivamente', icon: 'trash', tone: 'danger', separator: true, note: 'No se puede deshacer', onClick: () => onEliminar(remision) }]
+            : []),
         ]}
       />
     </div>
   );
 }
 
-export default function RemisionesTable({ remisiones, loading, error, onRetry, onView, showToast, actions }) {
+export default function RemisionesTable({ remisiones, loading, error, onRetry, onView, onEliminar, showToast, actions }) {
   const [query, setQuery] = useState('');
   const [periodo, setPeriodo] = useState(null); // null = todas las remisiones
   // Las dos series no se mezclan: se ve una a la vez y se cambia con un clic en el encabezado «N°»
@@ -121,7 +124,7 @@ export default function RemisionesTable({ remisiones, loading, error, onRetry, o
       key: 'acciones', width: 210,
       headerProps: { className: styles.actionsTh, 'aria-label': 'Acciones' },
       header: '',
-      render: (rem) => <AccionesRemision remision={rem} onView={onView} showToast={showToast} />,
+      render: (rem) => <AccionesRemision remision={rem} onView={onView} onEliminar={onEliminar} showToast={showToast} />,
     },
   ];
 

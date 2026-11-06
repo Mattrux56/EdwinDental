@@ -161,7 +161,6 @@ export default function ClienteDetalle({ cliente, onBack, onOpenCase, showToast,
                   options={[
                     { value: 'Todos', label: 'Todas', count: delPeriodo.length },
                     { value: 'Pendiente', label: 'Pendientes', count: delPeriodo.filter((r) => !r.pagada).length },
-                    { value: 'Pago parcial', label: 'Pago parcial', count: delPeriodo.filter((r) => estadoPorMes.get(String(r.fecha).slice(0, 7)) === 'Pago parcial').length },
                     { value: 'Pagada', label: 'Pagadas', count: delPeriodo.filter((r) => r.pagada).length },
                   ]}
                 />

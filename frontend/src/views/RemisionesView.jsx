@@ -60,6 +60,7 @@ export default function RemisionesView({ casos, controller, showToast, onOpenCas
         error={error}
         onRetry={reload}
         onView={setDetalle}
+        onEliminar={setEliminarTarget}
         actions={(
           <button type="button" className={styles.primaryBtn} onClick={() => setCreateOpen(true)}>
             <Icon name="plus" size={16} /> Nueva remisión
