@@ -19,10 +19,14 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Si existen los secretos CSC_LINK (certificado .pfx en base64) y CSC_KEY_PASSWORD, electron-builder firma el instalador
       - run: node desktop/build.mjs
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
       # Un solo Release con el instalador, su mapa de bloques y latest.yml (lo que lee el actualizador)
       - name: Publicar Release
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "$GITHUB_REF_NAME" desktop/release/* --title "LabTrace ${GITHUB_REF_NAME#v}" --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" desktop/release/* instalar.ps1 --title "LabTrace ${GITHUB_REF_NAME#v}" --generate-notes

@@ -115,7 +115,8 @@ writeFileSync(
     version,
     private: true,
     description: 'LabTrace: seguimiento y trazabilidad de casos de laboratorio',
-    author: 'LabTrace',
+    author: { name: 'LabTrace', email: 'mateov452@gmail.com' },
+    homepage: 'https://github.com/Mattrux56/EdwinDental',
     main: 'electron/main.cjs',
     labtraceCasco: casco,
     dependencies,
@@ -137,7 +138,7 @@ await build({
     // De aquí lee la app instalada dónde buscar versiones nuevas (Releases del repositorio)
     publish: { provider: 'github', owner: 'Mattrux56', repo: 'EdwinDental', releaseType: 'release' },
     appId: 'com.labtrace.app',
-    copyright: 'LabTrace · seguimiento y trazabilidad de casos de laboratorio',
+    copyright: `Copyright © ${new Date().getFullYear()} LabTrace. Todos los derechos reservados.`,
     productName: 'LabTrace',
     electronVersion: json(join(DESKTOP, 'node_modules', 'electron', 'package.json')).version,
     directories: { app: STAGE, output: OUT },
@@ -146,7 +147,10 @@ await build({
     npmRebuild: false,
     // electron-builder solo copia paquetes declarados; el cliente generado de Prisma vive en node_modules/.prisma
     extraResources: [{ from: join(STAGE, 'node_modules', '.prisma'), to: 'app/node_modules/.prisma' }],
-    win: { icon: join(DESKTOP, 'LabTrace.ico') },
+    // Sin permisos de administrador: la app solo consulta datos y escribe en su carpeta de usuario.
+    // Si hay certificado (variables CSC_LINK y CSC_KEY_PASSWORD) electron-builder firma solo el .exe y el instalador.
+    // No se fija publisherName a propósito: con él, el actualizador exigiría firma y rechazaría instaladores sin firmar.
+    win: { icon: join(DESKTOP, 'LabTrace.ico'), requestedExecutionLevel: 'asInvoker', signAndEditExecutable: true },
     nsis: {
       oneClick: true,
       perMachine: false,

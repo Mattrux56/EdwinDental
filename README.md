@@ -111,3 +111,12 @@ frontend/src/{services,controllers,views}   Servicio → controlador (hook) → 
 
 ## Instalacion
 Ver `INSTRUCCIONES.md`.
+
+### Instalar la app en otra PC sin la alerta de Windows (SmartScreen)
+El instalador no está firmado, así que Windows avisa cuando se descarga con el navegador (marca «descargado de internet»). Abre PowerShell (sin administrador) y ejecuta:
+
+```powershell
+irm https://github.com/Mattrux56/EdwinDental/releases/latest/download/instalar.ps1 | iex
+```
+
+Descarga el último instalador sin esa marca y lo ejecuta. Si ya lo bajaste con el navegador: clic derecho en el `.exe` → Propiedades → marcar «Desbloquear», o `Unblock-File .\LabTrace-Setup-*.exe`.
