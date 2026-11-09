@@ -86,7 +86,7 @@ export default function RemisionesView({ casos, controller, showToast, onOpenCas
       {editTarget && (
         <Modal
           title={`Corregir remisión N° ${formatRemisionNumber(editTarget)}`}
-          subtitle="Puedes cambiar tipo, número, fecha, orden, nombres impresos, productos y cantidades."
+          subtitle="Puedes cambiar caso, tipo, número, fecha, orden, nombres impresos, productos y cantidades."
           onClose={() => setEditTarget(null)}
           busy={saving}
           className={styles.wideModal}

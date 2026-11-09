@@ -192,10 +192,17 @@ export class RemisionesService {
     if (existente && existente.id !== id) throw this.numeroDuplicado(numero, tipo);
 
     const data: Prisma.RemisionUpdateInput = { editadaEn: new Date() };
+    let codigoCaso = actual.caso.codigo;
+    if (dto.casoId !== undefined && dto.casoId !== actual.casoId) {
+      const casoNuevo = await this.prisma.caso.findUnique({ where: { id: dto.casoId }, select: { id: true, codigo: true } });
+      if (!casoNuevo) throw new NotFoundException(`El caso #${dto.casoId} no existe`);
+      data.caso = { connect: { id: casoNuevo.id } };
+      codigoCaso = casoNuevo.codigo;
+    }
     if (dto.tipo !== undefined) data.tipo = tipo;
     if (dto.numero !== undefined) data.numero = numero;
     if (dto.fecha !== undefined) data.fecha = dateOnlyToUtc(dto.fecha);
-    if (dto.noOrden !== undefined) data.noOrden = dto.noOrden.trim() || actual.caso.codigo;
+    if (dto.noOrden !== undefined) data.noOrden = dto.noOrden.trim() || codigoCaso;
     if (dto.doctorNombre !== undefined) data.doctorNombre = dto.doctorNombre.trim() || null;
     if (dto.pacienteNombre !== undefined) data.pacienteNombre = dto.pacienteNombre.trim() || null;
 

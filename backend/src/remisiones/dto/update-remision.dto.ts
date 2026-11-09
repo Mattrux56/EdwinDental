@@ -19,6 +19,13 @@ import { RemisionItemDto, TipoRemision } from './create-remision.dto';
 
 /** Corrección de una remisión existente */
 export class UpdateRemisionDto {
+  /** Caso al que pertenece la remisión (para corregir una remisión asignada al caso equivocado) */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  casoId?: number;
+
   @IsOptional()
   @Type(() => Number)
   @IsInt()

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import styles from '../../styles/app.module.css';
 import { formatMoney, ingresoDate } from '../../utils/format.js';
 import { Icon } from './Icon.jsx';
@@ -190,6 +190,7 @@ function SplitFields({ linea, descripcion, saving, onModo, onValor }) {
 export default function NewRemisionForm({ casos, productos: productosActivos, saving, onSubmit, onCancel, remision, onNuevoProducto }) {
   const editando = Boolean(remision);
   const [caso, setCaso] = useState(remision?.caso ?? null);
+  const ultimoCaso = useRef(remision?.caso ?? null);
   const [fecha, setFecha] = useState(remision ? String(remision.fecha).slice(0, 10) : today);
   const [noOrden, setNoOrden] = useState(remision?.noOrden ?? '');
   const [tipo, setTipo] = useState(remision?.tipo ?? 'NORMAL');
@@ -346,11 +347,25 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
     cantidadInferior: l.protesis ? l.inf : 0,
   }));
 
+  // Al corregir, un caso nuevo trae sus nombres impresos y, si el No. de orden era el código del caso anterior, se toma el del nuevo
+  // («Cambiar caso» deja el caso en null, por eso se compara contra el último caso elegido)
+  const elegirCaso = (nuevo) => {
+    const anterior = ultimoCaso.current;
+    if (editando && nuevo && anterior && nuevo.id !== anterior.id) {
+      setDoctorNombre(nuevo.doctorNombre ?? '');
+      setPacienteNombre(nuevo.pacienteNombre ?? '');
+      if (noOrden.trim() === anterior.codigo) setNoOrden('');
+    }
+    if (nuevo) ultimoCaso.current = nuevo;
+    setCaso(nuevo);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!puedeGuardar) return;
     if (editando) {
       await onSubmit({
+        ...(caso.id !== remision.caso?.id ? { casoId: caso.id } : {}),
         tipo,
         numero: Number(numero),
         fecha,
@@ -416,7 +431,7 @@ export default function NewRemisionForm({ casos, productos: productosActivos, sa
           <span className={styles.label}>
             Caso <span className={styles.required}>*</span>
           </span>
-          <CasePicker casos={casos} selected={caso} onSelect={setCaso} locked={editando} />
+          <CasePicker casos={casos} selected={caso} onSelect={elegirCaso} />
         </div>
 
         <div className={styles.field}>
